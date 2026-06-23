@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangaSystem - Editorial Board Approval</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">Editorial Board</div>
+        <a href="tantou-review.html" class="btn-sidebar-action btn-back"><i class="fa-solid fa-arrow-left"></i> Back to Review</a>
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-message"></i> Tantou Report</a>
+            <a href="editorial-board.html" class="nav-item active"><i class="fa-solid fa-gavel"></i> Board Approval</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <div class="profile-section">
+            <img src="https://i.pravatar.cc/150?img=32" class="profile-avatar" alt="Profile">
+        </div>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Editorial Board</strong>
+                <a href="#">Submissions</a>
+                <a href="#">Voting</a>
+                <a href="#">Final Decision</a>
+            </div>
+            <div class="topbar-right">
+                <button class="btn-publish" id="btn-finalize-decision"><i class="fa-solid fa-check-double"></i> Finalize Decision</button>
+                <img src="https://i.pravatar.cc/150?img=32" style="width: 32px; height: 32px; border-radius: 50%;">
+            </div>
+        </header>
+
+        <div class="content-padding board-content">
+            <div class="page-header">
+                <div>
+                    <h1>Board Approval</h1>
+                    <p>Review Tantou report, inspect manga draft, and cast publication vote.</p>
+                </div>
+                <span class="badge-review warning">Decision Pending</span>
+            </div>
+
+            <div class="board-grid">
+                <section>
+                    <div class="card-box submission-summary">
+                        <div>
+                            <span class="badge-review blue">Submitted to Board</span>
+                            <h2>Black Moon Contract</h2>
+                            <p>Chapter 01 - First Encounter</p>
+                            <p class="muted-small">A young artist signs a mysterious contract with a moon spirit and receives the power to alter fate.</p>
+                        </div>
+                        <div class="score-row">
+                            <div><strong>8</strong><span>Story</span></div>
+                            <div><strong>7</strong><span>Art</span></div>
+                            <div><strong>6</strong><span>Pacing</span></div>
+                            <div><strong>8</strong><span>Market</span></div>
+                        </div>
+                    </div>
+
+                    <div class="card-box">
+                        <h3 style="font-size:16px; margin-bottom: 15px;">Manga Draft Preview</h3>
+                        <div class="board-manga-preview">
+                            <div class="board-page-mini">
+                                <div class="fake-panel mini-a"></div>
+                                <div class="fake-panel mini-b"></div>
+                                <div class="fake-panel mini-c"></div>
+                                <div class="review-hitbox board-mini-hitbox" style="top: 18%; left: 14%; width: 42%; height: 16%;">Dialogue</div>
+                                <div class="review-hitbox board-mini-hitbox" style="top: 52%; left: 48%; width: 40%; height: 18%;">Pacing</div>
+                            </div>
+                            <div class="board-report-text">
+                                <h3>Tantou Recommendation</h3>
+                                <span class="badge-review warning">Recommend Revision</span>
+                                <p>The chapter has strong story potential, but pacing feedback should be resolved before publication approval.</p>
+                                <ul class="board-list">
+                                    <li>Dialogue needs reduction in page 5.</li>
+                                    <li>Scene transition should be smoother.</li>
+                                    <li>Layout issue was fixed in revision.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <aside>
+                    <div class="card-box">
+                        <h3 style="font-size:16px; margin-bottom: 15px;">Cast Your Vote</h3>
+                        <div class="board-vote-options">
+                            <button class="board-vote-card" data-vote="Approve">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <strong>Approve</strong>
+                                <span>Ready for publication</span>
+                            </button>
+                            <button class="board-vote-card active" data-vote="Request Revision">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <strong>Request Revision</strong>
+                                <span>Send back for fixes</span>
+                            </button>
+                            <button class="board-vote-card" data-vote="Reject">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                                <strong>Reject</strong>
+                                <span>Not suitable now</span>
+                            </button>
+                        </div>
+
+                        <label class="field-label">Board Comment</label>
+                        <textarea class="review-input" id="board-comment" placeholder="Write reason for your vote...">Pacing should be fixed before final publication approval.</textarea>
+                        <button class="btn-publish full-btn" id="btn-submit-vote"><i class="fa-solid fa-vote-yea"></i> Submit Vote</button>
+                    </div>
+
+                    <div class="card-box">
+                        <h3 style="font-size:16px; margin-bottom: 15px;">Vote Summary</h3>
+                        <div class="vote-summary-grid">
+                            <div><strong id="approve-count">1</strong><span>Approve</span></div>
+                            <div><strong id="revision-count">1</strong><span>Revision</span></div>
+                            <div><strong id="reject-count">0</strong><span>Reject</span></div>
+                        </div>
+                        <div class="comment-thread" id="vote-thread">
+                            <div class="thread-item"><strong>Board Member 1</strong><p>Approve. The story hook is strong.</p></div>
+                            <div class="thread-item"><strong>Board Member 2</strong><p>Request Revision. Fix pacing first.</p></div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <div class="decision-modal" id="decision-modal" style="display:none;">
+        <div class="decision-card">
+            <span class="badge-review warning">Final Status</span>
+            <h2>Revision Required</h2>
+            <p>The Board decision has been recorded. The chapter should return to Mangaka/Tantou revision tracking.</p>
+            <button class="btn-publish" id="close-decision-modal">Close</button>
+        </div>
+    </div>
+
+    <div class="toast-notification" id="toast-msg">
+        <i class="fa-solid fa-circle-check"></i> Vote submitted!
+    </div>
+
+    <script src="script-workspace.js"></script>
+    <script src="script-tantou-board.js"></script>
+</body>
+</html>

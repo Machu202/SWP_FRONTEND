@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mangaka Workspace - Chapter Management</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">Mangaka Workspace</div>
+        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus"></i> New Series</a>
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item active"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-message"></i> Tantou Review</a>
+            <a href="editorial-board.html" class="nav-item"><i class="fa-solid fa-gavel"></i> Board Approval</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0;"><a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a></nav>
+        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=12" class="profile-avatar" alt="Profile"></div>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#" style="color: black; border-bottom: 2px solid black; padding-bottom: 18px;">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
+                    <input type="text" placeholder="Search...">
+                </div>
+                <i class="fa-regular fa-bell top-icon"></i>
+                <i class="fa-regular fa-moon top-icon"></i>
+                <button class="btn-publish">Publish</button>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="font-size: 24px;">Neon Genesis - Volume 8</h1>
+                    <p>Chapter Management</p>
+                </div>
+                <button class="btn-publish" style="background: #111827;">+ Create New Chapter</button>
+            </div>
+
+            <div class="chapter-list">
+                
+                <div class="list-card">
+                    <div class="list-card-img" style="display: flex; align-items: center; justify-content: center; font-size: 24px; color: #9ca3af; height: 100px; width: 100px;">
+                        <i class="fa-regular fa-image"></i>
+                    </div>
+                    <div class="list-card-content">
+                        <h2 class="list-card-title" style="font-size: 18px;">Chapter 46: The Awakening</h2>
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: center;">
+                            <span class="badge-tag draft">Draft</span>
+                            <span style="font-size: 12px; color: #6b7280;"><i class="fa-regular fa-calendar"></i> Due: Oct 24</span>
+                        </div>
+                        
+                        <div class="progress-wrapper">
+                            <div class="progress-header"><span>Progress</span><span>5 / 32 Pages</span></div>
+                            <div class="progress-bar-bg" style="margin-bottom: 0;"><div class="progress-bar-fill" style="width: 15%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="list-card-actions" style="border: none; flex-direction: row; gap: 10px;">
+                        <a href="page-editor.html" class="btn-icon-only" title="Edit Page & Assign Tasks" style="text-decoration: none;">
+                            <i class="fa-solid fa-pen" style="color: #111827;"></i>
+                        </a>
+                        <button class="btn-icon-only"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </div>
+                </div>
+
+                <div class="list-card">
+                    <img src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=200&auto=format&fit=crop" class="list-card-img" style="height: 100px; width: 100px;" alt="Chapter 45">
+                    <div class="list-card-content">
+                        <h2 class="list-card-title" style="font-size: 18px;">Chapter 45: Betrayal</h2>
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: center;">
+                            <span class="badge-tag review">In Review</span>
+                            <span style="font-size: 12px; color: #6b7280;"><i class="fa-regular fa-calendar"></i> Due: Oct 10</span>
+                        </div>
+                        
+                        <div class="progress-wrapper">
+                            <div class="progress-header"><span>Progress</span><span>32 / 32 Pages</span></div>
+                            <div class="progress-bar-bg" style="margin-bottom: 0;"><div class="progress-bar-fill" style="width: 100%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="list-card-actions" style="border: none; flex-direction: row; gap: 10px;">
+                        <button class="btn-icon-only"><i class="fa-regular fa-eye"></i></button>
+                        <button class="btn-icon-only"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>
