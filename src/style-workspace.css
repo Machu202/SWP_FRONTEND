@@ -1360,3 +1360,74 @@ body {
     display: none;
   }
 }
+
+
+/* ========================================= */
+/* --- ROLE-SEPARATED WORKSPACE PAGES --- */
+/* ========================================= */
+.role-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.role-flow-card,
+.resource-card {
+  display: block;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 20px;
+  color: var(--text-main);
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.role-flow-card:hover,
+.resource-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+.role-flow-card i,
+.resource-card i {
+  color: var(--primary-color);
+  font-size: 24px;
+  margin-bottom: 14px;
+}
+.role-flow-card h3,
+.resource-card h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.role-flow-card p,
+.resource-card p,
+.muted-small {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.role-table {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.role-table > div {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.role-table a {
+  color: var(--primary-color);
+  font-weight: 700;
+  text-decoration: none;
+}
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+@media (max-width: 900px) {
+  .role-table > div { grid-template-columns: 1fr; }
+}

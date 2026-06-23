@@ -50,12 +50,20 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* ĐĂNG NHẬP THÀNH CÔNG -> CHUYỂN TRANG MANGAKA DASHBOARD */
+    /* ĐĂNG NHẬP THÀNH CÔNG -> CHUYỂN ĐẾN WORKSPACE RIÊNG THEO ROLE */
     const btnLogin = document.getElementById("btn-login");
     if(btnLogin) {
         btnLogin.addEventListener("click", (e) => {
             e.preventDefault();
-            window.location.href = "dashboard.html"; 
+            const selectedRole = document.getElementById("login-role")?.value || "mangaka";
+            const roleRoutes = {
+                mangaka: "dashboard.html",
+                assistant: "assistant-dashboard.html",
+                tantou: "tantou-dashboard.html",
+                editorial: "board-dashboard.html",
+                admin: "admin-dashboard.html"
+            };
+            window.location.href = roleRoutes[selectedRole] || "dashboard.html";
         });
     }
 

@@ -120,6 +120,23 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
+    // Open Tantou panel based on URL hash, e.g. tantou-review.html#revision or #report
+    function openReviewPanelFromHash() {
+        const hash = window.location.hash.replace("#", "");
+        const hashToTab = {
+            feedback: "feedback",
+            revision: "revision",
+            report: "report"
+        };
+        const target = hashToTab[hash];
+        if (!target) return;
+        const tab = document.querySelector(`.review-feedback-panel .p-tab[data-target="${target}"]`);
+        if (tab) tab.click();
+    }
+    openReviewPanelFromHash();
+    window.addEventListener("hashchange", openReviewPanelFromHash);
+
     const submitBoardBtn = document.getElementById("btn-submit-board");
     if (submitBoardBtn) {
         submitBoardBtn.addEventListener("click", () => {

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>Tantou Editor Dashboard</title>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">Tantou Editor</div>
+        <a href="tantou-review.html" class="btn-sidebar-action"><i class="fa-solid fa-magnifying-glass"></i> Start Review</a>
+        <nav class="nav-group">
+            <a href="tantou-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Tantou Dashboard</a>
+            <a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-message"></i> Chapter Review</a>
+            <a href="tantou-review.html#feedback" class="nav-item"><i class="fa-solid fa-comment-dots"></i> Annotation & Feedback</a>
+            <a href="tantou-review.html#revision" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i> Revision Tracking</a>
+            <a href="tantou-review.html#report" class="nav-item"><i class="fa-solid fa-file-signature"></i> Editorial Report</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0;">
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+
+        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=24" class="profile-avatar" alt="Profile"></div>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left"><strong style="color:black; margin-right:15px;">Tantou Editor</strong><a href="tantou-review.html">Chapter Review</a><a href="tantou-review.html#revision">Revision</a><a href="tantou-review.html#report">Report</a></div>
+            <div class="topbar-right"><i class="fa-regular fa-bell top-icon"></i><img src="https://i.pravatar.cc/150?img=5" style="width:32px;height:32px;border-radius:50%;"></div>
+        </header>
+        <div class="content-padding">
+            <div class="page-header"><h1>Tantou Dashboard</h1><p>Review submitted chapters, create feedback, and prepare reports for the Editorial Board.</p></div>
+            <div class="role-card-grid">
+                <a class="role-flow-card" href="tantou-review.html"><i class="fa-solid fa-book-open"></i><h3>Chapter Review</h3><p>Read the submitted chapter and inspect manga pages.</p></a>
+                <a class="role-flow-card" href="tantou-review.html#feedback"><i class="fa-solid fa-comment-dots"></i><h3>Annotation & Feedback</h3><p>Add comments directly to problem panels and hitboxes.</p></a>
+                <a class="role-flow-card" href="tantou-review.html#revision"><i class="fa-solid fa-clock-rotate-left"></i><h3>Revision Tracking</h3><p>Compare versions and approve revision status.</p></a>
+                <a class="role-flow-card" href="tantou-review.html#report"><i class="fa-solid fa-file-signature"></i><h3>Editorial Report</h3><p>Summarize quality scores and submit recommendation.</p></a>
+            </div>
+            <div class="card-box"><h3>Pending Reviews</h3><div class="role-table"><div><strong>Black Moon Contract</strong><span>Chapter 01 - Waiting for Tantou Review</span><a href="tantou-review.html">Open</a></div><div><strong>Silver Rain</strong><span>Chapter 03 - Revision Returned</span><a href="tantou-review.html#revision">Check Revision</a></div></div></div>
+        </div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>

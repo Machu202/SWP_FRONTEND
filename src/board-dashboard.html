@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>Editorial Board Dashboard</title>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">Editorial Board</div>
+        <a href="editorial-board.html" class="btn-sidebar-action"><i class="fa-solid fa-inbox"></i> Open Submission</a>
+        <nav class="nav-group">
+            <a href="board-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Board Dashboard</a>
+            <a href="editorial-board.html" class="nav-item"><i class="fa-solid fa-gavel"></i> Board Approval</a>
+            <a href="editorial-board.html#vote" class="nav-item"><i class="fa-solid fa-vote-yea"></i> Voting</a>
+            <a href="editorial-board.html#decision" class="nav-item"><i class="fa-solid fa-check-double"></i> Final Decision</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0;">
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+
+        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=32" class="profile-avatar" alt="Profile"></div>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left"><strong style="color:black; margin-right:15px;">Editorial Board</strong><a href="editorial-board.html">Submissions</a><a href="editorial-board.html#vote">Voting</a><a href="editorial-board.html#decision">Final Decision</a></div>
+            <div class="topbar-right"><i class="fa-regular fa-bell top-icon"></i><img src="https://i.pravatar.cc/150?img=5" style="width:32px;height:32px;border-radius:50%;"></div>
+        </header>
+        <div class="content-padding">
+            <div class="page-header"><h1>Editorial Board Dashboard</h1><p>Review Tantou reports and vote on publication decisions.</p></div>
+            <div class="role-card-grid">
+                <a class="role-flow-card" href="editorial-board.html"><i class="fa-solid fa-file-lines"></i><h3>Board Submission</h3><p>Open submitted chapter and Tantou evaluation report.</p></a>
+                <a class="role-flow-card" href="editorial-board.html#vote"><i class="fa-solid fa-vote-yea"></i><h3>Vote</h3><p>Approve, reject, or request revision with board comments.</p></a>
+                <a class="role-flow-card" href="editorial-board.html#decision"><i class="fa-solid fa-check-double"></i><h3>Final Decision</h3><p>Finalize result and update publication status.</p></a>
+            </div>
+            <div class="card-box"><h3>Submissions Waiting</h3><div class="role-table"><div><strong>Black Moon Contract</strong><span>Tantou recommendation: Recommend Revision</span><a href="editorial-board.html">Review</a></div></div></div>
+        </div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>

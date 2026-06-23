@@ -10,19 +10,24 @@
 <body>
     <aside class="sidebar">
         <div class="workspace-title">Editorial Board</div>
-        <a href="tantou-review.html" class="btn-sidebar-action btn-back"><i class="fa-solid fa-arrow-left"></i> Back to Review</a>
+        <a href="editorial-board.html" class="btn-sidebar-action"><i class="fa-solid fa-inbox"></i> Submissions</a>
         <nav class="nav-group">
-            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-            <a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-message"></i> Tantou Report</a>
+            <a href="board-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Board Dashboard</a>
             <a href="editorial-board.html" class="nav-item active"><i class="fa-solid fa-gavel"></i> Board Approval</a>
+            <a href="editorial-board.html#vote" class="nav-item"><i class="fa-solid fa-vote-yea"></i> Voting</a>
+            <a href="editorial-board.html#decision" class="nav-item"><i class="fa-solid fa-check-double"></i> Final Decision</a>
         </nav>
         <div class="sidebar-divider"></div>
-        <div class="profile-section">
-            <img src="https://i.pravatar.cc/150?img=32" class="profile-avatar" alt="Profile">
-        </div>
+        <nav class="nav-group" style="flex-grow: 0;">
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+
+        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=32" class="profile-avatar" alt="Profile"></div>
     </aside>
 
-    <main class="main-wrapper">
+<main class="main-wrapper">
         <header class="topbar">
             <div class="topbar-left">
                 <strong style="color: black; margin-right: 15px;">Editorial Board</strong>
@@ -86,7 +91,7 @@
                     </div>
                 </section>
 
-                <aside>
+                <aside id="vote">
                     <div class="card-box">
                         <h3 style="font-size:16px; margin-bottom: 15px;">Cast Your Vote</h3>
                         <div class="board-vote-options">

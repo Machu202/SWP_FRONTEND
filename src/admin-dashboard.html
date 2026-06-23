@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>Admin Dashboard</title>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">Admin Workspace</div>
+        <a href="admin-users.html" class="btn-sidebar-action"><i class="fa-solid fa-users"></i> Manage Users</a>
+        <nav class="nav-group">
+            <a href="admin-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Admin Dashboard</a>
+            <a href="admin-users.html" class="nav-item"><i class="fa-solid fa-users"></i> User Management</a>
+            <a href="admin-settings.html" class="nav-item"><i class="fa-solid fa-sliders"></i> System Settings</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0;">
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+
+        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=8" class="profile-avatar" alt="Profile"></div>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left"><strong style="color:black; margin-right:15px;">Admin</strong><a href="admin-users.html">Users</a><a href="admin-settings.html">Settings</a></div>
+            <div class="topbar-right"><i class="fa-regular fa-bell top-icon"></i><img src="https://i.pravatar.cc/150?img=5" style="width:32px;height:32px;border-radius:50%;"></div>
+        </header>
+        <div class="content-padding"><div class="page-header"><h1>Admin Dashboard</h1><p>Monitor users, roles, pricing parameters, and system settings.</p></div><div class="card-box"><h3>Admin Dashboard</h3><p class="muted-small">This page is separated from the other role workspaces and has its own Admin menu.</p></div></div>
+    </main>
+</body>
+</html>
