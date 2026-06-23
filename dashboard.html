@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mangaka Workspace - Overview</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">Mangaka Workspace</div>
+        <a href="create-series.html" class="btn-sidebar-action">New Series</a>
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=12" class="profile-avatar" alt="Profile"></div>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left"><a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a></div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <i class="fa-regular fa-bell top-icon"></i>
+                <i class="fa-regular fa-moon top-icon"></i>
+                <button class="btn-publish">Publish</button>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="page-header"><h1>Overview</h1><p>Good morning. Here is the current status of your active serialization.</p></div>
+            <div class="grid-layout">
+                <section>
+                    <div class="series-grid">
+                        <div class="empty-state-box"><i class="fa-solid fa-book-open"></i><p>Hiện tại không có series nào. Hãy tạo series mới để bắt đầu!</p></div>
+                    </div>
+                    <div class="card-box">
+                        <h3 style="font-size: 16px; margin-bottom: 20px;">Weekly Reader Ranking</h3>
+                        <div style="display: flex; align-items: center; justify-content: center; height: 120px; border-bottom: 1px solid #eee; color: #9ca3af; font-size: 13px; font-style: italic;">Chưa có dữ liệu thống kê.</div>
+                    </div>
+                </section>
+                <aside>
+                    <div class="card-box" style="margin-bottom: 20px;">
+                        <h3 style="font-size: 16px;">Quick Actions</h3>
+                        <div class="quick-actions-grid">
+                            <a href="create-series.html" class="action-btn"><i class="fa-solid fa-plus-square"></i>New<br>Series</a>
+                            <div class="action-btn"><i class="fa-solid fa-images"></i>Assets</div>
+                            <div class="action-btn"><i class="fa-regular fa-calendar"></i>Schedule</div>
+                        </div>
+                    </div>
+                    <div class="card-box">
+                        <div class="activity-header"><h3 style="font-size: 16px;">Studio Activity</h3></div>
+                        <p class="empty-activity">Chưa có hoạt động nào trong studio.</p>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>

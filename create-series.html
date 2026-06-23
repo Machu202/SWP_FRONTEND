@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mangaka Workspace - Create New Series</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">Mangaka Workspace</div>
+        
+        <a href="dashboard.html" class="btn-sidebar-action btn-back">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item active"><i class="fa-solid fa-book-open"></i> Series</a>
+        </nav>
+
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <a href="dashboard.html" style="color: black; font-size: 18px;"><i class="fa-solid fa-arrow-left"></i></a>
+                    <div>
+                        <h1 style="font-size: 20px; font-weight: 700;">Create New Series</h1>
+                        <p style="font-size: 12px; color: #6b7280; font-weight: 500;">Initialize a new manga project in your Studio Flow workspace.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <i class="fa-regular fa-bell top-icon"></i>
+                <button class="btn-publish">Create Series</button>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="grid-layout">
+                <div>
+                    <div class="form-section">
+                        <div class="form-section-title">Core Information</div>
+                        
+                        <div class="form-group">
+                            <label>SERIES TITLE</label>
+                            <input type="text" class="form-control" placeholder="Enter working title...">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>PRIMARY GENRE</label>
+                                <select class="form-control">
+                                    <option>Select Genre</option>
+                                    <option>Action</option>
+                                    <option>Romance</option>
+                                    <option>Fantasy</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>PUBLICATION FREQUENCY</label>
+                                <select class="form-control">
+                                    <option>Weekly</option>
+                                    <option>Bi-weekly</option>
+                                    <option>Monthly</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>SYNOPSIS / LOGLINE</label>
+                            <textarea class="form-control" rows="6" placeholder="Briefly describe the core premise..."></textarea>
+                            <div class="char-counter">0 / 500</div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <span>Storyboard & Concept</span>
+                            <div class="btn-text-action">
+                                <i class="fa-solid fa-file-arrow-up"></i> Upload Assets
+                            </div>
+                        </div>
+                        <div class="storyboard-grid">
+                            <div class="storyboard-item empty">
+                                <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                                <span>Drag & drop sketches<br>or click to browse</span>
+                            </div>
+                            <div class="storyboard-item">
+                                </div>
+                            <div class="storyboard-item">
+                                <i class="fa-regular fa-file-lines" style="font-size: 32px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="form-section">
+                        <div class="form-section-title">Series Cover</div>
+                        <div class="upload-box upload-box-large">
+                            <i class="fa-regular fa-image" style="font-size: 32px; margin-bottom: 12px; color: #9ca3af;"></i>
+                            <span style="font-size: 12px; font-weight: 700; color: #4b5563;">Upload Primary Art</span>
+                            <span style="font-size: 10px; margin-top: 6px; color: #9ca3af;">Recommended: 1200x1800px</span>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Technical Settings</div>
+                        
+                        <div class="form-group">
+                            <label>TARGET PAGE COUNT (PER CH.)</label>
+                            <input type="number" class="form-control" value="20">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>READ DIRECTION</label>
+                            <div class="direction-group">
+                                <button class="btn-direction active">
+                                    <i class="fa-solid fa-arrow-right-to-bracket" style="transform: rotate(180deg);"></i> R to L
+                                </button>
+                                <button class="btn-direction">
+                                    <i class="fa-solid fa-arrow-right-to-bracket"></i> L to R
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="script-workspace.js"></script>
+</body>
+</html>
