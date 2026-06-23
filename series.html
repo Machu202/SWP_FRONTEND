@@ -3,28 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mangaka Workspace - Series</title>
+    <title>Series Management - Studio Flow</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <aside class="sidebar">
-        <div class="workspace-title">Mangaka Workspace</div>
-        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus"></i> New Series</a>
+        <div class="workspace-title">
+            <div class="ws-logo">SF</div>
+            <div class="ws-name">Mangaka Workspace</div>
+        </div>
+        
+        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
+        
         <nav class="nav-group">
             <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="series.html" class="nav-item active"><i class="fa-solid fa-book"></i> Series</a>
             <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
             <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="review-submission.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
             <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
         </nav>
         <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0;">
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
             <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
             <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
         </nav>
-        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=12" class="profile-avatar" alt="Profile"></div>
     </aside>
 
     <main class="main-wrapper">
@@ -34,33 +38,25 @@
                 <a href="#">Workflow</a>
             </div>
             <div class="topbar-right">
-                <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
-                    <input type="text" placeholder="Search...">
-                </div>
-                <button class="btn-publish">Publish</button>
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <button class="btn-publish" onclick="window.location.href='create-series.html'">Publish</button>
             </div>
         </header>
 
         <div class="content-padding">
-            <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div class="page-header" style="align-items: center;">
                 <div>
                     <h1>Series Management</h1>
                     <p>Overview of all active and past serialized works in the studio portfolio.</p>
                 </div>
-                <a href="create-series.html" class="btn-publish" style="text-decoration: none;">+ Add New Series</a>
+                <button class="btn-publish" onclick="window.location.href='create-series.html'"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> Add New Series</button>
             </div>
 
-            <div class="series-list">
-                
-                <div class="empty-state-box">
-                    <i class="fa-solid fa-book-open"></i>
-                    <p>Hiện tại không có series nào. Hãy tạo series mới để bắt đầu!</p>
-                </div>
-
+            <div class="empty-state-box" style="margin-top: 50px;">
+                <i class="fa-solid fa-book-open"></i>
+                <p>Hiện tại không có series nào. Hãy tạo series mới để bắt đầu!</p>
             </div>
         </div>
     </main>
-    <script src="script-workspace.js"></script>
 </body>
 </html>
