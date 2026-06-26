@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Canvas / Hitbox Editor</title>
+  <title>Notifications</title>
   <link rel="stylesheet" href="style-workspace.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
@@ -17,7 +17,7 @@
 <a href="create-series.html" class="nav-item"><i class="fa-solid fa-wand-magic-sparkles"></i>Create Series</a>
 <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-lines"></i>Manuscripts</a>
 <a href="script-editor.html" class="nav-item"><i class="fa-solid fa-pen-nib"></i>Script Editor</a>
-<a href="page-editor.html" class="nav-item active"><i class="fa-solid fa-vector-square"></i>Canvas / Hitboxes</a>
+<a href="page-editor.html" class="nav-item"><i class="fa-solid fa-vector-square"></i>Canvas / Hitboxes</a>
 <a href="split-review.html" class="nav-item"><i class="fa-solid fa-table-columns"></i>Script + Manga Review</a>
 <a href="batch-upload.html" class="nav-item"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a>
 <a href="assignments.html" class="nav-item"><i class="fa-solid fa-user-check"></i>Assign Tasks</a>
@@ -30,7 +30,7 @@
 </nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
 <main class="main-wrapper">
   <header class="topbar">
-    <div class="topbar-left"><strong>Canvas / Hitbox Editor</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-left"><strong>Notifications</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
     <div class="topbar-right">
       <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
       <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
@@ -40,9 +40,8 @@
   </header>
   <section class="content-padding">
 
-<div class="page-header"><div><h1>Canvas and Hitbox Marker</h1><p>FE-34/FE-36/FE-38: render manga page, draw hitboxes and assign them to Assistant.</p></div><button class="btn-publish" id="open-assign-modal">Assign Selected Hitbox</button></div>
-<div class="editor-layout"><div class="card-box"><div class="canvas-frame" id="marker-canvas"><div class="manga-page-large"><div class="panel-block a">Panel 1</div><div class="panel-block b">Panel 2</div><div class="panel-block c">Main Action</div><button class="review-hitbox active" style="top:18%;left:12%;width:32%;height:16%">BG Task</button><button class="review-hitbox" style="top:55%;left:52%;width:34%;height:18%">Tone</button></div></div><p class="muted-small">Drag marker tool simulation: click Assign Selected Hitbox to open modal.</p></div><div class="card-box"><h3>Hitbox Coordinates</h3><table class="data-table"><tr><th>Task</th><th>X/Y</th><th>W/H</th></tr><tr><td>BG Task</td><td>12%, 18%</td><td>32%, 16%</td></tr><tr><td>Tone</td><td>52%, 55%</td><td>34%, 18%</td></tr></table></div></div>
-<div class="decision-modal" id="assign-modal" style="display:none"><div class="decision-card"><h2>Assign Hitbox Task</h2><label>Assistant<select><option>Assistant Huy</option><option>Assistant Mai</option></select></label><label>Task Type<select><option>Draw background</option><option>Screentone</option><option>Shading</option></select></label><label>Deadline<input type="date" value="2026-06-28"></label><button class="btn-publish js-toast" id="close-assign-modal">Save Assignment</button></div></div>
+<div class="page-header"><div><h1>Notification Center</h1><p>FE-10: unread alerts from review, deadline and voting events.</p></div><button class="btn-publish js-toast">Mark All Read</button></div>
+<div class="card-box"><div class="notification-row unread"><strong>Revision returned</strong><span>Tantou requested pacing changes on Black Moon Contract.</span></div><div class="notification-row unread"><strong>Board vote updated</strong><span>Board Member 2 requested revision.</span></div><div class="notification-row"><strong>Deadline warning</strong><span>Chapter 03 is due in 2 days.</span></div></div>
 
   </section>
 </main>

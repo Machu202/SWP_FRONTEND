@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Board Voting</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+<aside class="sidebar">
+<div class="workspace-title">Editorial Board</div>
+<a class="btn-sidebar-action" href="board-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
+<nav class="nav-group">
+<a href="board-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Board Dashboard</a>
+<a href="board-submissions.html" class="nav-item"><i class="fa-solid fa-inbox"></i>Submissions</a>
+<a href="board-voting.html" class="nav-item active"><i class="fa-solid fa-vote-yea"></i>Voting</a>
+<a href="board-result.html" class="nav-item"><i class="fa-solid fa-check-double"></i>Final Decision</a>
+</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
+<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
+<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
+<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
+<main class="main-wrapper">
+  <header class="topbar">
+    <div class="topbar-left"><strong>Board Voting</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-right">
+      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
+      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+      
+      <div class="profile-chip">Editorial Board</div>
+    </div>
+  </header>
+  <section class="content-padding">
+
+<div class="page-header"><div><h1>Cast Board Vote</h1><p>FE-16: dynamic approve/reject/revision vote interface.</p></div><a class="btn-publish" href="board-result.html">View Result</a></div>
+<div class="grid-two"><section class="card-box"><h2>Vote for Black Moon Contract</h2><div class="board-vote-options"><button class="board-vote-card" data-vote="Approve"><i class="fa-solid fa-circle-check"></i><strong>Approve</strong><span>Ready for publication</span></button><button class="board-vote-card active" data-vote="Request Revision"><i class="fa-solid fa-rotate-left"></i><strong>Request Revision</strong><span>Send back for fixes</span></button><button class="board-vote-card" data-vote="Reject"><i class="fa-solid fa-circle-xmark"></i><strong>Reject</strong><span>Not suitable now</span></button></div><label class="field-label">Board Comment</label><textarea class="review-input" id="board-comment">Pacing should be fixed before final publication approval.</textarea><button class="btn-publish full-btn" id="btn-submit-vote">Submit Vote</button></section><aside class="card-box"><h3>Vote Summary</h3><div class="vote-summary-grid"><div><strong id="approve-count">1</strong><span>Approve</span></div><div><strong id="revision-count">1</strong><span>Revision</span></div><div><strong id="reject-count">0</strong><span>Reject</span></div></div><div class="comment-thread" id="vote-thread"><div class="thread-item"><strong>Board Member 1</strong><p>Approve. The story hook is strong.</p></div><div class="thread-item"><strong>Board Member 2</strong><p>Request Revision. Fix pacing first.</p></div></div></aside></div>
+
+  </section>
+</main>
+<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
+<script src="api.js"></script>
+<script src="script-workspace.js"></script>
+<script src="script-tantou-board.js"></script>
+</body>
+</html>

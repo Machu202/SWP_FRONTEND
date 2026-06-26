@@ -1,171 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MangaSystem - Tantou Review</title>
-    <link rel="stylesheet" href="style-workspace.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tantou Chapter Review</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
-<body style="overflow: hidden;">
-    <aside class="sidebar">
-        <div class="workspace-title">Tantou Editor</div>
-        <a href="tantou-review.html" class="btn-sidebar-action"><i class="fa-solid fa-magnifying-glass"></i> Review Queue</a>
-        <nav class="nav-group">
-            <a href="tantou-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Tantou Dashboard</a>
-            <a href="tantou-review.html" class="nav-item active"><i class="fa-solid fa-message"></i> Chapter Review</a>
-            <a href="tantou-review.html#feedback" class="nav-item"><i class="fa-solid fa-comment-dots"></i> Annotation & Feedback</a>
-            <a href="tantou-review.html#revision" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i> Revision Tracking</a>
-            <a href="tantou-review.html#report" class="nav-item"><i class="fa-solid fa-file-signature"></i> Editorial Report</a>
-        </nav>
-        <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0;">
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
-            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
-        </nav>
-
-        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=24" class="profile-avatar" alt="Profile"></div>
-    </aside>
-
+<body>
+<aside class="sidebar">
+<div class="workspace-title">Tantou Editor</div>
+<a class="btn-sidebar-action" href="tantou-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
+<nav class="nav-group">
+<a href="tantou-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Tantou Dashboard</a>
+<a href="tantou-review.html" class="nav-item active"><i class="fa-solid fa-book-open-reader"></i>Chapter Review</a>
+<a href="tantou-feedback.html" class="nav-item"><i class="fa-solid fa-comment-dots"></i>Feedback Tracking</a>
+<a href="tantou-revision.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i>Revision Tracking</a>
+<a href="tantou-report.html" class="nav-item"><i class="fa-solid fa-file-signature"></i>Editorial Report</a>
+</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
+<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
+<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
+<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
 <main class="main-wrapper">
-        <header class="topbar">
-            <div class="topbar-left">
-                <strong style="color: black; margin-right: 15px;">Tantou Review</strong>
-                <a href="#">Chapter Review</a>
-                <a href="#">Revision Tracking</a>
-                <a href="#">Editorial Report</a>
-            </div>
-            <div class="topbar-right">
-                <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
-                    <input type="text" placeholder="Search chapter or note...">
-                </div>
-                <button class="btn-publish" id="btn-submit-board"><i class="fa-solid fa-paper-plane"></i> Submit to Board</button>
-                <img src="https://i.pravatar.cc/150?img=18" style="width: 32px; height: 32px; border-radius: 50%;">
-            </div>
-        </header>
-
-        <div class="review-layout">
-            <section class="review-left-panel">
-                <div class="mini-card">
-                    <div class="mini-title">Submitted Chapters</div>
-                    <div class="chapter-mini active">
-                        <span class="badge-review warning">Waiting Review</span>
-                        <strong>Black Moon Contract</strong>
-                        <small>Chapter 01 - First Encounter</small>
-                    </div>
-                    <div class="chapter-mini">
-                        <span class="badge-review blue">Revision Returned</span>
-                        <strong>Silver Rain</strong>
-                        <small>Chapter 03 - Broken Promise</small>
-                    </div>
-                </div>
-
-                <div class="mini-card">
-                    <div class="mini-title">Pages</div>
-                    <button class="page-chip">Page 01</button>
-                    <button class="page-chip">Page 02</button>
-                    <button class="page-chip active">Page 05</button>
-                    <button class="page-chip">Page 06</button>
-                </div>
-            </section>
-
-            <section class="review-canvas-wrap">
-                <div class="review-header-row">
-                    <div>
-                        <h1>Annotation & Feedback</h1>
-                        <p>Click the marked hitboxes to inspect Tantou feedback and revision notes.</p>
-                    </div>
-                    <div class="review-status-group">
-                        <span class="badge-review warning">Open: 2</span>
-                        <span class="badge-review success">Fixed: 1</span>
-                    </div>
-                </div>
-
-                <div class="review-canvas-shell">
-                    <div class="manga-page review-manga-page" id="tantou-manga-page">
-                        <div class="fake-panel panel-a">Dialogue Scene</div>
-                        <div class="fake-panel panel-b">Reaction Panel</div>
-                        <div class="fake-panel panel-c">Main Reveal</div>
-                        <div class="fake-panel panel-d">Closing Beat</div>
-
-                        <button class="review-hitbox active" data-title="Dialogue Issue" data-type="Dialogue" data-status="Open" data-comment="The dialogue bubble is too long. Shorten it so the panel is easier to read." style="top: 12%; left: 10%; width: 36%; height: 18%;">
-                            Dialogue
-                        </button>
-                        <button class="review-hitbox" data-title="Pacing Issue" data-type="Pacing" data-status="Open" data-comment="The transition from the chase to the reveal feels too sudden. Add one bridge panel or rewrite the previous line." style="top: 46%; left: 50%; width: 38%; height: 22%;">
-                            Pacing
-                        </button>
-                        <button class="review-hitbox fixed" data-title="Layout Fixed" data-type="Layout" data-status="Fixed" data-comment="Panel order was confusing in V1. The V2 layout is acceptable." style="top: 75%; left: 16%; width: 32%; height: 14%;">
-                            Layout
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <aside class="right-panel review-feedback-panel">
-                <div class="panel-tabs">
-                    <button class="p-tab active" data-target="feedback">Feedback</button>
-                    <button class="p-tab" data-target="revision">Revision</button>
-                    <button class="p-tab" data-target="report">Report</button>
-                </div>
-
-                <div class="panel-content review-tab-content" id="panel-feedback">
-                    <div class="feedback-detail-card">
-                        <span class="badge-review warning" id="fb-status">Open</span>
-                        <h3 id="fb-title">Dialogue Issue</h3>
-                        <p class="muted-small" id="fb-type">Type: Dialogue</p>
-                        <p id="fb-comment">The dialogue bubble is too long. Shorten it so the panel is easier to read.</p>
-                    </div>
-
-                    <label class="field-label">Add Tantou Comment</label>
-                    <textarea class="review-input" id="new-comment" placeholder="Write feedback for Mangaka..."></textarea>
-                    <button class="btn-publish full-btn" id="btn-add-feedback"><i class="fa-solid fa-plus"></i> Add Feedback</button>
-
-                    <div class="comment-thread" id="comment-thread">
-                        <div class="thread-item">
-                            <strong>Tantou Editor</strong>
-                            <p>Please reduce the text and keep the emotional pause.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="panel-content review-tab-content" id="panel-revision" data-anchor="revision" style="display:none;">
-                    <div class="mini-title">Version Compare</div>
-                    <input type="range" min="1" max="3" value="2" class="version-slider" id="version-slider">
-                    <div class="version-label">Showing Version <strong id="version-number">2</strong></div>
-                    <div class="version-preview-grid">
-                        <div class="version-box">V1</div>
-                        <div class="version-box active">V2</div>
-                    </div>
-                    <button class="btn-publish full-btn"><i class="fa-solid fa-check"></i> Approve Revision</button>
-                </div>
-
-                <div class="panel-content review-tab-content" id="panel-report" data-anchor="report" style="display:none;">
-                    <div class="mini-title">Editorial Report</div>
-                    <label class="field-label">Story Quality</label>
-                    <input class="review-field" value="8/10">
-                    <label class="field-label">Art Quality</label>
-                    <input class="review-field" value="7/10">
-                    <label class="field-label">Pacing Quality</label>
-                    <input class="review-field" value="6/10">
-                    <label class="field-label">Recommendation</label>
-                    <select class="review-field">
-                        <option>Recommend Revision</option>
-                        <option>Recommend Approval</option>
-                        <option>Recommend Rejection</option>
-                    </select>
-                    <button class="btn-publish full-btn" id="btn-submit-board"><i class="fa-solid fa-paper-plane"></i> Send Report to Board</button>
-                </div>
-            </aside>
-        </div>
-    </main>
-
-    <div class="toast-notification" id="toast-msg">
-        <i class="fa-solid fa-circle-check"></i> Feedback saved!
+  <header class="topbar">
+    <div class="topbar-left"><strong>Tantou Chapter Review</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-right">
+      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
+      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+      
+      <div class="profile-chip">Tantou Editor</div>
     </div>
+  </header>
+  <section class="content-padding">
 
-    <script src="script-workspace.js"></script>
-    <script src="script-tantou-board.js"></script>
+<div class="page-header"><div><h1>Chapter Review</h1><p>Read the submitted chapter and open annotation workflow.</p></div><a class="btn-publish" href="tantou-feedback.html">Start Annotation</a></div>
+<div class="review-layout simple"><section class="card-box"><h3>Submitted Chapters</h3><div class="chapter-mini active"><span class="badge-review warning">Waiting Review</span><strong>Black Moon Contract</strong><small>Chapter 01 - First Encounter</small></div><div class="chapter-mini"><span class="badge-review blue">Revision Returned</span><strong>Silver Rain</strong><small>Chapter 03 - Broken Promise</small></div></section><section class="card-box"><h3>Manga Draft Reader</h3><div class="board-page-mini large"><div class="fake-panel mini-a">Dialogue Scene</div><div class="fake-panel mini-b">Reaction</div><div class="fake-panel mini-c">Main Reveal</div></div></section><aside class="card-box"><h3>Review Checklist</h3><ul class="board-list"><li>Dialogue clarity</li><li>Pacing between panels</li><li>Layout readability</li><li>Content consistency</li></ul></aside></div>
+
+  </section>
+</main>
+<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
+<script src="api.js"></script>
+<script src="script-workspace.js"></script>
+<script src="script-tantou-board.js"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tantou Dashboard</title>
+  <title>Revision Tracking</title>
   <link rel="stylesheet" href="style-workspace.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
@@ -12,10 +12,10 @@
 <div class="workspace-title">Tantou Editor</div>
 <a class="btn-sidebar-action" href="tantou-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
 <nav class="nav-group">
-<a href="tantou-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i>Tantou Dashboard</a>
+<a href="tantou-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Tantou Dashboard</a>
 <a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-book-open-reader"></i>Chapter Review</a>
 <a href="tantou-feedback.html" class="nav-item"><i class="fa-solid fa-comment-dots"></i>Feedback Tracking</a>
-<a href="tantou-revision.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i>Revision Tracking</a>
+<a href="tantou-revision.html" class="nav-item active"><i class="fa-solid fa-clock-rotate-left"></i>Revision Tracking</a>
 <a href="tantou-report.html" class="nav-item"><i class="fa-solid fa-file-signature"></i>Editorial Report</a>
 </nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
 <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
@@ -24,7 +24,7 @@
 </nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
 <main class="main-wrapper">
   <header class="topbar">
-    <div class="topbar-left"><strong>Tantou Dashboard</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-left"><strong>Revision Tracking</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
     <div class="topbar-right">
       <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
       <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
@@ -34,8 +34,8 @@
   </header>
   <section class="content-padding">
 
-<div class="page-header"><div><h1>Tantou Editor Workspace</h1><p>Review submitted chapters, annotate issues, track revisions and prepare reports.</p></div><a class="btn-publish" href="tantou-review.html">Open Review Queue</a></div><div class="metric-grid"><div class="metric-card"><strong>4</strong><span>Waiting Review</span></div><div class="metric-card"><strong>9</strong><span>Open Feedback</span></div><div class="metric-card"><strong>2</strong><span>Revision Returned</span></div><div class="metric-card"><strong>1</strong><span>Ready for Board</span></div></div>
-<div class="role-card-grid"><a class="role-flow-card" href="tantou-review.html"><i class="fa-solid fa-book-open-reader"></i><h3>Chapter Review</h3><p>Read manga draft and inspect panels.</p></a><a class="role-flow-card" href="tantou-feedback.html"><i class="fa-solid fa-comment-dots"></i><h3>Feedback Tracking</h3><p>FE-26/FE-42 manage feedback status.</p></a><a class="role-flow-card" href="tantou-revision.html"><i class="fa-solid fa-clock-rotate-left"></i><h3>Revision Tracking</h3><p>FE-44 compare versions.</p></a><a class="role-flow-card" href="tantou-report.html"><i class="fa-solid fa-file-signature"></i><h3>Editorial Report</h3><p>Prepare Board review report.</p></a></div>
+<div class="page-header"><div><h1>Revision Tracking</h1><p>FE-44: compare historical versions and approve/reject revision.</p></div><a class="btn-publish" href="tantou-report.html">Approve for Report</a></div>
+<div class="card-box"><label class="field-label">Version Slider: <strong id="version-number">2</strong></label><input type="range" min="1" max="4" value="2" id="version-slider" class="version-slider"><div class="version-preview-grid wide"><div class="version-box">Old Version</div><div class="version-box active">Selected Version</div></div></div><div class="card-box"><h3>Feedback Resolution</h3><table class="data-table"><tr><th>Feedback</th><th>Status</th><th>Decision</th></tr><tr><td>Dialogue too long</td><td><span class="badge-review warning">Open</span></td><td><button class="small-btn js-toast">Request More Changes</button></td></tr><tr><td>Layout order confusing</td><td><span class="badge-review success">Fixed</span></td><td><button class="small-btn js-toast">Approve</button></td></tr></table></div>
 
   </section>
 </main>

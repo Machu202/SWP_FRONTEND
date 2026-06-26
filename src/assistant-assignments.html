@@ -1,65 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assistant - My Tasks</title>
-    <link rel="stylesheet" href="style-workspace.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assistant Tasks</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
-    <aside class="sidebar">
-        <div class="workspace-title">Assistant Workspace</div>
-        <a href="assistant-assignments.html" class="btn-sidebar-action"><i class="fa-solid fa-list-check"></i> My Tasks</a>
-        <nav class="nav-group">
-            <a href="assistant-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Assistant Dashboard</a>
-            <a href="assistant-assignments.html" class="nav-item active"><i class="fa-solid fa-list-check"></i> My Tasks</a>
-            <a href="assistant-resources.html" class="nav-item"><i class="fa-solid fa-folder-open"></i> Resources</a>
-        </nav>
-        <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0;">
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
-            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
-        </nav>
-
-        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=18" class="profile-avatar" alt="Profile"></div>
-    </aside>
-
+<aside class="sidebar">
+<div class="workspace-title">Assistant</div>
+<a class="btn-sidebar-action" href="assistant-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
+<nav class="nav-group">
+<a href="assistant-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Assistant Dashboard</a>
+<a href="assistant-assignments.html" class="nav-item active"><i class="fa-solid fa-list-check"></i>My Tasks</a>
+<a href="assistant-resources.html" class="nav-item"><i class="fa-solid fa-folder-open"></i>Resources</a>
+<a href="kanban.html" class="nav-item"><i class="fa-solid fa-table-list"></i>Kanban Board</a>
+</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
+<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
+<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
+<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
 <main class="main-wrapper">
-        <header class="topbar">
-            <div class="topbar-left"><a href="#">Workflow</a></div>
-            <div class="topbar-right"><button class="btn-publish" id="btn-new-task"><i class="fa-solid fa-plus"></i> Add Task</button></div>
-        </header>
+  <header class="topbar">
+    <div class="topbar-left"><strong>Assistant Tasks</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-right">
+      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
+      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+      
+      <div class="profile-chip">Assistant</div>
+    </div>
+  </header>
+  <section class="content-padding">
 
-        <div class="content-padding">
-            <div class="page-header"><h1>My Assigned Tasks</h1><p>Manage and distribute tasks to your Assistant team.</p></div>
-            <div class="kanban-board">
-                <div class="kanban-column" id="col-todo">
-                    <div class="kanban-column-header"><h3>TO DO <span class="task-count">1</span></h3></div>
-                    <div class="kanban-task-list">
-                        <div class="kanban-card" draggable="true">
-                            <div class="task-tags"><span class="tag tag-bg">Background</span></div>
-                            <h4 class="task-title">Ch. 143 - Cityscape details (Pages 4-6)</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="kanban-column" id="col-doing">
-                    <div class="kanban-column-header"><h3>IN PROGRESS <span class="task-count">1</span></h3></div>
-                    <div class="kanban-task-list">
-                        <div class="kanban-card" draggable="true">
-                            <div class="task-tags"><span class="tag tag-line">Line Art</span></div>
-                            <h4 class="task-title">Ch. 142 - Clean up explosion action lines</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="kanban-column" id="col-review">
-                    <div class="kanban-column-header"><h3>REVIEW <span class="task-count">0</span></h3></div>
-                    <div class="kanban-task-list"></div>
-                </div>
-            </div>
-        </div>
-    </main>
-    <script src="script-workspace.js"></script>
+<div class="page-header"><div><h1>My Assigned Hitbox Tasks</h1><p>FE-47: filtered by logged-in Assistant role.</p></div><button class="btn-publish js-toast">Upload Result</button></div>
+<div class="card-box"><table class="data-table"><tr><th>Task</th><th>Page</th><th>Status</th><th>Action</th></tr><tr><td>Draw background</td><td>Page 05</td><td><span class="badge-review blue">Doing</span></td><td><button class="small-btn js-toast">Submit</button></td></tr><tr><td>Screentone</td><td>Page 06</td><td><span class="badge-review warning">Todo</span></td><td><button class="small-btn js-toast">Start</button></td></tr></table></div>
+
+  </section>
+</main>
+<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
+<script src="api.js"></script>
+<script src="script-workspace.js"></script>
+<script src="script-tantou-board.js"></script>
 </body>
 </html>

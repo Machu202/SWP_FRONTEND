@@ -1,74 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mangaka Workspace - Overview</title>
-    <link rel="stylesheet" href="style-workspace.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mangaka Dashboard</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
-    <aside class="sidebar">
-        <div class="workspace-title">Mangaka Workspace</div>
-        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus"></i> New Series</a>
-        <nav class="nav-group">
-            <a href="dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
-            <a href="create-series.html" class="nav-item"><i class="fa-solid fa-circle-plus"></i> Create Series</a>
-            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
-            <a href="page-editor.html" class="nav-item"><i class="fa-solid fa-pen-ruler"></i> Page Editor</a>
-            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Task Assignment</a>
-        </nav>
-        <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0;">
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
-            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
-        </nav>
-
-        <div class="profile-section"><img src="https://i.pravatar.cc/150?img=12" class="profile-avatar" alt="Profile"></div>
-    </aside>
-
+<aside class="sidebar">
+<div class="workspace-title">Mangaka</div>
+<a class="btn-sidebar-action" href="dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
+<nav class="nav-group">
+<a href="dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i>Dashboard</a>
+<a href="series.html" class="nav-item"><i class="fa-solid fa-book-open"></i>Series</a>
+<a href="create-series.html" class="nav-item"><i class="fa-solid fa-wand-magic-sparkles"></i>Create Series</a>
+<a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-lines"></i>Manuscripts</a>
+<a href="script-editor.html" class="nav-item"><i class="fa-solid fa-pen-nib"></i>Script Editor</a>
+<a href="page-editor.html" class="nav-item"><i class="fa-solid fa-vector-square"></i>Canvas / Hitboxes</a>
+<a href="split-review.html" class="nav-item"><i class="fa-solid fa-table-columns"></i>Script + Manga Review</a>
+<a href="batch-upload.html" class="nav-item"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a>
+<a href="assignments.html" class="nav-item"><i class="fa-solid fa-user-check"></i>Assign Tasks</a>
+<a href="kanban.html" class="nav-item"><i class="fa-solid fa-table-list"></i>Kanban Board</a>
+<a href="version-history.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a>
+</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
+<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
+<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
+<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
 <main class="main-wrapper">
-        <header class="topbar">
-            <div class="topbar-left"><a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a></div>
-            <div class="topbar-right">
-                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
-                <i class="fa-regular fa-bell top-icon"></i>
-                <i class="fa-regular fa-moon top-icon"></i>
-                <button class="btn-publish">Publish</button>
-            </div>
-        </header>
+  <header class="topbar">
+    <div class="topbar-left"><strong>Mangaka Dashboard</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-right">
+      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
+      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+      
+      <div class="profile-chip">Mangaka</div>
+    </div>
+  </header>
+  <section class="content-padding">
 
-        <div class="content-padding">
-            <div class="page-header"><h1>Overview</h1><p>Good morning. Here is the current status of your active serialization.</p></div>
-            <div class="grid-layout">
-                <section>
-                    <div class="series-grid">
-                        <div class="empty-state-box"><i class="fa-solid fa-book-open"></i><p>Hiện tại không có series nào. Hãy tạo series mới để bắt đầu!</p></div>
-                    </div>
-                    <div class="card-box">
-                        <h3 style="font-size: 16px; margin-bottom: 20px;">Weekly Reader Ranking</h3>
-                        <div style="display: flex; align-items: center; justify-content: center; height: 120px; border-bottom: 1px solid #eee; color: #9ca3af; font-size: 13px; font-style: italic;">Chưa có dữ liệu thống kê.</div>
-                    </div>
-                </section>
-                <aside>
-                    <div class="card-box" style="margin-bottom: 20px;">
-                        <h3 style="font-size: 16px;">Quick Actions</h3>
-                        <div class="quick-actions-grid">
-                            <a href="create-series.html" class="action-btn"><i class="fa-solid fa-plus-square"></i>New<br>Series</a>
-                            <div class="action-btn"><i class="fa-solid fa-images"></i>Assets</div>
-                            <div class="action-btn"><i class="fa-regular fa-calendar"></i>Schedule</div>
-                        </div>
-                    </div>
-                    <div class="card-box">
-                        <div class="activity-header"><h3 style="font-size: 16px;">Studio Activity</h3></div>
-                        <p class="empty-activity">Chưa có hoạt động nào trong studio.</p>
-                    </div>
-                </aside>
-            </div>
-        </div>
-    </main>
-    <script src="script-workspace.js"></script>
+<div class="page-header"><div><h1>Mangaka Workspace</h1><p>Core workspace for creating series, chapters, pages, scripts and hitbox tasks.</p></div><a class="btn-publish" href="create-series.html">Create Series</a></div>
+<div class="metric-grid"><div class="metric-card"><strong>3</strong><span>Active Series</span></div><div class="metric-card"><strong>12</strong><span>Open Tasks</span></div><div class="metric-card"><strong>48</strong><span>Pages Uploaded</span></div><div class="metric-card"><strong>2</strong><span>Revision Requests</span></div></div>
+<div class="role-card-grid"><a class="role-flow-card" href="create-series.html"><i class="fa-solid fa-wand-magic-sparkles"></i><h3>Create Manga Series</h3><p>FE-12 wizard to register a project.</p></a><a class="role-flow-card" href="page-editor.html"><i class="fa-solid fa-vector-square"></i><h3>Canvas & Hitboxes</h3><p>FE-34/FE-36 draw areas and assign work.</p></a><a class="role-flow-card" href="split-review.html"><i class="fa-solid fa-table-columns"></i><h3>Split Review</h3><p>FE-29 synchronize script and manga page.</p></a><a class="role-flow-card" href="kanban.html"><i class="fa-solid fa-table-list"></i><h3>Kanban</h3><p>FE-40 manage task statuses.</p></a></div>
+
+  </section>
+</main>
+<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
+<script src="api.js"></script>
+<script src="script-workspace.js"></script>
+<script src="script-tantou-board.js"></script>
 </body>
 </html>

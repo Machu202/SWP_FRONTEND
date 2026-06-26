@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>User Management</title>
+  <title>Feature Coverage Map</title>
   <link rel="stylesheet" href="style-workspace.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
@@ -13,12 +13,12 @@
 <a class="btn-sidebar-action" href="admin-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
 <nav class="nav-group">
 <a href="admin-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Admin Dashboard</a>
-<a href="admin-users.html" class="nav-item active"><i class="fa-solid fa-users-gear"></i>User Management</a>
+<a href="admin-users.html" class="nav-item"><i class="fa-solid fa-users-gear"></i>User Management</a>
 <a href="admin-settings.html" class="nav-item"><i class="fa-solid fa-sliders"></i>System Settings</a>
 <a href="admin-calendar.html" class="nav-item"><i class="fa-solid fa-calendar-days"></i>Publishing Calendar</a>
 <a href="admin-deadlines.html" class="nav-item"><i class="fa-solid fa-triangle-exclamation"></i>Deadline Monitor</a>
 <a href="admin-final-approval.html" class="nav-item"><i class="fa-solid fa-gavel"></i>Final Approval</a>
-<a href="feature-map.html" class="nav-item"><i class="fa-solid fa-diagram-project"></i>Feature Map</a>
+<a href="feature-map.html" class="nav-item active"><i class="fa-solid fa-diagram-project"></i>Feature Map</a>
 </nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
 <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
 <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
@@ -26,7 +26,7 @@
 </nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
 <main class="main-wrapper">
   <header class="topbar">
-    <div class="topbar-left"><strong>User Management</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-left"><strong>Feature Coverage Map</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
     <div class="topbar-right">
       <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
       <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
@@ -36,7 +36,8 @@
   </header>
   <section class="content-padding">
 
-<div class="page-header"><div><h1>User Management</h1><p>FE-04: list, filter and assign role permissions.</p></div><button class="btn-publish js-toast">Add User</button></div><div class="card-box"><table class="data-table"><tr><th>Name</th><th>Role</th><th>Status</th><th>Action</th></tr><tr><td>Linh</td><td>Tantou Editor</td><td>Active</td><td><button class="small-btn js-toast">Edit</button></td></tr><tr><td>Sora</td><td>Editorial Board</td><td>Active</td><td><button class="small-btn js-toast">Edit</button></td></tr><tr><td>Huy</td><td>Assistant</td><td>Active</td><td><button class="small-btn js-toast">Edit</button></td></tr></table></div>
+<div class="page-header"><div><h1>Frontend Feature Map</h1><p>All actors and pasted frontend features mapped to static screens.</p></div></div>
+<div class="card-box"><table class="data-table"><tr><th>Actor</th><th>Features / Screens</th><th>Status</th></tr><tr><td>Admin</td><td>FE-04, FE-08, FE-18, FE-20, FE-24</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Mangaka</td><td>FE-12, FE-14, FE-28, FE-29, FE-32, FE-34, FE-36, FE-38, FE-40, FE-44, FE-48</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Assistant</td><td>FE-46, FE-47, FE-40</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Tantou Editor</td><td>FE-26, FE-42, FE-44, Editorial Report Flow</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Editorial Board</td><td>FE-16, FE-18 voting and final decision</td><td><span class="badge-review success">Included</span></td></tr><tr><td>System</td><td>FE-10 notification UI shown; real WebSocket/Cron is backend.</td><td><span class="badge-review warning">UI only</span></td></tr></table></div>
 
   </section>
 </main>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Board Approval</title>
+  <title>Final Decision</title>
   <link rel="stylesheet" href="style-workspace.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
@@ -13,9 +13,9 @@
 <a class="btn-sidebar-action" href="board-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
 <nav class="nav-group">
 <a href="board-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Board Dashboard</a>
-<a href="board-submissions.html" class="nav-item active"><i class="fa-solid fa-inbox"></i>Submissions</a>
+<a href="board-submissions.html" class="nav-item"><i class="fa-solid fa-inbox"></i>Submissions</a>
 <a href="board-voting.html" class="nav-item"><i class="fa-solid fa-vote-yea"></i>Voting</a>
-<a href="board-result.html" class="nav-item"><i class="fa-solid fa-check-double"></i>Final Decision</a>
+<a href="board-result.html" class="nav-item active"><i class="fa-solid fa-check-double"></i>Final Decision</a>
 </nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
 <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
 <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
@@ -23,7 +23,7 @@
 </nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
 <main class="main-wrapper">
   <header class="topbar">
-    <div class="topbar-left"><strong>Board Approval</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
+    <div class="topbar-left"><strong>Final Decision</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
     <div class="topbar-right">
       <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
       <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
@@ -33,7 +33,8 @@
   </header>
   <section class="content-padding">
 
-<div class="page-header"><div><h1>Board Approval</h1><p>This legacy page now points to the separated Board flow.</p></div><a class="btn-publish" href="board-voting.html">Go to Voting</a></div><div class="role-card-grid"><a class="role-flow-card" href="board-submissions.html"><i class="fa-solid fa-inbox"></i><h3>Submissions</h3><p>Review Tantou report and manga draft.</p></a><a class="role-flow-card" href="board-voting.html"><i class="fa-solid fa-vote-yea"></i><h3>Voting</h3><p>Cast Board vote.</p></a><a class="role-flow-card" href="board-result.html"><i class="fa-solid fa-check-double"></i><h3>Final Decision</h3><p>View result and approval summary.</p></a></div>
+<div class="page-header"><div><h1>Final Decision</h1><p>FE-18: final approval summary and system status update.</p></div><button class="btn-publish" id="btn-finalize-decision">Open Decision Modal</button></div>
+<div class="card-box final-result-card"><span class="result-badge">Revision Required</span><h2>Black Moon Contract</h2><p>Board votes indicate the chapter should return for revision before official publication.</p><div class="vote-summary-grid"><div><strong>1</strong><span>Approve</span></div><div><strong>2</strong><span>Revision</span></div><div><strong>0</strong><span>Reject</span></div></div></div><div class="decision-modal" id="decision-modal" style="display:none"><div class="decision-card"><span class="badge-review warning">Final Status</span><h2>Revision Required</h2><p>The Board decision has been recorded and the workflow returns to Tantou/Mangaka revision.</p><button class="btn-publish" id="close-decision-modal">Close</button></div></div>
 
   </section>
 </main>
