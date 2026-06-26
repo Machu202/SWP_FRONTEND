@@ -1,49 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Feature Coverage Map</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Map - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Admin</div>
-<a class="btn-sidebar-action" href="admin-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="admin-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Admin Dashboard</a>
-<a href="admin-users.html" class="nav-item"><i class="fa-solid fa-users-gear"></i>User Management</a>
-<a href="admin-settings.html" class="nav-item"><i class="fa-solid fa-sliders"></i>System Settings</a>
-<a href="admin-calendar.html" class="nav-item"><i class="fa-solid fa-calendar-days"></i>Publishing Calendar</a>
-<a href="admin-deadlines.html" class="nav-item"><i class="fa-solid fa-triangle-exclamation"></i>Deadline Monitor</a>
-<a href="admin-final-approval.html" class="nav-item"><i class="fa-solid fa-gavel"></i>Final Approval</a>
-<a href="feature-map.html" class="nav-item active"><i class="fa-solid fa-diagram-project"></i>Feature Map</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Feature Coverage Map</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Admin</div>
-    </div>
-  </header>
-  <section class="content-padding">
-
-<div class="page-header"><div><h1>Frontend Feature Map</h1><p>All actors and pasted frontend features mapped to static screens.</p></div></div>
-<div class="card-box"><table class="data-table"><tr><th>Actor</th><th>Features / Screens</th><th>Status</th></tr><tr><td>Admin</td><td>FE-04, FE-08, FE-18, FE-20, FE-24</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Mangaka</td><td>FE-12, FE-14, FE-28, FE-29, FE-32, FE-34, FE-36, FE-38, FE-40, FE-44, FE-48</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Assistant</td><td>FE-46, FE-47, FE-40</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Tantou Editor</td><td>FE-26, FE-42, FE-44, Editorial Report Flow</td><td><span class="badge-review success">Included</span></td></tr><tr><td>Editorial Board</td><td>FE-16, FE-18 voting and final decision</td><td><span class="badge-review success">Included</span></td></tr><tr><td>System</td><td>FE-10 notification UI shown; real WebSocket/Cron is backend.</td><td><span class="badge-review warning">UI only</span></td></tr></table></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">AD</div>
+            <div class="ws-name">Admin Workspace</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="admin-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="admin-users.html" class="nav-item "><i class="fa-solid fa-users"></i> Users</a>
+<a href="admin-settings.html" class="nav-item "><i class="fa-solid fa-gear"></i> System Settings</a>
+<a href="admin-calendar.html" class="nav-item "><i class="fa-solid fa-calendar-days"></i> Publishing Calendar</a>
+<a href="admin-deadlines.html" class="nav-item "><i class="fa-solid fa-triangle-exclamation"></i> Deadlines</a>
+<a href="admin-final-approval.html" class="nav-item "><i class="fa-solid fa-stamp"></i> Final Approval</a>
+<a href="feature-map.html" class="nav-item active"><i class="fa-solid fa-diagram-project"></i> Feature Map</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AD</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Feature Map</h1><p>Actor and feature coverage overview.</p></div>
+        
+    </div><div class="card-box"><table class="data-table"><thead><tr><th>Actor</th><th>Pages</th></tr></thead><tbody><tr><td>Mangaka</td><td>Uses uploaded FE-core2 screens renamed with mangaka-* prefix.</td></tr><tr><td>Assistant</td><td>Uses uploaded FE-core2 visual style and task flow.</td></tr><tr><td>Tantou / Board / Admin</td><td>Combined into separate role workspaces.</td></tr></tbody></table></div>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

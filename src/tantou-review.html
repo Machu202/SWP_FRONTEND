@@ -1,47 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tantou Chapter Review</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter Review - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Tantou Editor</div>
-<a class="btn-sidebar-action" href="tantou-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="tantou-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Tantou Dashboard</a>
-<a href="tantou-review.html" class="nav-item active"><i class="fa-solid fa-book-open-reader"></i>Chapter Review</a>
-<a href="tantou-feedback.html" class="nav-item"><i class="fa-solid fa-comment-dots"></i>Feedback Tracking</a>
-<a href="tantou-revision.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i>Revision Tracking</a>
-<a href="tantou-report.html" class="nav-item"><i class="fa-solid fa-file-signature"></i>Editorial Report</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Tantou Chapter Review</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Tantou Editor</div>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">TE</div>
+            <div class="ws-name">Tantou Workspace</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="tantou-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="tantou-review.html" class="nav-item active"><i class="fa-solid fa-message"></i> Chapter Review</a>
+<a href="tantou-feedback.html" class="nav-item "><i class="fa-solid fa-comments"></i> Feedback Tracking</a>
+<a href="tantou-revision.html" class="nav-item "><i class="fa-solid fa-clock-rotate-left"></i> Revision Tracking</a>
+<a href="tantou-report.html" class="nav-item "><i class="fa-solid fa-file-signature"></i> Editorial Report</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">TE</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Chapter Review & Hitbox Feedback</h1><p>Click marked issues, add comments, and send feedback to Mangaka.</p></div>
+        
     </div>
-  </header>
-  <section class="content-padding">
+<div class="review-container">
+    <div class="review-col">
+        <h2>Page 05 Draft</h2>
+        <div id="assistant-img-wrapper" class="preview-panel" style="height:620px; position:relative; cursor:crosshair;">
+            <div class="annotation-dot" style="left:24%; top:18%;">1</div>
+            <div class="annotation-dot" style="left:62%; top:52%;">2</div>
+        </div>
+    </div>
+    <div class="review-col">
+        <h2>Feedback Thread <span id="chat-count-badge" class="status-tag progress">2</span></h2>
+        <div id="chat-box" style="height:410px;overflow:auto;">
+            <div class="chat-msg"><div class="chat-avatar">TE</div><div class="chat-msg-body"><div class="chat-name">Tantou Editor</div><div class="chat-bubble">Dialogue is too long in panel 1.</div></div></div>
+            <div class="chat-msg"><div class="chat-avatar">TE</div><div class="chat-msg-body"><div class="chat-name">Tantou Editor</div><div class="chat-bubble">Pacing is too sudden after the reveal.</div></div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;"><input id="chat-input" style="flex:1;padding:10px;border:1px solid var(--border-color);border-radius:8px;" placeholder="Write feedback..."><button id="btn-send-chat" class="btn-publish">Send</button></div>
+        <div style="margin-top:18px;"><a class="btn-publish" href="tantou-revision.html">Send Revision Request</a></div>
+    </div>
+</div>
+<div id="toast-msg" class="toast">Saved</div>
 
-<div class="page-header"><div><h1>Chapter Review</h1><p>Read the submitted chapter and open annotation workflow.</p></div><a class="btn-publish" href="tantou-feedback.html">Start Annotation</a></div>
-<div class="review-layout simple"><section class="card-box"><h3>Submitted Chapters</h3><div class="chapter-mini active"><span class="badge-review warning">Waiting Review</span><strong>Black Moon Contract</strong><small>Chapter 01 - First Encounter</small></div><div class="chapter-mini"><span class="badge-review blue">Revision Returned</span><strong>Silver Rain</strong><small>Chapter 03 - Broken Promise</small></div></section><section class="card-box"><h3>Manga Draft Reader</h3><div class="board-page-mini large"><div class="fake-panel mini-a">Dialogue Scene</div><div class="fake-panel mini-b">Reaction</div><div class="fake-panel mini-c">Main Reveal</div></div></section><aside class="card-box"><h3>Review Checklist</h3><ul class="board-list"><li>Dialogue clarity</li><li>Pacing between panels</li><li>Layout readability</li><li>Content consistency</li></ul></aside></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

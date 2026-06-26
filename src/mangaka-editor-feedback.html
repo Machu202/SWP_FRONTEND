@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Feedback - Studio Flow</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body> 
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">SF</div>
+            <div class="ws-name">Mangaka Workspace</div>
+        </div>
+        
+        <a href="create-mangaka-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
+        
+        <nav class="nav-group">
+            <a href="mangaka-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="mangaka-series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="mangaka-manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="mangaka-assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="mangaka-review-submission.html" class="nav-item active"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <i class="fa-regular fa-bell top-icon"></i>
+                <i class="fa-regular fa-moon top-icon"></i>
+                <button class="btn-publish" onclick="window.location.href='mangaka-page-editor.html'">Publish</button>
+                <img src="https://i.pravatar.cc/150?img=12" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="review-header-top">
+                <div class="review-title">
+                    <p>Chapter 42 - In Progress</p>
+                    <h2>Editor Feedback & Revision</h2>
+                </div>
+                <div class="review-actions">
+                    <button class="btn-approve" style="background: black; color: white;"><i class="fa-solid fa-play" style="font-size: 10px;"></i> Submit Revised Draft</button>
+                </div>
+            </div>
+
+            <div class="review-grid-2">
+                
+                <div class="review-col">
+                    <div class="review-img-container manga-spread">
+                        <div class="review-img-wrapper">
+                            <img src="https://placehold.co/800x1200/ffffff/d1d5db?text=Manga+Spread+Pages" alt="Spread">
+                            <div class="annotation-dot" style="top: 25%; left: 35%;">1</div>
+                            <div class="annotation-dot" style="top: 60%; left: 75%;">2</div>
+                            <div class="annotation-dot" style="top: 85%; left: 45%;">3</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-col" style="border: none; background: transparent;">
+                    
+                    <div class="review-col" style="margin-bottom: 20px;">
+                        <div class="tantou-header">
+                            <div class="tantou-profile">
+                                <div class="tantou-avatar">T</div>
+                                <div>
+                                    <h4 style="font-size: 14px; font-weight: 700;">Tantou Editor</h4>
+                                    <span style="font-size: 11px; color: #9ca3af;">Editorial Department</span>
+                                </div>
+                            </div>
+                            <div class="tantou-comment">
+                                Overall pacing is excellent in this chapter. However, we need to clarify the action sequence on page 14 and adjust the dialogue slightly to match the character's established tone.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="review-col">
+                        <div class="checklist-header">
+                            <span style="display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-list-check"></i> Revision Requests</span>
+                            <span class="checklist-progress">1/3 Completed</span>
+                        </div>
+
+                        <div class="checklist-area">
+                            <div class="check-item done">
+                                <div class="check-box"><i class="fa-solid fa-check"></i></div>
+                                <div>
+                                    <div class="check-title"><span style="background: #ef4444; color: white; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px;">1</span> Redraw character expression</div>
+                                    <div class="check-desc">Make the protagonist look more determined rather than surprised in panel 2.</div>
+                                </div>
+                            </div>
+
+                            <div class="check-item">
+                                <div class="check-box"></div>
+                                <div>
+                                    <div class="check-title"><span style="background: #ef4444; color: white; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px;">2</span> Clarify action lines</div>
+                                    <div class="check-desc">The sword swing trajectory is confusing. Please emphasize the speedlines leading up to the impact.</div>
+                                    <span class="priority-tag">High Priority</span>
+                                </div>
+                            </div>
+
+                            <div class="check-item">
+                                <div class="check-box"></div>
+                                <div>
+                                    <div class="check-title"><span style="background: #ef4444; color: white; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px;">3</span> Adjust dialogue balloon placement</div>
+                                    <div class="check-desc">Move the speech bubble slightly to the left so it doesn't cover the background detail.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

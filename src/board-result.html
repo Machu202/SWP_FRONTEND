@@ -1,46 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Final Decision</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Result - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Editorial Board</div>
-<a class="btn-sidebar-action" href="board-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="board-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Board Dashboard</a>
-<a href="board-submissions.html" class="nav-item"><i class="fa-solid fa-inbox"></i>Submissions</a>
-<a href="board-voting.html" class="nav-item"><i class="fa-solid fa-vote-yea"></i>Voting</a>
-<a href="board-result.html" class="nav-item active"><i class="fa-solid fa-check-double"></i>Final Decision</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Final Decision</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Editorial Board</div>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">EB</div>
+            <div class="ws-name">Editorial Board</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="board-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="board-submissions.html" class="nav-item "><i class="fa-solid fa-inbox"></i> Submissions</a>
+<a href="board-voting.html" class="nav-item "><i class="fa-solid fa-vote-yea"></i> Voting</a>
+<a href="board-result.html" class="nav-item active"><i class="fa-solid fa-circle-check"></i> Final Result</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">EB</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Final Result</h1><p>Final board voting summary and publication status.</p></div>
+        
     </div>
-  </header>
-  <section class="content-padding">
+<div class="card-box"><span class="status-tag progress">Revision Required</span><h2 style="margin-top:15px;">Black Moon Contract</h2><p>The Editorial Board requires revisions before publication approval.</p><table class="data-table"><thead><tr><th>Decision</th><th>Count</th></tr></thead><tbody><tr><td>Approve</td><td>1</td></tr><tr><td>Reject</td><td>0</td></tr><tr><td>Request Revision</td><td>2</td></tr></tbody></table></div>
 
-<div class="page-header"><div><h1>Final Decision</h1><p>FE-18: final approval summary and system status update.</p></div><button class="btn-publish" id="btn-finalize-decision">Open Decision Modal</button></div>
-<div class="card-box final-result-card"><span class="result-badge">Revision Required</span><h2>Black Moon Contract</h2><p>Board votes indicate the chapter should return for revision before official publication.</p><div class="vote-summary-grid"><div><strong>1</strong><span>Approve</span></div><div><strong>2</strong><span>Revision</span></div><div><strong>0</strong><span>Reject</span></div></div></div><div class="decision-modal" id="decision-modal" style="display:none"><div class="decision-card"><span class="badge-review warning">Final Status</span><h2>Revision Required</h2><p>The Board decision has been recorded and the workflow returns to Tantou/Mangaka revision.</p><button class="btn-publish" id="close-decision-modal">Close</button></div></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

@@ -298,20 +298,3 @@ body {
     background-color: #FFFFFF;
     cursor: pointer;
 }
-
-/* Role login additions */
-.role-shortcuts {
-    align-items: stretch;
-}
-
-.role-shortcut {
-    text-decoration: none;
-    text-align: center;
-    color: #111827;
-    font-weight: 700;
-}
-
-#login-role,
-#otp-role {
-    width: 100%;
-}

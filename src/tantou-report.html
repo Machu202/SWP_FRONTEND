@@ -1,47 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Editorial Report</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editorial Report - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Tantou Editor</div>
-<a class="btn-sidebar-action" href="tantou-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="tantou-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Tantou Dashboard</a>
-<a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-book-open-reader"></i>Chapter Review</a>
-<a href="tantou-feedback.html" class="nav-item"><i class="fa-solid fa-comment-dots"></i>Feedback Tracking</a>
-<a href="tantou-revision.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i>Revision Tracking</a>
-<a href="tantou-report.html" class="nav-item active"><i class="fa-solid fa-file-signature"></i>Editorial Report</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Editorial Report</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Tantou Editor</div>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">TE</div>
+            <div class="ws-name">Tantou Workspace</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="tantou-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="tantou-review.html" class="nav-item "><i class="fa-solid fa-message"></i> Chapter Review</a>
+<a href="tantou-feedback.html" class="nav-item "><i class="fa-solid fa-comments"></i> Feedback Tracking</a>
+<a href="tantou-revision.html" class="nav-item "><i class="fa-solid fa-clock-rotate-left"></i> Revision Tracking</a>
+<a href="tantou-report.html" class="nav-item active"><i class="fa-solid fa-file-signature"></i> Editorial Report</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">TE</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Editorial Report</h1><p>Create Tantou evaluation report and submit to the Editorial Board.</p></div>
+        
     </div>
-  </header>
-  <section class="content-padding">
+<div class="card-box" style="max-width:900px;">
+    <div class="form-row"><div class="form-group"><label>Story Quality</label><input value="8/10"></div><div class="form-group"><label>Art Quality</label><input value="7/10"></div></div>
+    <div class="form-row"><div class="form-group"><label>Pacing Quality</label><input value="6/10"></div><div class="form-group"><label>Commercial Potential</label><input value="8/10"></div></div>
+    <div class="form-group"><label>Risk Notes</label><textarea>The story hook is strong, but pacing issues should be fixed before publication.</textarea></div>
+    <div class="form-group"><label>Recommendation</label><select><option>Recommend Approval</option><option selected>Recommend Revision</option><option>Recommend Rejection</option></select></div>
+    <a class="btn-publish" href="board-submissions.html">Submit to Editorial Board</a>
+</div>
 
-<div class="page-header"><div><h1>Editorial Report</h1><p>Create the report that will be submitted to Editorial Board.</p></div><a class="btn-publish" href="board-submissions.html">Submit to Board</a></div>
-<div class="card-box form-card"><div class="form-grid"><label>Series<input value="Black Moon Contract"></label><label>Chapter<input value="Chapter 01 - First Encounter"></label><label>Story Quality<input value="8/10"></label><label>Art Quality<input value="7/10"></label><label>Pacing<input value="6/10"></label><label>Commercial Potential<input value="8/10"></label></div><label>Risk Notes<textarea>The story hook is strong, but pacing issues should be fixed before publication approval.</textarea></label><label>Recommendation<select><option>Recommend Revision</option><option>Recommend Approval</option><option>Recommend Rejection</option></select></label><button class="btn-publish js-toast">Save Report</button></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

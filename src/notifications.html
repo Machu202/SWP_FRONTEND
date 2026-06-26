@@ -1,53 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Notifications</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Mangaka</div>
-<a class="btn-sidebar-action" href="dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Dashboard</a>
-<a href="series.html" class="nav-item"><i class="fa-solid fa-book-open"></i>Series</a>
-<a href="create-series.html" class="nav-item"><i class="fa-solid fa-wand-magic-sparkles"></i>Create Series</a>
-<a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-lines"></i>Manuscripts</a>
-<a href="script-editor.html" class="nav-item"><i class="fa-solid fa-pen-nib"></i>Script Editor</a>
-<a href="page-editor.html" class="nav-item"><i class="fa-solid fa-vector-square"></i>Canvas / Hitboxes</a>
-<a href="split-review.html" class="nav-item"><i class="fa-solid fa-table-columns"></i>Script + Manga Review</a>
-<a href="batch-upload.html" class="nav-item"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a>
-<a href="assignments.html" class="nav-item"><i class="fa-solid fa-user-check"></i>Assign Tasks</a>
-<a href="kanban.html" class="nav-item"><i class="fa-solid fa-table-list"></i>Kanban Board</a>
-<a href="version-history.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Notifications</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Mangaka</div>
-    </div>
-  </header>
-  <section class="content-padding">
-
-<div class="page-header"><div><h1>Notification Center</h1><p>FE-10: unread alerts from review, deadline and voting events.</p></div><button class="btn-publish js-toast">Mark All Read</button></div>
-<div class="card-box"><div class="notification-row unread"><strong>Revision returned</strong><span>Tantou requested pacing changes on Black Moon Contract.</span></div><div class="notification-row unread"><strong>Board vote updated</strong><span>Board Member 2 requested revision.</span></div><div class="notification-row"><strong>Deadline warning</strong><span>Chapter 03 is due in 2 days.</span></div></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">MK</div>
+            <div class="ws-name">Mangaka Workspace</div>
+        </div>
+        
+        <nav class="nav-group">
+            
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">MK</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Notifications</h1><p>Unread alerts and workflow messages.</p></div>
+        
+    </div><div class="card-box"><div class="list-card"><div><h2 class="list-card-title">Tantou added feedback</h2><p class="list-card-meta">Page 05 • 5 minutes ago</p></div></div><div class="list-card"><div><h2 class="list-card-title">Board vote submitted</h2><p class="list-card-meta">1 hour ago</p></div></div></div>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

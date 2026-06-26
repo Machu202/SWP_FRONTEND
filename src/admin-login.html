@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MangaSystem - Authentication</title>
+    <title>MangaSystem - Role Login</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body data-default-role="admin">
+<body>
     <div class="split-layout">
         <div class="left-panel">
             <img src="cover.png" alt="Manga Covers" class="manga-image">
@@ -24,26 +24,15 @@
                 <div id="form-password-section" class="form-section">
                     <div class="input-group">
                         <label>Email hoặc Tên đăng nhập</label>
-                        <input type="text" id="login-username" placeholder="Select a role to auto-fill demo account">
+                        <input type="text" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka">
                     </div>
 
                     <div class="input-group">
                         <label>Mật Khẩu</label>
                         <div class="password-wrapper">
-                            <input type="password" id="login-password" placeholder="••••••">
+                            <input type="password" placeholder="••••••">
                             <span class="eye-icon">👁️</span>
                         </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label>Login Role</label>
-                        <select class="role-select" id="login-role">
-                            <option value="mangaka">Mangaka</option>
-                            <option value="assistant">Assistant</option>
-                            <option value="tantou">Tantou Editor</option>
-                            <option value="editorial">Editorial Board</option>
-                            <option value="admin">Admin</option>
-                        </select>
                     </div>
 
                     <div class="form-actions">
@@ -53,36 +42,36 @@
                         <a href="#" class="forgot-link" id="forgot-password-link">Forgot password?</a>
                     </div>
 
-                    <button class="btn-primary" id="btn-login">Login</button>
+                    <div class="input-group">
+                        <label>Login Role</label>
+                        <select class="role-select" id="login-role-select">
+                            <option value="mangaka">Mangaka</option>
+                            <option value="assistant">Assistant</option>
+                            <option value="tantou">Tantou editor</option>
+                            <option value="editorial">Editorial board</option>
+                            <option value="admin" selected>Admin</option>
+                        </select>
+                    </div>
 
-                    <div class="divider">Role quick login</div>
+                    <button class="btn-primary" id="btn-login">Login as Admin</button>
 
-                    <div class="social-login role-shortcuts">
-                        <a class="btn-social role-shortcut" href="mangaka-login.html">Mangaka</a>
-                        <a class="btn-social role-shortcut" href="assistant-login.html">Assistant</a>
+                    <div class="divider">Or login with</div>
+
+                    <div class="social-login">
+                        <button class="btn-social" id="btn-google"><strong>Google</strong></button>
+                        <button class="btn-social" id="btn-apple"><strong>Apple ID</strong></button>
                     </div>
 
                     <p class="new-account">New to this page ? <a href="#" id="go-to-register">create new account</a></p>
                 </div>
 
                 <div id="form-otp-section" class="form-section" style="display: none;">
+                    
                     <div id="otp-step-1">
                         <div class="input-group">
                             <label>Enter gmail / Apple ID</label>
-                            <input type="text" id="otp-username" placeholder="Demo account will follow selected role">
+                            <input type="text" placeholder="Ví dụ: leduchuylt@gmail.com">
                         </div>
-
-                        <div class="input-group">
-                            <label>OTP Role</label>
-                            <select class="role-select" id="otp-role">
-                                <option value="mangaka">Mangaka</option>
-                                <option value="assistant">Assistant</option>
-                                <option value="tantou">Tantou Editor</option>
-                                <option value="editorial">Editorial Board</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-
                         <div class="center-btn">
                             <button class="btn-secondary" id="btn-enter-otp">Enter</button>
                         </div>
@@ -90,16 +79,17 @@
 
                     <div id="otp-step-2" style="display: none;">
                         <div class="input-group">
-                            <label>OTP Code</label>
-                            <input type="text" class="otp-input-large" value="123456">
+                            <input type="text" placeholder="Ví dụ: 111-111" class="otp-input-large">
                         </div>
-                        <p class="otp-timer-text">Code expires in <span id="timer-count">60</span>s</p>
-                        <button class="btn-primary" id="btn-verify-otp">Verify OTP & Login</button>
+                        
+                        <p class="otp-timer-text">OTP has been sent and will expired in <span id="timer-count">60</span>s</p>
+                        
                         <div class="otp-resend-action">
-                            <span class="not-received-text">Didn't receive code?</span>
-                            <button class="btn-orange" id="btn-send-again">Send Again</button>
+                            <span class="not-received-text">Not received OTP?</span>
+                            <button class="btn-orange" id="btn-send-again">Send again</button>
                         </div>
                     </div>
+
                 </div>
 
                 <div id="form-register-section" class="form-section" style="display: none;">
@@ -108,18 +98,21 @@
                     </div>
 
                     <div class="input-group">
-                        <label>Name</label>
-                        <input type="text" placeholder="Your full name">
-                    </div>
-
-                    <div class="input-group">
-                        <label>Email</label>
-                        <input type="text" placeholder="example@gmail.com">
+                        <label>Email or name</label>
+                        <input type="text" placeholder="nguyenhuy@gmail.com or mangaka">
                     </div>
 
                     <div class="input-group">
                         <label>Password</label>
-                        <input type="password" placeholder="••••••">
+                        <div class="password-wrapper">
+                            <input type="password" placeholder="••••••">
+                            <span class="eye-icon">👁️</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Phone number</label>
+                        <input type="text" placeholder="••••••">
                     </div>
 
                     <div class="input-group">
@@ -129,7 +122,6 @@
                             <option value="assistant">Assistant</option>
                             <option value="tantou">Tantou editor</option>
                             <option value="editorial">Editorial board</option>
-                            <option value="admin">Admin</option>
                         </select>
                     </div>
 
@@ -143,8 +135,7 @@
             </div>
         </div>
     </div>
-
-    <script src="api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="script.js"></script>
 </body>
 </html>

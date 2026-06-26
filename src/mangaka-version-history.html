@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Version History - Manga Studio</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+<div class="app">
+  
+<aside class="sidebar">
+  <div class="brand">
+    <h1>Manga Studio</h1>
+    <p>Workflow & Publishing Management</p>
+  </div>
+  <div class="role-chip">Mangaka</div>
+  <nav class="nav">
+    <div class="nav-title">Workspace Menu</div>
+    <a class="" href="mangaka-dashboard.html"><i class="fa-solid fa-house"></i>Dashboard</a><a class="" href="mangaka-series.html"><i class="fa-solid fa-book"></i>Series Metadata</a><a class="" href="mangaka-create-series.html"><i class="fa-solid fa-square-plus"></i>Create Series Wizard</a><a class="" href="mangaka-chapters.html"><i class="fa-solid fa-folder-tree"></i>Chapter Explorer</a><a class="" href="mangaka-script-editor.html"><i class="fa-solid fa-pen-nib"></i>Script Editor</a><a class="" href="mangaka-page-canvas.html"><i class="fa-solid fa-vector-square"></i>Page Canvas</a><a class="" href="mangaka-task-assignment.html"><i class="fa-solid fa-user-pen"></i>Assign Hitbox Tasks</a><a class="" href="mangaka-kanban.html"><i class="fa-solid fa-table-columns"></i>Kanban</a><a class="" href="mangaka-batch-upload.html"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a><a class=" active" href="mangaka-version-history.html"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a><a class="" href="mangaka-feedback.html"><i class="fa-solid fa-comments"></i>Tantou Feedback</a>
+  </nav>
+  <div class="logout">
+    <nav class="nav">
+      <a href="profile.html"><i class="fa-solid fa-user"></i>Profile</a>
+      <a href="notifications.html"><i class="fa-solid fa-bell"></i>Notifications</a>
+      <a href="index.html"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+    </nav>
+  </div>
+</aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h2>Version History</h2>
+        <p>New version comparison page</p>
+      </div>
+      <div class="top-actions">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search workspace..." /></div>
+        
+        <a class="btn secondary" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+        <div class="avatar">M</div>
+      </div>
+    </header>
+    <section class="content">
+      <div class="page-head">
+  <div><h1>Version History</h1><p>FE-44 slider control to compare and revert historical page versions.</p></div>
+  <div></div>
+</div>
+<div class="card">
+  <h3 id="versionLabel">Version 2</h3>
+  <input id="versionSlider" class="version-slider" type="range" min="1" max="4" value="2">
+  <div class="version-compare">
+    <div><span class="badge">Previous</span><div class="version-box">Old Page Version</div></div>
+    <div><span class="badge green">Selected</span><div class="version-box new">Selected Page Version</div></div>
+  </div>
+  <div class="action-row"><button class="btn warning" data-toast="Version restored">Revert to Selected Version</button><button class="btn secondary" data-toast="Comparison saved">Save Comparison Note</button></div>
+</div>
+
+    </section>
+  </main>
+</div>
+<script src="api.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

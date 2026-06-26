@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chapter Explorer - Manga Studio</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+<div class="app">
+  
+<aside class="sidebar">
+  <div class="brand">
+    <h1>Manga Studio</h1>
+    <p>Workflow & Publishing Management</p>
+  </div>
+  <div class="role-chip">Mangaka</div>
+  <nav class="nav">
+    <div class="nav-title">Workspace Menu</div>
+    <a class="" href="mangaka-dashboard.html"><i class="fa-solid fa-house"></i>Dashboard</a><a class="" href="mangaka-series.html"><i class="fa-solid fa-book"></i>Series Metadata</a><a class="" href="mangaka-create-series.html"><i class="fa-solid fa-square-plus"></i>Create Series Wizard</a><a class=" active" href="mangaka-chapters.html"><i class="fa-solid fa-folder-tree"></i>Chapter Explorer</a><a class="" href="mangaka-script-editor.html"><i class="fa-solid fa-pen-nib"></i>Script Editor</a><a class="" href="mangaka-page-canvas.html"><i class="fa-solid fa-vector-square"></i>Page Canvas</a><a class="" href="mangaka-task-assignment.html"><i class="fa-solid fa-user-pen"></i>Assign Hitbox Tasks</a><a class="" href="mangaka-kanban.html"><i class="fa-solid fa-table-columns"></i>Kanban</a><a class="" href="mangaka-batch-upload.html"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a><a class="" href="mangaka-version-history.html"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a><a class="" href="mangaka-feedback.html"><i class="fa-solid fa-comments"></i>Tantou Feedback</a>
+  </nav>
+  <div class="logout">
+    <nav class="nav">
+      <a href="profile.html"><i class="fa-solid fa-user"></i>Profile</a>
+      <a href="notifications.html"><i class="fa-solid fa-bell"></i>Notifications</a>
+      <a href="index.html"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+    </nav>
+  </div>
+</aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h2>Chapter Explorer</h2>
+        <p>Clean project tree screen</p>
+      </div>
+      <div class="top-actions">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search workspace..." /></div>
+        
+        <a class="btn secondary" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+        <div class="avatar">M</div>
+      </div>
+    </header>
+    <section class="content">
+      <div class="page-head">
+  <div><h1>Chapter Explorer</h1><p>FE-14 explorer tree for Series → Chapters → Pages.</p></div>
+  <div></div>
+</div>
+<div class="split" style="grid-template-columns:330px 1fr;">
+  <div class="card">
+    <h3>Explorer Tree</h3>
+    <p><strong>▾ Black Moon Contract</strong></p>
+    <p style="padding-left:18px;">▾ Chapter 01 - First Encounter</p>
+    <p style="padding-left:36px;">Page 01 • Page 02 • Page 03 • Page 04 • Page 05</p>
+    <p style="padding-left:18px;">▸ Chapter 02 - Moon Debt</p>
+    <hr>
+    <p><strong>▾ Silver Rain</strong></p>
+    <p style="padding-left:18px;">▾ Chapter 03 - Broken Promise</p>
+  </div>
+  <div class="card">
+    <h3>Chapter Detail</h3>
+    <table class="table">
+      <tr><th>Page</th><th>Script</th><th>Artwork</th><th>Tasks</th><th>Action</th></tr>
+      <tr><td>Page 05</td><td><span class="badge green">Ready</span></td><td><span class="badge orange">Needs Tone</span></td><td>3</td><td><a class="btn secondary" href="mangaka-page-canvas.html">Open Canvas</a></td></tr>
+      <tr><td>Page 06</td><td><span class="badge">Draft</span></td><td><span class="badge">Sketch</span></td><td>1</td><td><a class="btn secondary" href="mangaka-script-editor.html">Edit</a></td></tr>
+    </table>
+  </div>
+</div>
+
+    </section>
+  </main>
+</div>
+<script src="api.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

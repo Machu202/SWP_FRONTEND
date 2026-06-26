@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangaSystem - Assignments</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title" style="display: flex; align-items: center; gap: 10px; padding: 15px 20px;">
+            <img src="https://i.pravatar.cc/150?img=12" class="profile-avatar" style="width: 32px; height: 32px; border-radius: 50%;">
+            <span style="color: white; font-weight: bold; font-size: 14px;">Mangaka Workspace</span>
+        </div>
+        <nav class="nav-group">
+            <a href="mangaka-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="create-mangaka-series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="mangaka-manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="mangaka-assignments.html" class="nav-item active"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="mangaka-review-submission.html" class="nav-item"><i class="fa-solid fa-magnifying-glass-chart"></i> Review</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-circle-question"></i> Support</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
+                    <input type="text" placeholder="Search...">
+                </div>
+                <i class="fa-regular fa-bell top-icon"></i>
+                <i class="fa-regular fa-moon top-icon"></i>
+                <button class="btn-publish">Publish</button>
+                <img src="https://i.pravatar.cc/150?img=12" style="width: 32px; height: 32px; border-radius: 50%;">
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="page-header">
+                <div>
+                    <h1>Assistant Assignments</h1>
+                    <p>Track production workflows, background inking, and sheet alignment status.</p>
+                </div>
+            </div>
+
+            <div class="kanban-board">
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>To Do</span><span class="task-count">1</span></div>
+                    <div class="kanban-task-list">
+                        <div class="kanban-card" draggable="true">
+                            <div class="task-tags"><span class="tag">Screentone</span></div>
+                            <div class="task-title">Apply cross-hatch tones to background panels on Page 15</div>
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 10px;">Assignee: Open</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>In Progress</span><span class="task-count">1</span></div>
+                    <div class="kanban-task-list">
+                        <div class="kanban-card" draggable="true">
+                            <div class="task-tags"><span class="tag">Inking</span></div>
+                            <div class="task-title">Inking main character profiles and speed lines on Page 14</div>
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 10px;">Assignee: Kenji S.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>Review & Done</span><span class="task-count">1</span></div>
+                    <div class="kanban-task-list">
+                        <div class="kanban-card" draggable="true">
+                            <div class="task-tags"><span class="tag" style="background-color: #dcfce7; color: #166534;">Background</span></div>
+                            <div class="task-title">Draw cyberpunk cityscape perspective details on Page 13</div>
+                            <div style="font-size: 11px; color: #166534; font-weight: bold; margin-top: 10px;"><i class="fa-solid fa-circle-check"></i> Approved by Sensei</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>

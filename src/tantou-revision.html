@@ -1,47 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Revision Tracking</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revision Tracking - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Tantou Editor</div>
-<a class="btn-sidebar-action" href="tantou-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="tantou-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Tantou Dashboard</a>
-<a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-book-open-reader"></i>Chapter Review</a>
-<a href="tantou-feedback.html" class="nav-item"><i class="fa-solid fa-comment-dots"></i>Feedback Tracking</a>
-<a href="tantou-revision.html" class="nav-item active"><i class="fa-solid fa-clock-rotate-left"></i>Revision Tracking</a>
-<a href="tantou-report.html" class="nav-item"><i class="fa-solid fa-file-signature"></i>Editorial Report</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Revision Tracking</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Tantou Editor</div>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">TE</div>
+            <div class="ws-name">Tantou Workspace</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="tantou-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="tantou-review.html" class="nav-item "><i class="fa-solid fa-message"></i> Chapter Review</a>
+<a href="tantou-feedback.html" class="nav-item "><i class="fa-solid fa-comments"></i> Feedback Tracking</a>
+<a href="tantou-revision.html" class="nav-item active"><i class="fa-solid fa-clock-rotate-left"></i> Revision Tracking</a>
+<a href="tantou-report.html" class="nav-item "><i class="fa-solid fa-file-signature"></i> Editorial Report</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">TE</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Revision Tracking</h1><p>Compare page versions and approve or request more changes.</p></div>
+        
     </div>
-  </header>
-  <section class="content-padding">
+<div class="card-box">
+    <h2 id="version-label">Version 2</h2>
+    <input id="version-range" type="range" min="1" max="4" value="2" style="width:100%; margin:20px 0;">
+    <div class="grid-layout">
+        <div class="preview-panel" style="height:420px;display:flex;align-items:center;justify-content:center;">Previous Version</div>
+        <div class="preview-panel" style="height:420px;display:flex;align-items:center;justify-content:center;background:#eef2ff;">Selected Version</div>
+    </div>
+    <div style="margin-top:20px;"><a class="btn-publish" href="tantou-report.html">Approve for Report</a><button class="btn-publish" data-toast="More changes requested" style="margin-left:10px;background:#ef4444;">Request More Changes</button></div>
+</div>
 
-<div class="page-header"><div><h1>Revision Tracking</h1><p>FE-44: compare historical versions and approve/reject revision.</p></div><a class="btn-publish" href="tantou-report.html">Approve for Report</a></div>
-<div class="card-box"><label class="field-label">Version Slider: <strong id="version-number">2</strong></label><input type="range" min="1" max="4" value="2" id="version-slider" class="version-slider"><div class="version-preview-grid wide"><div class="version-box">Old Version</div><div class="version-box active">Selected Version</div></div></div><div class="card-box"><h3>Feedback Resolution</h3><table class="data-table"><tr><th>Feedback</th><th>Status</th><th>Decision</th></tr><tr><td>Dialogue too long</td><td><span class="badge-review warning">Open</span></td><td><button class="small-btn js-toast">Request More Changes</button></td></tr><tr><td>Layout order confusing</td><td><span class="badge-review success">Fixed</span></td><td><button class="small-btn js-toast">Approve</button></td></tr></table></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

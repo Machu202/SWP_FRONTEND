@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Batch Page Upload - Manga Studio</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+<div class="app">
+  
+<aside class="sidebar">
+  <div class="brand">
+    <h1>Manga Studio</h1>
+    <p>Workflow & Publishing Management</p>
+  </div>
+  <div class="role-chip">Mangaka</div>
+  <nav class="nav">
+    <div class="nav-title">Workspace Menu</div>
+    <a class="" href="mangaka-dashboard.html"><i class="fa-solid fa-house"></i>Dashboard</a><a class="" href="mangaka-series.html"><i class="fa-solid fa-book"></i>Series Metadata</a><a class="" href="mangaka-create-series.html"><i class="fa-solid fa-square-plus"></i>Create Series Wizard</a><a class="" href="mangaka-chapters.html"><i class="fa-solid fa-folder-tree"></i>Chapter Explorer</a><a class="" href="mangaka-script-editor.html"><i class="fa-solid fa-pen-nib"></i>Script Editor</a><a class="" href="mangaka-page-canvas.html"><i class="fa-solid fa-vector-square"></i>Page Canvas</a><a class="" href="mangaka-task-assignment.html"><i class="fa-solid fa-user-pen"></i>Assign Hitbox Tasks</a><a class="" href="mangaka-kanban.html"><i class="fa-solid fa-table-columns"></i>Kanban</a><a class=" active" href="mangaka-batch-upload.html"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a><a class="" href="mangaka-version-history.html"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a><a class="" href="mangaka-feedback.html"><i class="fa-solid fa-comments"></i>Tantou Feedback</a>
+  </nav>
+  <div class="logout">
+    <nav class="nav">
+      <a href="profile.html"><i class="fa-solid fa-user"></i>Profile</a>
+      <a href="notifications.html"><i class="fa-solid fa-bell"></i>Notifications</a>
+      <a href="index.html"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+    </nav>
+  </div>
+</aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h2>Batch Page Upload</h2>
+        <p>New upload page</p>
+      </div>
+      <div class="top-actions">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search workspace..." /></div>
+        
+        <a class="btn secondary" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+        <div class="avatar">M</div>
+      </div>
+    </header>
+    <section class="content">
+      <div class="page-head">
+  <div><h1>Batch Page Upload</h1><p>FE-32 batch upload interface to import multiple manga pages.</p></div>
+  <div></div>
+</div>
+<div class="card">
+  <h3>Upload Pages</h3>
+  <div style="border:2px dashed #c7d2fe;border-radius:20px;padding:56px;text-align:center;background:#f8fafc;">
+    <i class="fa-solid fa-cloud-arrow-up" style="font-size:44px;color:#6366f1;"></i>
+    <h3>Drag and drop manga page files here</h3>
+    <p>Supports PNG, JPG, PSD preview files. This is a frontend prototype drop zone.</p>
+    <button class="btn" data-toast="Files queued for upload">Select Files</button>
+  </div>
+</div>
+<div class="card">
+  <h3>Upload Queue</h3>
+  <table class="table"><tr><th>File</th><th>Page</th><th>Status</th></tr><tr><td>chapter01_page05.png</td><td>Page 05</td><td><span class="badge green">Ready</span></td></tr><tr><td>chapter01_page06.png</td><td>Page 06</td><td><span class="badge orange">Uploading</span></td></tr></table>
+</div>
+
+    </section>
+  </main>
+</div>
+<script src="api.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

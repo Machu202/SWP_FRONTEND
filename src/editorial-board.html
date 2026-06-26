@@ -1,45 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Board Approval</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Dashboard - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Editorial Board</div>
-<a class="btn-sidebar-action" href="board-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="board-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Board Dashboard</a>
-<a href="board-submissions.html" class="nav-item active"><i class="fa-solid fa-inbox"></i>Submissions</a>
-<a href="board-voting.html" class="nav-item"><i class="fa-solid fa-vote-yea"></i>Voting</a>
-<a href="board-result.html" class="nav-item"><i class="fa-solid fa-check-double"></i>Final Decision</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Board Approval</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Editorial Board</div>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">EB</div>
+            <div class="ws-name">Editorial Board</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="board-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="board-submissions.html" class="nav-item "><i class="fa-solid fa-inbox"></i> Submissions</a>
+<a href="board-voting.html" class="nav-item "><i class="fa-solid fa-vote-yea"></i> Voting</a>
+<a href="board-result.html" class="nav-item "><i class="fa-solid fa-circle-check"></i> Final Result</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">EB</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Board Dashboard</h1><p>Editorial Board submission queue and voting status.</p></div>
+        <a class="btn-publish" href="board-submissions.html">Open Submissions</a>
     </div>
-  </header>
-  <section class="content-padding">
+<div class="stats-grid" style="margin-bottom:30px;"><div class="stat-card"><div class="stat-value">3</div><div class="stat-label">Submissions</div></div><div class="stat-card"><div class="stat-value">2</div><div class="stat-label">Votes Cast</div></div><div class="stat-card"><div class="stat-value">1</div><div class="stat-label">Needs Decision</div></div><div class="stat-card"><div class="stat-value">1</div><div class="stat-label">Revision Required</div></div></div>
+<div class="card-box"><div class="list-card"><div><h2 class="list-card-title">Black Moon Contract</h2><p class="list-card-meta">Tantou recommends revision • Pending board vote</p></div><a href="board-submissions.html" class="btn-icon-only"><i class="fa-solid fa-arrow-right"></i></a></div></div>
 
-<div class="page-header"><div><h1>Board Approval</h1><p>This legacy page now points to the separated Board flow.</p></div><a class="btn-publish" href="board-voting.html">Go to Voting</a></div><div class="role-card-grid"><a class="role-flow-card" href="board-submissions.html"><i class="fa-solid fa-inbox"></i><h3>Submissions</h3><p>Review Tantou report and manga draft.</p></a><a class="role-flow-card" href="board-voting.html"><i class="fa-solid fa-vote-yea"></i><h3>Voting</h3><p>Cast Board vote.</p></a><a class="role-flow-card" href="board-result.html"><i class="fa-solid fa-check-double"></i><h3>Final Decision</h3><p>View result and approval summary.</p></a></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

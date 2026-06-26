@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resource Gallery - MangaSystem</title>
+    <title>Assistant Kanban - MangaSystem</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -18,9 +18,9 @@
             <a href="assistant-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
 <a href="assistant-assignments.html" class="nav-item "><i class="fa-solid fa-clipboard-list"></i> My Assignments</a>
 <a href="assistant-task-detail.html" class="nav-item "><i class="fa-solid fa-file-pen"></i> Task Detail</a>
-<a href="assistant-resources.html" class="nav-item active"><i class="fa-solid fa-folder-open"></i> Resources</a>
+<a href="assistant-resources.html" class="nav-item "><i class="fa-solid fa-folder-open"></i> Resources</a>
 <a href="assistant-upload.html" class="nav-item "><i class="fa-solid fa-cloud-arrow-up"></i> Upload Result</a>
-<a href="assistant-kanban.html" class="nav-item "><i class="fa-solid fa-table-columns"></i> Kanban</a>
+<a href="assistant-kanban.html" class="nav-item active"><i class="fa-solid fa-table-columns"></i> Kanban</a>
         </nav>
         <div class="sidebar-divider"></div>
         <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
@@ -42,13 +42,14 @@
         </header>
         <section class="content-padding">
             <div class="page-header">
-        <div><h1>Resource Gallery</h1><p>Internal studio resources for Assistants to download.</p></div>
+        <div><h1>My Assignments</h1><p>Role-filtered task board for Assistant work.</p></div>
         
     </div>
-<div class="series-grid">
-    <div class="series-card"><div class="series-cover" style="display:flex;align-items:center;justify-content:center;font-size:42px;color:#6366f1;"><i class="fa-solid fa-brush"></i></div><div class="series-info"><h3>Brush Pack A</h3><p>Lineart and cleanup brushes.</p><button class="btn-publish" data-toast="Brush pack downloaded">Download</button></div></div>
-    <div class="series-card"><div class="series-cover" style="display:flex;align-items:center;justify-content:center;font-size:42px;color:#6366f1;"><i class="fa-solid fa-layer-group"></i></div><div class="series-info"><h3>Screentone Library</h3><p>Standard studio tone patterns.</p><button class="btn-publish" data-toast="Screentones downloaded">Download</button></div></div>
-    <div class="series-card"><div class="series-cover" style="display:flex;align-items:center;justify-content:center;font-size:42px;color:#6366f1;"><i class="fa-solid fa-cube"></i></div><div class="series-info"><h3>3D Room Reference</h3><p>Perspective room models.</p><button class="btn-publish" data-toast="3D reference downloaded">Download</button></div></div>
+<div class="kanban-board">
+    <div class="kanban-column"><div class="kanban-header"><h3>Todo</h3><span>2</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Add screentone</div><div class="task-meta">Silver Rain • Page 12</div></div></div></div>
+    <div class="kanban-column"><div class="kanban-header"><h3>Doing</h3><span>1</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Clean background linework</div><div class="task-meta">Black Moon Contract • Page 05</div></div></div></div>
+    <div class="kanban-column"><div class="kanban-header"><h3>Review</h3><span>3</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Magic effect cleanup</div><div class="task-meta">Neon Fox • Page 08</div></div></div></div>
+    <div class="kanban-column"><div class="kanban-header"><h3>Done</h3><span>15</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Page 01 linework</div><div class="task-meta">Approved</div></div></div></div>
 </div>
 
         </section>

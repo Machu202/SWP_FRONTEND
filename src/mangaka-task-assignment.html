@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assign Hitbox Task - Manga Studio</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+<div class="app">
+  
+<aside class="sidebar">
+  <div class="brand">
+    <h1>Manga Studio</h1>
+    <p>Workflow & Publishing Management</p>
+  </div>
+  <div class="role-chip">Mangaka</div>
+  <nav class="nav">
+    <div class="nav-title">Workspace Menu</div>
+    <a class="" href="mangaka-dashboard.html"><i class="fa-solid fa-house"></i>Dashboard</a><a class="" href="mangaka-series.html"><i class="fa-solid fa-book"></i>Series Metadata</a><a class="" href="mangaka-create-series.html"><i class="fa-solid fa-square-plus"></i>Create Series Wizard</a><a class="" href="mangaka-chapters.html"><i class="fa-solid fa-folder-tree"></i>Chapter Explorer</a><a class="" href="mangaka-script-editor.html"><i class="fa-solid fa-pen-nib"></i>Script Editor</a><a class="" href="mangaka-page-canvas.html"><i class="fa-solid fa-vector-square"></i>Page Canvas</a><a class=" active" href="mangaka-task-assignment.html"><i class="fa-solid fa-user-pen"></i>Assign Hitbox Tasks</a><a class="" href="mangaka-kanban.html"><i class="fa-solid fa-table-columns"></i>Kanban</a><a class="" href="mangaka-batch-upload.html"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a><a class="" href="mangaka-version-history.html"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a><a class="" href="mangaka-feedback.html"><i class="fa-solid fa-comments"></i>Tantou Feedback</a>
+  </nav>
+  <div class="logout">
+    <nav class="nav">
+      <a href="profile.html"><i class="fa-solid fa-user"></i>Profile</a>
+      <a href="notifications.html"><i class="fa-solid fa-bell"></i>Notifications</a>
+      <a href="index.html"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+    </nav>
+  </div>
+</aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h2>Assign Hitbox Task</h2>
+        <p>Clean task assignment page</p>
+      </div>
+      <div class="top-actions">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search workspace..." /></div>
+        
+        <a class="btn secondary" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+        <div class="avatar">M</div>
+      </div>
+    </header>
+    <section class="content">
+      <div class="page-head">
+  <div><h1>Assign Hitbox Task</h1><p>FE-38 modal/form to detail the task and assign it to an Assistant.</p></div>
+  <div></div>
+</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Selected Hitbox</h3>
+    <div class="manga-page" style="min-height:430px;">
+      <div class="panel p3">Background Area</div>
+      <button class="hitbox" style="left:24%;top:33%;width:48%;height:24%;">Assigned Area</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Task Detail</h3>
+    <label class="form-label">Task Type</label><select class="form-control"><option>Background drawing</option><option>Screentone</option><option>Shading</option><option>Effects</option></select>
+    <label class="form-label">Assistant</label><select class="form-control"><option>Assistant Huy</option><option>Assistant Sora</option></select>
+    <label class="form-label">Deadline</label><input class="form-control" type="date" value="2026-06-30">
+    <label class="form-label">Instructions</label><textarea class="form-control">Clean background lines and add moonlight shading.</textarea>
+    <button class="btn full" data-toast="Task assigned to Assistant">Assign Task</button>
+  </div>
+</div>
+
+    </section>
+  </main>
+</div>
+<script src="api.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

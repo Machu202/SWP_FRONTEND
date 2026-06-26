@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Page Canvas - Manga Studio</title>
+  <link rel="stylesheet" href="style-workspace.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+<div class="app">
+  
+<aside class="sidebar">
+  <div class="brand">
+    <h1>Manga Studio</h1>
+    <p>Workflow & Publishing Management</p>
+  </div>
+  <div class="role-chip">Mangaka</div>
+  <nav class="nav">
+    <div class="nav-title">Workspace Menu</div>
+    <a class="" href="mangaka-dashboard.html"><i class="fa-solid fa-house"></i>Dashboard</a><a class="" href="mangaka-series.html"><i class="fa-solid fa-book"></i>Series Metadata</a><a class="" href="mangaka-create-series.html"><i class="fa-solid fa-square-plus"></i>Create Series Wizard</a><a class="" href="mangaka-chapters.html"><i class="fa-solid fa-folder-tree"></i>Chapter Explorer</a><a class="" href="mangaka-script-editor.html"><i class="fa-solid fa-pen-nib"></i>Script Editor</a><a class=" active" href="mangaka-page-canvas.html"><i class="fa-solid fa-vector-square"></i>Page Canvas</a><a class="" href="mangaka-task-assignment.html"><i class="fa-solid fa-user-pen"></i>Assign Hitbox Tasks</a><a class="" href="mangaka-kanban.html"><i class="fa-solid fa-table-columns"></i>Kanban</a><a class="" href="mangaka-batch-upload.html"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a><a class="" href="mangaka-version-history.html"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a><a class="" href="mangaka-feedback.html"><i class="fa-solid fa-comments"></i>Tantou Feedback</a>
+  </nav>
+  <div class="logout">
+    <nav class="nav">
+      <a href="profile.html"><i class="fa-solid fa-user"></i>Profile</a>
+      <a href="notifications.html"><i class="fa-solid fa-bell"></i>Notifications</a>
+      <a href="index.html"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+    </nav>
+  </div>
+</aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h2>Page Canvas</h2>
+        <p>New Mangaka canvas page</p>
+      </div>
+      <div class="top-actions">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search workspace..." /></div>
+        
+        <a class="btn secondary" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
+        <div class="avatar">M</div>
+      </div>
+    </header>
+    <section class="content">
+      <div class="page-head">
+  <div><h1>Page Canvas & Hitbox Marker</h1><p>FE-34 render manga page and FE-36 draw rectangular hitboxes.</p></div>
+  <div></div>
+</div>
+<div class="split">
+  <div class="card"><h3>Pages</h3><p>Page 01</p><p>Page 02</p><p>Page 03</p><p><strong>Page 05 selected</strong></p></div>
+  <div class="card">
+    <h3>Interactive Page Canvas</h3>
+    <div class="manga-page">
+      <div class="panel p1">Panel 1</div><div class="panel p2">Panel 2</div><div class="panel p3">Main Action</div><div class="panel p4">Panel 4</div><div class="panel p5">Panel 5</div>
+      <button class="hitbox blue" style="left:18%;top:14%;width:24%;height:10%;" data-title="Dialogue bubble" data-type="Dialogue" data-comment="Speech bubble needs shortening.">Dialogue</button>
+      <button class="hitbox" style="left:51%;top:46%;width:36%;height:16%;" data-title="Background task" data-type="Task Area" data-comment="Assign background cleanup to Assistant.">Task</button>
+    </div>
+  </div>
+  <div class="card" id="selected-hitbox"><span class="badge">Marker Tool</span><h3>No hitbox selected</h3><p>Click a hitbox to inspect it, then assign it to an Assistant.</p><div class="action-row"><a class="btn" href="mangaka-task-assignment.html">Create Task</a></div></div>
+</div>
+
+    </section>
+  </main>
+</div>
+<script src="api.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,49 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Admin</div>
-<a class="btn-sidebar-action" href="admin-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="admin-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i>Admin Dashboard</a>
-<a href="admin-users.html" class="nav-item"><i class="fa-solid fa-users-gear"></i>User Management</a>
-<a href="admin-settings.html" class="nav-item"><i class="fa-solid fa-sliders"></i>System Settings</a>
-<a href="admin-calendar.html" class="nav-item"><i class="fa-solid fa-calendar-days"></i>Publishing Calendar</a>
-<a href="admin-deadlines.html" class="nav-item"><i class="fa-solid fa-triangle-exclamation"></i>Deadline Monitor</a>
-<a href="admin-final-approval.html" class="nav-item"><i class="fa-solid fa-gavel"></i>Final Approval</a>
-<a href="feature-map.html" class="nav-item"><i class="fa-solid fa-diagram-project"></i>Feature Map</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Admin Dashboard</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Admin</div>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">AD</div>
+            <div class="ws-name">Admin Workspace</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="admin-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="admin-users.html" class="nav-item "><i class="fa-solid fa-users"></i> Users</a>
+<a href="admin-settings.html" class="nav-item "><i class="fa-solid fa-gear"></i> System Settings</a>
+<a href="admin-calendar.html" class="nav-item "><i class="fa-solid fa-calendar-days"></i> Publishing Calendar</a>
+<a href="admin-deadlines.html" class="nav-item "><i class="fa-solid fa-triangle-exclamation"></i> Deadlines</a>
+<a href="admin-final-approval.html" class="nav-item "><i class="fa-solid fa-stamp"></i> Final Approval</a>
+<a href="feature-map.html" class="nav-item "><i class="fa-solid fa-diagram-project"></i> Feature Map</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AD</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Admin Dashboard</h1><p>System administration, users, settings, schedule, and final approval.</p></div>
+        
     </div>
-  </header>
-  <section class="content-padding">
+<div class="stats-grid"><div class="stat-card"><div class="stat-value">28</div><div class="stat-label">Users</div></div><div class="stat-card"><div class="stat-value">5</div><div class="stat-label">Roles</div></div><div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Final Approvals</div></div><div class="stat-card"><div class="stat-value">6</div><div class="stat-label">Deadline Warnings</div></div></div>
 
-<div class="page-header"><div><h1>Admin Workspace</h1><p>Manage users, parameters, schedules, deadlines and final publication approval.</p></div></div><div class="metric-grid"><div class="metric-card"><strong>32</strong><span>Users</span></div><div class="metric-card"><strong>12</strong><span>Series</span></div><div class="metric-card"><strong>2</strong><span>Pending Final Approval</span></div><div class="metric-card"><strong>5</strong><span>Deadline Alerts</span></div></div>
-<div class="role-card-grid"><a class="role-flow-card" href="admin-users.html"><i class="fa-solid fa-users-gear"></i><h3>User Management</h3><p>FE-04 CRUD users and roles.</p></a><a class="role-flow-card" href="admin-settings.html"><i class="fa-solid fa-sliders"></i><h3>System Settings</h3><p>FE-08 parameters.</p></a><a class="role-flow-card" href="admin-calendar.html"><i class="fa-solid fa-calendar-days"></i><h3>Publishing Calendar</h3><p>FE-20 schedule.</p></a><a class="role-flow-card" href="admin-final-approval.html"><i class="fa-solid fa-gavel"></i><h3>Final Approval</h3><p>FE-18 Admin chốt hạ.</p></a></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>

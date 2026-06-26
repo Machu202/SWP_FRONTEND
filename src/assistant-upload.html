@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deadline Monitor - MangaSystem</title>
+    <title>Upload Result - MangaSystem</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <aside class="sidebar">
         <div class="workspace-title">
-            <div class="ws-logo">AD</div>
-            <div class="ws-name">Admin Workspace</div>
+            <div class="ws-logo">AS</div>
+            <div class="ws-name">Assistant Workspace</div>
         </div>
         
         <nav class="nav-group">
-            <a href="admin-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
-<a href="admin-users.html" class="nav-item "><i class="fa-solid fa-users"></i> Users</a>
-<a href="admin-settings.html" class="nav-item "><i class="fa-solid fa-gear"></i> System Settings</a>
-<a href="admin-calendar.html" class="nav-item "><i class="fa-solid fa-calendar-days"></i> Publishing Calendar</a>
-<a href="admin-deadlines.html" class="nav-item active"><i class="fa-solid fa-triangle-exclamation"></i> Deadlines</a>
-<a href="admin-final-approval.html" class="nav-item "><i class="fa-solid fa-stamp"></i> Final Approval</a>
-<a href="feature-map.html" class="nav-item "><i class="fa-solid fa-diagram-project"></i> Feature Map</a>
+            <a href="assistant-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="assistant-assignments.html" class="nav-item "><i class="fa-solid fa-clipboard-list"></i> My Assignments</a>
+<a href="assistant-task-detail.html" class="nav-item "><i class="fa-solid fa-file-pen"></i> Task Detail</a>
+<a href="assistant-resources.html" class="nav-item "><i class="fa-solid fa-folder-open"></i> Resources</a>
+<a href="assistant-upload.html" class="nav-item active"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Result</a>
+<a href="assistant-kanban.html" class="nav-item "><i class="fa-solid fa-table-columns"></i> Kanban</a>
         </nav>
         <div class="sidebar-divider"></div>
         <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
@@ -38,14 +37,21 @@
             <div class="topbar-right">
                 <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
                 <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
-                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AD</div>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AS</div>
             </div>
         </header>
         <section class="content-padding">
             <div class="page-header">
-        <div><h1>Deadline Monitor</h1><p>Color-coded upcoming deadline warnings.</p></div>
+        <div><h1>Upload Result</h1><p>Submit completed work to Mangaka review.</p></div>
         
-    </div><div class="card-box"><table class="data-table"><thead><tr><th>Task</th><th>Owner</th><th>Risk</th></tr></thead><tbody><tr><td>Page 05 background</td><td>Assistant Huy</td><td><span class="status-tag progress">High</span></td></tr></tbody></table></div>
+    </div>
+<div class="card-box" style="max-width:760px;">
+    <div class="form-group"><label>Task</label><select><option>Clean background linework - Page 05</option><option>Add screentone - Page 12</option></select></div>
+    <div class="form-group"><label>Upload File</label><input type="file"></div>
+    <div class="form-group"><label>Message to Mangaka</label><textarea>I completed the background cleanup and added moonlight shading.</textarea></div>
+    <button class="btn-publish" data-toast="Result uploaded for Mangaka review">Submit Result</button>
+</div>
+
         </section>
     </main>
     <script src="script.js"></script>

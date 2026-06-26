@@ -1,46 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Board Submissions</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Submissions - MangaSystem</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Editorial Board</div>
-<a class="btn-sidebar-action" href="board-dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="board-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Board Dashboard</a>
-<a href="board-submissions.html" class="nav-item active"><i class="fa-solid fa-inbox"></i>Submissions</a>
-<a href="board-voting.html" class="nav-item"><i class="fa-solid fa-vote-yea"></i>Voting</a>
-<a href="board-result.html" class="nav-item"><i class="fa-solid fa-check-double"></i>Final Decision</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Board Submissions</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Editorial Board</div>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">EB</div>
+            <div class="ws-name">Editorial Board</div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="board-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="board-submissions.html" class="nav-item active"><i class="fa-solid fa-inbox"></i> Submissions</a>
+<a href="board-voting.html" class="nav-item "><i class="fa-solid fa-vote-yea"></i> Voting</a>
+<a href="board-result.html" class="nav-item "><i class="fa-solid fa-circle-check"></i> Final Result</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">EB</div>
+            </div>
+        </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Board Submissions</h1><p>Review manga draft and Tantou report before voting.</p></div>
+        <a class="btn-publish" href="board-voting.html">Start Voting</a>
     </div>
-  </header>
-  <section class="content-padding">
+<div class="grid-layout">
+    <div class="card-box"><h2>Black Moon Contract</h2><p>Chapter 01 - First Encounter</p><div class="preview-panel" style="height:420px;"></div></div>
+    <div class="card-box"><h2>Tantou Report</h2><p><strong>Story:</strong> 8/10</p><p><strong>Art:</strong> 7/10</p><p><strong>Pacing:</strong> 6/10</p><p><strong>Recommendation:</strong> Recommend Revision</p></div>
+</div>
 
-<div class="page-header"><div><h1>Submissions Queue</h1><p>Review submitted manga and Tantou evaluation report.</p></div><a class="btn-publish" href="board-voting.html">Start Voting</a></div>
-<div class="board-grid"><section><div class="card-box submission-summary"><div><span class="badge-review blue">Submitted to Board</span><h2>Black Moon Contract</h2><p>Chapter 01 - First Encounter</p><p class="muted-small">A young artist signs a mysterious contract with a moon spirit.</p></div><div class="score-row"><div><strong>8</strong><span>Story</span></div><div><strong>7</strong><span>Art</span></div><div><strong>6</strong><span>Pacing</span></div><div><strong>8</strong><span>Market</span></div></div></div><div class="card-box"><h3>Manga Draft Preview</h3><div class="board-page-mini large"><div class="fake-panel mini-a"></div><div class="fake-panel mini-b"></div><div class="fake-panel mini-c"></div><div class="review-hitbox board-mini-hitbox" style="top:18%;left:14%;width:42%;height:16%">Dialogue</div></div></div></section><aside class="card-box"><h3>Tantou Recommendation</h3><span class="badge-review warning">Recommend Revision</span><p>The chapter has strong potential, but pacing feedback should be resolved before publication approval.</p><ul class="board-list"><li>Dialogue needs reduction on page 5.</li><li>Scene transition should be smoother.</li><li>Layout issue was fixed in revision.</li></ul></aside></div>
-
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
 </body>
 </html>
