@@ -20,49 +20,159 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ======================================================== 
-    // 2. CHAT FEEDBACK (Trang Review - KÍCH HOẠT PHÍM ENTER)               
+    // 2. TÍNH NĂNG NÚT APPROVE & REQUEST REVISION (Trang Review)               
+    // ======================================================== 
+    const btnApprove = document.getElementById('btn-approve');
+    const btnRequestRev = document.getElementById('btn-request-rev');
+    const statusTagReview = document.querySelector('.review-col .status-tag.review');
+    const toast = document.getElementById('toast-msg');
+
+    function showToast(message, isError = false) {
+        if (!toast) return;
+        toast.innerHTML = isError ? `<i class="fa-solid fa-circle-exclamation"></i> ${message}` : `<i class="fa-solid fa-circle-check"></i> ${message}`;
+        toast.style.background = isError ? '#ef4444' : '#10b981';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    if (btnApprove) {
+        btnApprove.addEventListener('click', () => {
+            // Đổi giao diện nút Approve
+            btnApprove.style.background = '#10b981'; // Màu xanh lá
+            btnApprove.innerHTML = '<i class="fa-solid fa-check-double"></i> Approved';
+            
+            // Reset lại nút Request Revision nếu trước đó lỡ bấm
+            if (btnRequestRev) {
+                btnRequestRev.style.background = 'white';
+                btnRequestRev.style.color = '#111827';
+                btnRequestRev.innerHTML = '<i class="fa-solid fa-xmark"></i> Request Revision';
+            }
+
+            // Đổi tag trạng thái trên ảnh
+            if (statusTagReview) {
+                statusTagReview.innerText = 'Approved';
+                statusTagReview.style.background = '#dcfce7';
+                statusTagReview.style.color = '#166534';
+            }
+
+            showToast("Submission Approved! Ready for Editor.");
+        });
+    }
+
+    if (btnRequestRev) {
+        btnRequestRev.addEventListener('click', () => {
+            // Đổi giao diện nút Request Revision
+            btnRequestRev.style.background = '#ef4444'; // Màu đỏ
+            btnRequestRev.style.color = 'white';
+            btnRequestRev.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Revision Requested';
+            
+            // Reset lại nút Approve nếu trước đó lỡ bấm
+            if (btnApprove) {
+                btnApprove.style.background = '#111827';
+                btnApprove.innerHTML = '<i class="fa-solid fa-check"></i> Approve';
+            }
+
+            // Đổi tag trạng thái trên ảnh
+            if (statusTagReview) {
+                statusTagReview.innerText = 'Revision Needed';
+                statusTagReview.style.background = '#fee2e2';
+                statusTagReview.style.color = '#991b1b';
+            }
+
+            showToast("Revision requested. Assistant notified.", true);
+        });
+    }
+
+
+    // ======================================================== 
+    // 3. CHAT FEEDBACK VÀ ĐIỂM CHẤM ĐỎ TƯƠNG TÁC (TỌA ĐỘ ERD)               
     // ======================================================== 
     const chatInput = document.getElementById('chat-input');
     const btnSendChat = document.getElementById('btn-send-chat');
     const chatBox = document.getElementById('chat-box');
+    const assistantImgWrapper = document.getElementById('assistant-img-wrapper');
+    const chatCountBadge = document.getElementById('chat-count-badge');
+    
+    let annotationCounter = 1; 
+    let selectedAnnotationNum = null;
+
+    if (assistantImgWrapper) {
+        assistantImgWrapper.addEventListener('click', function(e) {
+            if (e.target.classList.contains('annotation-dot')) return;
+
+            const rect = assistantImgWrapper.getBoundingClientRect();
+            const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+
+            annotationCounter++;
+            selectedAnnotationNum = annotationCounter;
+
+            const newDot = document.createElement('div');
+            newDot.className = 'annotation-dot';
+            newDot.style.left = xPercent.toFixed(2) + '%';
+            newDot.style.top = yPercent.toFixed(2) + '%';
+            newDot.innerText = annotationCounter;
+            
+            assistantImgWrapper.appendChild(newDot);
+
+            if (chatInput) {
+                chatInput.value = `[Annotation ${annotationCounter}] ` + chatInput.value;
+                chatInput.focus();
+            }
+        });
+    }
 
     function sendChatMsg() {
         if (!chatInput || !chatInput.value.trim() || !chatBox) return;
         
+        let annotationTagHtml = '';
+        let cleanText = chatInput.value;
+
+        if (cleanText.startsWith('[Annotation')) {
+            const closingBracketIndex = cleanText.indexOf(']');
+            if (closingBracketIndex !== -1) {
+                const annotationNum = cleanText.substring(12, closingBracketIndex);
+                annotationTagHtml = `<div class="chat-annotation-ref"><span style="background: #ef4444; color: white; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px;">${annotationNum}</span> Annotation</div>`;
+                cleanText = cleanText.substring(closingBracketIndex + 1).trim();
+            }
+        }
+
         const msgHtml = `
             <div class="chat-msg mine" style="margin-top: 10px;">
                 <div class="chat-avatar">SF</div>
                 <div class="chat-msg-body">
                     <div class="chat-name"><span>Sensei</span> <span class="chat-time">Just now</span></div>
                     <div class="chat-bubble-border">
-                        <div class="chat-bubble">${chatInput.value}</div>
+                        <div class="chat-bubble">${cleanText}</div>
+                        ${annotationTagHtml}
                     </div>
                 </div>
             </div>
         `;
         
         chatBox.insertAdjacentHTML('beforeend', msgHtml);
-        chatInput.value = ''; // Xóa chữ trong ô nhập sau khi gửi
-        chatBox.scrollTop = chatBox.scrollHeight; // Tự động cuộn xuống cuối khung chat
+        chatInput.value = ''; 
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        if (chatCountBadge) {
+            let currentCount = parseInt(chatCountBadge.innerText) || 0;
+            chatCountBadge.innerText = currentCount + 1;
+        }
+        selectedAnnotationNum = null;
     }
 
-    // Bắt sự kiện click chuột vào nút mũi tên gửi bài
-    if (btnSendChat) {
-        btnSendChat.addEventListener('click', sendChatMsg);
-    }
-
-    // Bắt sự kiện nhấn phím Enter trên ô nhập liệu
+    if (btnSendChat) btnSendChat.addEventListener('click', sendChatMsg);
     if (chatInput) {
         chatInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Chặn hành vi mặc định làm reload hoặc mất focus trang
+                e.preventDefault();
                 sendChatMsg();
             }
         });
     }
 
     // ======================================================== 
-    // 3. EDITOR ENGINE (Trang Page Editor)               
+    // 4. EDITOR ENGINE (Trang Page Editor)               
     // ======================================================== 
     const canvas = document.getElementById('manga-canvas');
     if (!canvas) return; 
@@ -94,7 +204,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let activeElement = null;
     let tempBox = null;
 
-    /* --- QUẢN LÝ DỮ LIỆU TRANG --- */
     let pagesData = {}; 
     let currentPageId = 'page-1'; 
     let pageCount = 1;
@@ -165,21 +274,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 saveCurrentPage();
                 pageCount++;
                 const newId = 'page-' + pageCount;
-                
                 pagesData[newId] = { id: newId, name: pageName, hitboxes: '', drawing: null };
-                
                 loadPage(newId);
                 toolSelect.click();
             }
         };
     }
 
-    /* --- ẨN HIỆN LỚP LAYER --- */
     const layerToggles = document.querySelectorAll('.layer-visibility-toggle');
     layerToggles.forEach(toggle => {
         toggle.addEventListener('click', (e) => {
             e.stopPropagation(); 
-            
             const target = toggle.dataset.layer;
             const icon = toggle.querySelector('i');
             const isHidden = icon.classList.contains('fa-eye-slash');
@@ -207,7 +312,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    /* --- ĐIỀU KHIỂN CHUỘT VÀ Ô HITBOX --- */
     function resetTools() {
         [toolSelect, toolDraw, toolBrush].forEach(t => t.classList.remove('active'));
         freehandLayer.style.pointerEvents = 'none'; 
@@ -302,7 +406,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!tempBox) return;
             const taskName = inputTaskName.value.trim() || 'Untitled Task';
             const assignee = selectAssignee.value;
-            
             const assigneeText = assignee !== 'Unassigned' ? `[${assignee}] ` : '';
             
             const finalBox = document.createElement('div');
@@ -317,26 +420,20 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
             canvas.appendChild(finalBox);
             tempBox.remove(); tempBox = null; taskModal.style.display = 'none';
-            
             saveCurrentPage(); 
             toolSelect.click(); 
         };
     }
 
-    const btnSave = document.getElementById('save-page');
-    const toast = document.getElementById('toast-msg');
-    if (btnSave) {
-        btnSave.onclick = () => {
+    const btnSavePage = document.getElementById('save-page');
+    if (btnSavePage) {
+        btnSavePage.onclick = () => {
             saveCurrentPage(); 
             console.log("Mock Database:", pagesData);
-            if (toast) {
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 3000); 
-            }
+            showToast("Changes saved to server!");
         };
     }
 
-    /* --- CHUYỂN TABS RIGHT PANEL --- */
     const pTabs = document.querySelectorAll(".p-tab");
     pTabs.forEach(tab => {
         tab.addEventListener("click", () => {

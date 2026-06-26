@@ -41,8 +41,7 @@
                 <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
                 <i class="fa-regular fa-bell top-icon"></i>
                 <i class="fa-regular fa-moon top-icon"></i>
-                <button class="btn-publish" onclick="window.location.href='editor-feedback.html'">Publish</button>
-                <img src="https://i.pravatar.cc/150?img=12" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+                <button class="btn-publish" onclick="window.location.href='editor-feedback.html'">Next Step (Editor)</button>
             </div>
         </header>
 
@@ -81,7 +80,7 @@
                         </div>
                     </div>
                     <div class="review-img-container">
-                        <div class="review-img-wrapper">
+                        <div class="review-img-wrapper" id="assistant-img-wrapper" style="cursor: cell;">
                             <img src="https://placehold.co/400x550/ffffff/4b5563?text=Inked+Submission" alt="Submission">
                             <div class="annotation-dot" style="top: 30%; left: 50%;">1</div>
                         </div>
@@ -90,7 +89,7 @@
 
                 <div class="review-col">
                     <div class="review-col-header">
-                        <span>Feedback <span class="feedback-badge">3</span></span>
+                        <span>Feedback <span class="feedback-badge" id="chat-count-badge">3</span></span>
                     </div>
                     <div class="chat-area" id="chat-box">
                         <div class="chat-msg">
@@ -122,5 +121,6 @@
             </div>
         </div>
     </main>
+    <script src="script-workspace.js"></script>
 </body>
 </html>
