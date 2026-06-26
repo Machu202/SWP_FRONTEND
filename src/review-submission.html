@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Review - Studio Flow</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body> 
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">SF</div>
+            <div class="ws-name">Mangaka Workspace</div>
+        </div>
+        
+        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
+        
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="review-submission.html" class="nav-item active"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <i class="fa-regular fa-bell top-icon"></i>
+                <i class="fa-regular fa-moon top-icon"></i>
+                <button class="btn-publish" onclick="window.location.href='editor-feedback.html'">Next Step (Editor)</button>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="review-header-top">
+                <div class="review-title">
+                    <p>Chapter 42: The Awakening > Page 14</p>
+                    <h2>Assistant Submission Review</h2>
+                </div>
+                <div class="review-actions">
+                    <button class="btn-outline" id="btn-request-rev"><i class="fa-solid fa-xmark"></i> Request Revision</button>
+                    <button class="btn-approve" id="btn-approve"><i class="fa-solid fa-check"></i> Approve</button>
+                </div>
+            </div>
+
+            <div class="review-grid-3">
+                
+                <div class="review-col">
+                    <div class="review-col-header">
+                        <span>Original Draft (Mangaka)</span>
+                        <span class="status-tag">Read-Only</span>
+                    </div>
+                    <div class="review-img-container">
+                        <div class="review-img-wrapper">
+                            <img src="https://placehold.co/400x550/ffffff/9ca3af?text=Rough+Sketch" alt="Draft">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-col">
+                    <div class="review-col-header">
+                        <span>Assistant Submission</span>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="status-tag review">In Review</span>
+                            <div class="author-tag"><img src="https://i.pravatar.cc/150?img=11"> Kenji S.</div>
+                        </div>
+                    </div>
+                    <div class="review-img-container">
+                        <div class="review-img-wrapper" id="assistant-img-wrapper" style="cursor: cell;">
+                            <img src="https://placehold.co/400x550/ffffff/4b5563?text=Inked+Submission" alt="Submission">
+                            <div class="annotation-dot" style="top: 30%; left: 50%;">1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-col">
+                    <div class="review-col-header">
+                        <span>Feedback <span class="feedback-badge" id="chat-count-badge">3</span></span>
+                    </div>
+                    <div class="chat-area" id="chat-box">
+                        <div class="chat-msg">
+                            <div class="chat-avatar">SF</div>
+                            <div class="chat-msg-body">
+                                <div class="chat-name"><span>Sensei</span> <span class="chat-time">2h ago</span></div>
+                                <div class="chat-bubble-border">
+                                    <div class="chat-bubble">The line weight on the character's jawline feels a bit too heavy compared to the draft. Can we thin it out slightly to maintain the intended delicate expression?</div>
+                                    <div class="chat-annotation-ref"><span style="background: #ef4444; color: white; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px;">1</span> Annotation</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-msg" style="margin-top: 10px;">
+                            <img src="https://i.pravatar.cc/150?img=11" class="chat-avatar">
+                            <div class="chat-msg-body">
+                                <div class="chat-name"><span>Kenji S.</span> <span class="chat-time">1h ago</span></div>
+                                <div class="chat-bubble" style="color: #6b7280;">Understood. I'll adjust the G-pen pressure settings for that section and re-submit.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="chat-input-wrapper">
+                            <input type="text" id="chat-input" placeholder="Add feedback or drop an annotation...">
+                            <i class="fa-solid fa-microphone"></i>
+                        </div>
+                        <button class="btn-send" id="btn-send-chat"><i class="fa-solid fa-play"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>

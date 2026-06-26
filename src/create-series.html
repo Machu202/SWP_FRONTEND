@@ -1,54 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Create Series Wizard</title>
-  <link rel="stylesheet" href="style-workspace.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create New Series - Studio Flow</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-<aside class="sidebar">
-<div class="workspace-title">Mangaka</div>
-<a class="btn-sidebar-action" href="dashboard.html"><i class="fa-solid fa-house"></i> Workspace Home</a>
-<nav class="nav-group">
-<a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i>Dashboard</a>
-<a href="series.html" class="nav-item"><i class="fa-solid fa-book-open"></i>Series</a>
-<a href="create-series.html" class="nav-item active"><i class="fa-solid fa-wand-magic-sparkles"></i>Create Series</a>
-<a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-lines"></i>Manuscripts</a>
-<a href="script-editor.html" class="nav-item"><i class="fa-solid fa-pen-nib"></i>Script Editor</a>
-<a href="page-editor.html" class="nav-item"><i class="fa-solid fa-vector-square"></i>Canvas / Hitboxes</a>
-<a href="split-review.html" class="nav-item"><i class="fa-solid fa-table-columns"></i>Script + Manga Review</a>
-<a href="batch-upload.html" class="nav-item"><i class="fa-solid fa-cloud-arrow-up"></i>Batch Upload</a>
-<a href="assignments.html" class="nav-item"><i class="fa-solid fa-user-check"></i>Assign Tasks</a>
-<a href="kanban.html" class="nav-item"><i class="fa-solid fa-table-list"></i>Kanban Board</a>
-<a href="version-history.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i>Version History</a>
-</nav><div class="sidebar-divider"></div><nav class="nav-group bottom-nav">
-<a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i>Profile</a>
-<a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i>Notifications</a>
-<a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
-</nav><div class="profile-section"><div class="profile-avatar-text">MS</div></div></aside>
-<main class="main-wrapper">
-  <header class="topbar">
-    <div class="topbar-left"><strong>Create Series Wizard</strong><span>Manga Creation Workflow and Publishing Management System</span></div>
-    <div class="topbar-right">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Search..." /></div>
-      <a class="icon-btn" href="notifications.html"><i class="fa-regular fa-bell"></i></a>
-      
-      <div class="profile-chip">Mangaka</div>
-    </div>
-  </header>
-  <section class="content-padding">
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">SF</div>
+            <div class="ws-name">Mangaka Workspace</div>
+        </div>
+        
+        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
+        
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="review-submission.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+    </aside>
 
-<div class="page-header"><div><h1>Create Manga Series</h1><p>FE-12: multi-step wizard form.</p></div><button class="btn-publish js-toast">Submit Series</button></div>
-<div class="wizard-steps"><span class="active">1. Metadata</span><span>2. Chapters</span><span>3. Upload</span><span>4. Review</span></div>
-<div class="card-box form-card"><div class="form-grid"><label>Title<input value="Black Moon Contract"></label><label>Genre<input value="Fantasy / Drama"></label></div><label>Synopsis<textarea>A young artist signs a mysterious contract with a moon spirit.</textarea></label><label>Storyboard Upload<input type="file"></label></div>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="dashboard.html" style="color: var(--text-main); font-size: 16px; margin-right: 15px;"><i class="fa-solid fa-arrow-left"></i></a>
+                <strong style="color: black; margin-right: 15px;">Create New Series</strong>
+                <span style="font-weight: 500;">Initialize a new manga project in your Studio Flow workspace.</span>
+            </div>
+            <div class="topbar-right">
+                <i class="fa-regular fa-bell top-icon"></i>
+                <button class="btn-publish" onclick="window.location.href='series.html'">Create Series</button>
+            </div>
+        </header>
 
-  </section>
-</main>
-<div class="toast-notification" id="toast-msg"><i class="fa-solid fa-circle-check"></i><span>Saved!</span></div>
-<script src="api.js"></script>
-<script src="script-workspace.js"></script>
-<script src="script-tantou-board.js"></script>
+        <div class="content-padding">
+            <div class="grid-layout">
+                <div>
+                    <div class="form-section">
+                        <div class="form-section-title">Core Information</div>
+                        <div class="form-group">
+                            <label>Series Title</label>
+                            <input type="text" class="form-control" placeholder="Enter working title...">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Primary Genre</label>
+                                <select class="form-control">
+                                    <option>Select Genre</option>
+                                    <option>Shonen / Action</option>
+                                    <option>Seinen / Mature</option>
+                                    <option>Romance / Slice of Life</option>
+                                    <option>Sci-Fi / Fantasy</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Publication Frequency</label>
+                                <select class="form-control">
+                                    <option>Weekly</option>
+                                    <option>Bi-weekly</option>
+                                    <option>Monthly</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Synopsis / Logline</label>
+                            <textarea class="form-control" rows="4" placeholder="Briefly describe the core premise..."></textarea>
+                            <div class="char-counter">0 / 500</div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            Storyboard & Concept
+                            <span style="font-size: 12px; font-weight: 500; color: var(--primary-color); cursor: pointer;"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Assets</span>
+                        </div>
+                        <div class="storyboard-grid">
+                            <div class="storyboard-item empty">
+                                <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                                <span>Drag & drop sketches<br>or click to browse</span>
+                            </div>
+                            <div class="storyboard-item"><i class="fa-solid fa-file-image"></i><span>Concept_Art_01.png</span></div>
+                            <div class="storyboard-item"><i class="fa-solid fa-file-image"></i><span>Char_Design_Main.png</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="form-section">
+                        <div class="form-section-title">Series Cover</div>
+                        <div class="upload-box upload-box-large">
+                            <i class="fa-regular fa-image" style="font-size: 40px; margin-bottom: 15px; color: #d1d5db;"></i>
+                            <span style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 5px;">Upload Primary Art</span>
+                            <span style="font-size: 11px;">Recommended: 1200x1800px</span>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Technical Settings</div>
+                        <div class="form-group">
+                            <label>Target Page Count (per ch.)</label>
+                            <input type="number" class="form-control" value="20">
+                        </div>
+                        <div class="form-group">
+                            <label>Read Direction</label>
+                            <div class="direction-group">
+                                <button class="btn-direction active"><i class="fa-solid fa-arrow-right-arrow-left"></i> R to L</button>
+                                <button class="btn-direction"><i class="fa-solid fa-arrow-left-arrow-right"></i> L to R</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 </body>
 </html>
