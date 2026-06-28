@@ -1,115 +1,313 @@
 document.addEventListener("DOMContentLoaded", () => {
-    /* KHAI BÁO UI */
-    const loginTabs = document.getElementById("login-tabs");
-    const tabPassword = document.getElementById("tab-password");
-    const tabOtp = document.getElementById("tab-otp");
-    const formPassword = document.getElementById("form-password-section");
-    const formOtp = document.getElementById("form-otp-section");
-    const formRegister = document.getElementById("form-register-section");
-    const otpStep1 = document.getElementById("otp-step-1");
-    const otpStep2 = document.getElementById("otp-step-2");
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-    /* LOGIC CHUYỂN TAB */
-    const resetToPasswordTab = () => {
-        tabPassword.classList.add("active");
-        tabOtp.classList.remove("active");
-        formPassword.style.display = "block";
-        formOtp.style.display = "none";
-        formRegister.style.display = "none";
-        loginTabs.style.display = "flex";
-    };
-
-    tabPassword.addEventListener("click", resetToPasswordTab);
-
-    tabOtp.addEventListener("click", () => {
-        tabOtp.classList.add("active");
-        tabPassword.classList.remove("active");
-        formOtp.style.display = "block";
-        formPassword.style.display = "none";
-        formRegister.style.display = "none";
-        otpStep1.style.display = "block";
-        otpStep2.style.display = "none";
-    });
-
-    const btnGoToRegister = document.getElementById("go-to-register");
-    if(btnGoToRegister) {
-        btnGoToRegister.addEventListener("click", (e) => {
-            e.preventDefault();
-            loginTabs.style.display = "none";
-            formPassword.style.display = "none";
-            formOtp.style.display = "none";
-            formRegister.style.display = "block";
-        });
+    function showStatus(message, isError = false, anchorSelector = ".form-container") {
+        const anchor = $(anchorSelector) || document.body;
+        let box = $("#api-status-message");
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "api-status-message";
+            box.style.margin = "12px 0";
+            box.style.padding = "10px 12px";
+            box.style.borderRadius = "10px";
+            box.style.fontSize = "14px";
+            box.style.lineHeight = "1.35";
+            if (anchor.firstElementChild) {
+                anchor.insertBefore(box, anchor.firstElementChild.nextSibling);
+            } else {
+                anchor.prepend(box);
+            }
+        }
+        box.textContent = message;
+        box.style.background = isError ? "#fee2e2" : "#dcfce7";
+        box.style.color = isError ? "#991b1b" : "#166534";
+        box.style.border = isError ? "1px solid #fecaca" : "1px solid #bbf7d0";
     }
 
-    const btnBackToLogin = document.getElementById("back-to-login");
-    if(btnBackToLogin) {
-        btnBackToLogin.addEventListener("click", (e) => {
-            e.preventDefault();
-            resetToPasswordTab();
-        });
+    function setLoading(button, isLoading, labelWhenLoading = "Please wait...") {
+        if (!button) return;
+        if (isLoading) {
+            button.dataset.originalText = button.textContent;
+            button.textContent = labelWhenLoading;
+            button.disabled = true;
+        } else {
+            button.textContent = button.dataset.originalText || button.textContent;
+            button.disabled = false;
+        }
     }
 
-    /* ĐĂNG NHẬP THÀNH CÔNG -> CHUYỂN THEO ROLE */
-    const btnLogin = document.getElementById("btn-login");
-    const loginRoleSelect = document.getElementById("login-role-select");
-
-    const routeByRole = {
-        mangaka: "mangaka-dashboard.html",
-        assistant: "assistant-dashboard.html",
-        tantou: "tantou-dashboard.html",
-        editorial: "board-dashboard.html",
-        admin: "admin-dashboard.html"
-    };
-
-    if(btnLogin) {
-        btnLogin.addEventListener("click", (e) => {
-            e.preventDefault();
-            const selectedRole = loginRoleSelect ? loginRoleSelect.value : "mangaka";
-            window.location.href = routeByRole[selectedRole] || "mangaka-dashboard.html";
-        });
+    function isEmail(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
     }
 
-    /* LOGIC OTP */
-    const btnEnterOtp = document.getElementById("btn-enter-otp");
-    const btnSendAgain = document.getElementById("btn-send-again");
-    const timerDisplay = document.getElementById("timer-count");
-    let countdownInterval;
+    /* LOGIN / REGISTER UI */
+    const loginTabs = $("#login-tabs");
+    const tabPassword = $("#tab-password");
+    const tabOtp = $("#tab-otp");
+    const formPassword = $("#form-password-section");
+    const formOtp = $("#form-otp-section");
+    const formRegister = $("#form-register-section");
+    const otpStep1 = $("#otp-step-1");
+    const otpStep2 = $("#otp-step-2");
 
-    const startCountdown = () => {
+    let pendingOtpEmail = localStorage.getItem("pendingOtpEmail") || "";
+    let pendingLoginUsername = "";
+    let pendingLoginPassword = "";
+
+    function showPasswordTab() {
+        if (tabPassword) tabPassword.classList.add("active");
+        if (tabOtp) tabOtp.classList.remove("active");
+        if (formPassword) formPassword.style.display = "block";
+        if (formOtp) formOtp.style.display = "none";
+        if (formRegister) formRegister.style.display = "none";
+        if (loginTabs) loginTabs.style.display = "flex";
+    }
+
+    function showOtpStep({ askEmail = false } = {}) {
+        if (tabOtp) tabOtp.classList.add("active");
+        if (tabPassword) tabPassword.classList.remove("active");
+        if (formOtp) formOtp.style.display = "block";
+        if (formPassword) formPassword.style.display = "none";
+        if (formRegister) formRegister.style.display = "none";
+        if (otpStep1) otpStep1.style.display = askEmail ? "block" : "none";
+        if (otpStep2) otpStep2.style.display = askEmail ? "none" : "block";
+        ensureVerifyOtpButton();
+    }
+
+    function getLoginUsernameInput() {
+        return $("#login-username") || $("input[name='username']") || $("#form-password-section input[type='text']");
+    }
+
+    function getLoginPasswordInput() {
+        return $("#login-password") || $("input[name='password']") || $("#form-password-section input[type='password']");
+    }
+
+    function getOtpEmailInput() {
+        return $("#otp-email") || $("input[name='email']", otpStep1 || document) || $("#otp-step-1 input[type='text']");
+    }
+
+    function getOtpCodeInput() {
+        return $("#otp-code") || $("input[name='otpCode']") || $("#otp-step-2 input[type='text']");
+    }
+
+    function ensureVerifyOtpButton() {
+        if (!otpStep2 || $("#btn-verify-otp")) return;
+        const wrapper = document.createElement("div");
+        wrapper.className = "center-btn";
+        wrapper.style.marginTop = "14px";
+        wrapper.innerHTML = `<button class="btn-secondary" id="btn-verify-otp">Verify OTP</button>`;
+        otpStep2.appendChild(wrapper);
+        $("#btn-verify-otp").addEventListener("click", handleVerifyOtp);
+    }
+
+    function startCountdown() {
+        const timerDisplay = $("#timer-count");
         let timeLeft = 60;
-        if(timerDisplay) timerDisplay.textContent = timeLeft;
-        clearInterval(countdownInterval);
-        countdownInterval = setInterval(() => {
+        if (timerDisplay) timerDisplay.textContent = timeLeft;
+        clearInterval(window.__otpCountdownInterval);
+        window.__otpCountdownInterval = setInterval(() => {
             timeLeft--;
-            if(timerDisplay) timerDisplay.textContent = timeLeft;
+            if (timerDisplay) timerDisplay.textContent = timeLeft;
             if (timeLeft <= 0) {
-                clearInterval(countdownInterval);
-                if(timerDisplay) timerDisplay.textContent = "0";
+                clearInterval(window.__otpCountdownInterval);
+                if (timerDisplay) timerDisplay.textContent = "0";
             }
         }, 1000);
-    };
+    }
 
-    if(btnEnterOtp) {
+    async function handlePasswordLogin(event) {
+        event.preventDefault();
+        const btnLogin = event.currentTarget;
+        const usernameInput = getLoginUsernameInput();
+        const passwordInput = getLoginPasswordInput();
+        const username = usernameInput ? usernameInput.value.trim() : "";
+        const password = passwordInput ? passwordInput.value : "";
+
+        if (!window.MangaApi) {
+            showStatus("api.js is missing. Make sure <script src=\"api.js\"></script> loads before script.js.", true);
+            return;
+        }
+        if (!username || !password) {
+            showStatus("Please enter username/email and password.", true);
+            return;
+        }
+
+        setLoading(btnLogin, true, "Sending OTP...");
+        try {
+            const response = await window.MangaApi.loginWithPassword(username, password);
+            pendingLoginUsername = username;
+            pendingLoginPassword = password;
+            pendingOtpEmail = isEmail(username) ? username : "";
+            if (pendingOtpEmail) {
+                localStorage.setItem("pendingOtpEmail", pendingOtpEmail);
+                const otpEmailInput = getOtpEmailInput();
+                if (otpEmailInput) otpEmailInput.value = pendingOtpEmail;
+            }
+
+            showStatus(response.message || "Login accepted. Check email for OTP.");
+            showOtpStep({ askEmail: !pendingOtpEmail });
+            startCountdown();
+        } catch (error) {
+            showStatus(error.message || "Login failed.", true);
+        } finally {
+            setLoading(btnLogin, false);
+        }
+    }
+
+    async function handleVerifyOtp(event) {
+        if (event) event.preventDefault();
+        const verifyBtn = event ? event.currentTarget : $("#btn-verify-otp");
+        const otpEmailInput = getOtpEmailInput();
+        const otpCodeInput = getOtpCodeInput();
+        const email = (pendingOtpEmail || (otpEmailInput ? otpEmailInput.value : "")).trim();
+        const otpCode = otpCodeInput ? otpCodeInput.value.trim().replace(/-/g, "") : "";
+
+        if (!email || !isEmail(email)) {
+            showStatus("Backend /auth/verify-otp requires the account email. Please enter a valid email.", true);
+            showOtpStep({ askEmail: true });
+            return;
+        }
+        if (!otpCode) {
+            showStatus("Please enter the OTP code from email.", true);
+            return;
+        }
+
+        pendingOtpEmail = email;
+        localStorage.setItem("pendingOtpEmail", email);
+        setLoading(verifyBtn, true, "Verifying...");
+        try {
+            const data = await window.MangaApi.verifyOtp(email, otpCode);
+            localStorage.removeItem("pendingOtpEmail");
+            showStatus("Login successful. Redirecting...");
+            window.MangaApi.goToDashboard(data.role);
+        } catch (error) {
+            showStatus(error.message || "OTP verification failed.", true);
+        } finally {
+            setLoading(verifyBtn, false);
+        }
+    }
+
+    async function handleRegister(event) {
+        event.preventDefault();
+        const btn = event.currentTarget;
+        const emailInput = $("#register-email") || $("#form-register-section input[type='text']");
+        const usernameInput = $("#register-username");
+        const passwordInput = $("#register-password") || $("#form-register-section input[type='password']");
+        const roleInput = $("#register-role") || $("#form-register-section select.role-select");
+
+        const emailOrName = emailInput ? emailInput.value.trim() : "";
+        const email = isEmail(emailOrName) ? emailOrName : "";
+        const username = usernameInput && usernameInput.value.trim()
+            ? usernameInput.value.trim()
+            : (email ? email.split("@")[0] : emailOrName);
+        const password = passwordInput ? passwordInput.value : "";
+        const role = roleInput ? roleInput.value : "Mangaka";
+
+        if (!username || !email || !password) {
+            showStatus("Register needs username, valid email, and password for backend compatibility.", true);
+            return;
+        }
+
+        setLoading(btn, true, "Registering...");
+        try {
+            const response = await window.MangaApi.registerUser({ username, email, password, role });
+            showStatus(response.message || "Registered successfully. You can login now.");
+            showPasswordTab();
+            const usernameInputLogin = getLoginUsernameInput();
+            if (usernameInputLogin) usernameInputLogin.value = username;
+        } catch (error) {
+            showStatus(error.message || "Registration failed.", true);
+        } finally {
+            setLoading(btn, false);
+        }
+    }
+
+    if (tabPassword) tabPassword.addEventListener("click", showPasswordTab);
+    if (tabOtp) {
+        tabOtp.addEventListener("click", () => {
+            showOtpStep({ askEmail: true });
+        });
+    }
+
+    const btnGoToRegister = $("#go-to-register");
+    if (btnGoToRegister) {
+        btnGoToRegister.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (loginTabs) loginTabs.style.display = "none";
+            if (formPassword) formPassword.style.display = "none";
+            if (formOtp) formOtp.style.display = "none";
+            if (formRegister) formRegister.style.display = "block";
+        });
+    }
+
+    const btnBackToLogin = $("#back-to-login");
+    if (btnBackToLogin) {
+        btnBackToLogin.addEventListener("click", (e) => {
+            e.preventDefault();
+            showPasswordTab();
+        });
+    }
+
+    const btnLogin = $("#btn-login");
+    if (btnLogin) btnLogin.addEventListener("click", handlePasswordLogin);
+
+    const btnEnterOtp = $("#btn-enter-otp");
+    if (btnEnterOtp) {
         btnEnterOtp.addEventListener("click", (e) => {
             e.preventDefault();
-            if(otpStep1) otpStep1.style.display = "none";
-            if(otpStep2) otpStep2.style.display = "block";
+            const otpEmailInput = getOtpEmailInput();
+            pendingOtpEmail = otpEmailInput ? otpEmailInput.value.trim() : pendingOtpEmail;
+            if (!pendingOtpEmail || !isEmail(pendingOtpEmail)) {
+                showStatus("Enter the email that received the backend OTP first.", true);
+                return;
+            }
+            localStorage.setItem("pendingOtpEmail", pendingOtpEmail);
+            showOtpStep({ askEmail: false });
             startCountdown();
         });
     }
 
-    if(btnSendAgain) {
-        btnSendAgain.addEventListener("click", (e) => {
+    const btnSendAgain = $("#btn-send-again");
+    if (btnSendAgain) {
+        btnSendAgain.addEventListener("click", async (e) => {
             e.preventDefault();
-            startCountdown();
-            alert("Đã gửi lại mã OTP mới!");
+            if (!pendingLoginUsername || !pendingLoginPassword) {
+                startCountdown();
+                showStatus("To resend from backend, use password login again so /auth/login can regenerate OTP.", true);
+                return;
+            }
+            setLoading(btnSendAgain, true, "Sending...");
+            try {
+                const response = await window.MangaApi.loginWithPassword(pendingLoginUsername, pendingLoginPassword);
+                startCountdown();
+                showStatus(response.message || "OTP sent again.");
+            } catch (error) {
+                showStatus(error.message || "Could not resend OTP.", true);
+            } finally {
+                setLoading(btnSendAgain, false);
+            }
         });
     }
 
-    /* ẨN/HIỆN MẬT KHẨU */
-    const eyeIcons = document.querySelectorAll(".eye-icon");
-    eyeIcons.forEach(icon => {
+    const btnRegister = $("#btn-register") || $(".btn-registrate");
+    if (btnRegister) btnRegister.addEventListener("click", handleRegister);
+
+    ensureVerifyOtpButton();
+
+    /* GOOGLE LOGIN: requires Google Identity Services to call this with a real ID token. */
+    window.handleGoogleCredentialResponse = async function (response) {
+        if (!response || !response.credential) return;
+        try {
+            const data = await window.MangaApi.loginWithGoogle(response.credential);
+            window.MangaApi.goToDashboard(data.role);
+        } catch (error) {
+            showStatus(error.message || "Google login failed.", true);
+        }
+    };
+
+    /* PASSWORD VISIBILITY */
+    $$(".eye-icon").forEach(icon => {
         icon.addEventListener("click", () => {
             const passwordInput = icon.previousElementSibling;
             if (passwordInput && passwordInput.type === "password") {
@@ -121,10 +319,20 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
-}); 
 
-/* Extra static interactions for combined role pages */
-document.addEventListener("DOMContentLoaded", () => {
+    /* SAFE LOGOUT: clear JWT before returning to login. */
+    $$('a[href="index.html"]').forEach(link => {
+        const text = (link.textContent || "").toLowerCase();
+        if (text.includes("logout") || link.innerHTML.includes("right-from-bracket")) {
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                if (window.MangaApi) window.MangaApi.logout("index.html");
+                else window.location.href = "index.html";
+            });
+        }
+    });
+
+    /* Extra static interactions for combined role pages */
     document.querySelectorAll("[data-toast]").forEach(btn => {
         btn.addEventListener("click", () => {
             let toast = document.getElementById("toast-msg");
