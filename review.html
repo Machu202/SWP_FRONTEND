@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Review - Studio Flow</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body> 
+    <aside class="sidebar">
+        <div class="workspace-title"><div class="ws-logo">SF</div><div class="ws-name">Mangaka Workspace</div></div>
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="review.html" class="nav-item active"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+            </div>
+            <div class="topbar-right">
+                <button class="btn-publish" id="btn-submit-feedback">Submit Feedback</button>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="review-header-top">
+                <div class="review-title">
+                    <p id="review-chapter-title">Select a submission to review...</p>
+                    <h2>Assistant Submission Review</h2>
+                </div>
+                <div class="review-actions">
+                    <button class="btn-outline" id="btn-request-rev" style="display: none;"><i class="fa-solid fa-xmark"></i> Request Revision</button>
+                    <button class="btn-approve" id="btn-approve" style="display: none;"><i class="fa-solid fa-check"></i> Approve</button>
+                </div>
+            </div>
+
+            <div class="review-grid-3">
+                <div class="review-col">
+                    <div class="review-col-header">
+                        <span>Original Draft</span>
+                        <span class="status-tag">Read-Only</span>
+                    </div>
+                    <div class="review-img-container">
+                        <div class="review-img-wrapper" id="draft-img-container">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="review-col">
+                    <div class="review-col-header">
+                        <span>Submission</span>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="status-tag review" id="submission-status">Waiting</span>
+                        </div>
+                    </div>
+                    <div class="review-img-container">
+                        <div class="review-img-wrapper" id="assistant-img-wrapper" style="cursor: cell;">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="review-col">
+                    <div class="review-col-header">
+                        <span>Feedback <span class="feedback-badge" id="chat-count-badge">0</span></span>
+                    </div>
+                    
+                    <div class="chat-area" id="chat-box"></div>
+                    
+                    <div class="chat-input-area">
+                        <div class="chat-input-wrapper">
+                            <input type="text" id="chat-input" placeholder="Drop an annotation or type...">
+                            <i class="fa-solid fa-microphone"></i>
+                        </div>
+                        <button class="btn-send" id="btn-send-chat"><i class="fa-solid fa-play"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="toast-msg" class="toast-notification"></div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>

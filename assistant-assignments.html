@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Assignments - Studio Flow</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="assistant-profile-box">
+            <img src="https://i.pravatar.cc/150?img=11" alt="Profile">
+            <div class="assistant-profile-info">
+                <h3>Studio Flow</h3>
+                <p>Production Assistant</p>
+            </div>
+        </div>
+        
+        <nav class="nav-group">
+            <a href="assistant-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="assistant-assignments.html" class="nav-item active"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="resource-library.html" class="nav-item"><i class="fa-solid fa-box-open"></i> Resource Library</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search my tasks..."></div>
+                <i class="fa-regular fa-bell top-icon"></i>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="page-header">
+                <div>
+                    <h1>My Assignments Board</h1>
+                    <p>Kéo thả các thẻ nhiệm vụ để cập nhật tiến độ nộp bài của bạn.</p>
+                </div>
+            </div>
+
+            <div class="kanban-board">
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>To Do (Mới nhận)</span><span class="task-count" id="ast-todo-count">0</span></div>
+                    <div class="kanban-task-list" id="ast-todo-list">
+                        </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>In Progress (Đang vẽ)</span><span class="task-count" id="ast-inprogress-count">0</span></div>
+                    <div class="kanban-task-list" id="ast-inprogress-list">
+                        </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>In Review (Đã nộp)</span><span class="task-count" id="ast-review-count">0</span></div>
+                    <div class="kanban-task-list" id="ast-review-list">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="script-workspace.js"></script>
+</body>
+</html>
