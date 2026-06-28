@@ -1,286 +1,74 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+    function showStatus(message, isError = false, anchorSelector = ".form-container") {
+        const anchor = $(anchorSelector) || document.body;
+        let box = $("#api-status-message");
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "api-status-message";
+            box.style.margin = "12px 0";
+            box.style.padding = "10px 12px";
+            box.style.borderRadius = "10px";
+            box.style.fontSize = "14px";
+            box.style.lineHeight = "1.35";
+            if (anchor.firstElementChild) {
+                anchor.insertBefore(box, anchor.firstElementChild.nextSibling);
+            } else {
+                anchor.prepend(box);
+            }
+        }
+        box.textContent = message;
+        box.style.background = isError ? "#fee2e2" : "#dcfce7";
+        box.style.color = isError ? "#991b1b" : "#166534";
+        box.style.border = isError ? "1px solid #fecaca" : "1px solid #bbf7d0";
+    }
+
+    function setLoading(button, isLoading, labelWhenLoading = "Đang xử lý...") {
+        if (!button) return;
+        if (isLoading) {
+            button.dataset.originalText = button.textContent;
+            button.textContent = labelWhenLoading;
+            button.disabled = true;
+        } else {
+            button.textContent = button.dataset.originalText || button.textContent;
+            button.disabled = false;
+        }
+    }
+
     /* =======================================================
-       1. KHAI BÁO UI & LOGIC CHUYỂN TAB CƠ BẢN
+       1. LOGIN / REGISTER UI (GIỮ NGUYÊN CODE CŨ)
        ======================================================= */
-    const loginTabs = document.getElementById("login-tabs");
-    const tabPassword = document.getElementById("tab-password");
-    const tabOtp = document.getElementById("tab-otp");
-    const formPassword = document.getElementById("form-password-section");
-    const formOtp = document.getElementById("form-otp-section");
-    const formRegister = document.getElementById("form-register-section");
-    const otpStep1 = document.getElementById("otp-step-1");
-    const otpStep2 = document.getElementById("otp-step-2");
+    const loginTabs = $("#login-tabs");
+    const formPassword = $("#form-password-section");
+    const formRegister = $("#form-register-section");
+    const btnGoToRegister = $("#go-to-register");
+    const btnBackToLogin = $("#back-to-login");
 
-    const resetToPasswordTab = () => {
-        tabPassword.classList.add("active");
-        tabOtp.classList.remove("active");
-        formPassword.style.display = "block";
-        formOtp.style.display = "none";
-        formRegister.style.display = "none";
-        loginTabs.style.display = "flex";
-    };
-
-    tabPassword.addEventListener("click", resetToPasswordTab);
-
-    tabOtp.addEventListener("click", () => {
-        tabOtp.classList.add("active");
-        tabPassword.classList.remove("active");
-        formOtp.style.display = "block";
-        formPassword.style.display = "none";
-        formRegister.style.display = "none";
-        otpStep1.style.display = "block";
-        otpStep2.style.display = "none";
-    });
-
-    const btnGoToRegister = document.getElementById("go-to-register");
-    if(btnGoToRegister) {
+    if (btnGoToRegister) {
         btnGoToRegister.addEventListener("click", (e) => {
             e.preventDefault();
-            loginTabs.style.display = "none";
-            formPassword.style.display = "none";
-            formOtp.style.display = "none";
-            formRegister.style.display = "block";
+            if (loginTabs) loginTabs.style.display = "none";
+            if (formPassword) formPassword.style.display = "none";
+            if (formRegister) formRegister.style.display = "block";
+            const msgBox = $("#api-status-message");
+            if(msgBox) msgBox.remove();
         });
     }
 
-    const btnBackToLogin = document.getElementById("back-to-login");
-    if(btnBackToLogin) {
+    if (btnBackToLogin) {
         btnBackToLogin.addEventListener("click", (e) => {
             e.preventDefault();
-            resetToPasswordTab();
+            if (loginTabs) loginTabs.style.display = "flex";
+            if (formPassword) formPassword.style.display = "block";
+            if (formRegister) formRegister.style.display = "none";
+            const msgBox = $("#api-status-message");
+            if(msgBox) msgBox.remove();
         });
     }
 
-    /* =======================================================
-       2. LOGIC ĐĂNG NHẬP MẬT KHẨU (PASSWORD)
-       ======================================================= */
-    const btnLogin = document.getElementById("btn-login");
-    const inputUsername = document.getElementById("login-username");
-    const inputPassword = document.getElementById("login-password");
-
-    if(btnLogin) {
-        btnLogin.addEventListener("click", (e) => {
-            e.preventDefault();
-            const username = inputUsername ? inputUsername.value.trim().toLowerCase() : "";
-            const password = inputPassword ? inputPassword.value : "";
-
-            if (!username || !password) {
-                alert("Vui lòng nhập đầy đủ Tài khoản và Mật khẩu!");
-                return;
-            }
-
-            const originalText = btnLogin.innerText;
-            btnLogin.innerText = "Authenticating...";
-            btnLogin.style.pointerEvents = "none";
-
-            // TODO (BACKEND): Bật FETCH API Login tại đây
-
-            setTimeout(() => { 
-                if (username === 'assistant') {
-                    localStorage.setItem('userRole', 'assistant');
-                    window.location.href = "assistant-dashboard.html";
-                } 
-                else if (username === 'mangaka') {
-                    localStorage.setItem('userRole', 'mangaka');
-                    window.location.href = "dashboard.html";
-                } 
-                else {
-                    alert("Sai tài khoản hoặc mật khẩu! (Demo: 'mangaka' hoặc 'assistant')");
-                    btnLogin.innerText = originalText;
-                    btnLogin.style.pointerEvents = "auto";
-                }
-            }, 1000);
-        });
-    }
-
-    /* =======================================================
-       3. LOGIC ĐĂNG NHẬP OTP (2 BƯỚC)
-       ======================================================= */
-    const btnEnterOtp = document.getElementById("btn-enter-otp"); 
-    const btnVerifyOtp = document.getElementById("btn-verify-otp"); 
-    const btnSendAgain = document.getElementById("btn-send-again"); 
-    const timerDisplay = document.getElementById("timer-count");
-    const inputOtpEmail = document.getElementById("otp-email");
-    const inputOtpCode = document.getElementById("otp-code");
-    
-    let countdownInterval;
-
-    const startCountdown = () => {
-        let timeLeft = 60;
-        if(timerDisplay) timerDisplay.textContent = timeLeft;
-        clearInterval(countdownInterval);
-        
-        if(btnSendAgain) {
-            btnSendAgain.style.opacity = "0.5";
-            btnSendAgain.style.pointerEvents = "none";
-        }
-
-        countdownInterval = setInterval(() => {
-            timeLeft--;
-            if(timerDisplay) timerDisplay.textContent = timeLeft;
-            if (timeLeft <= 0) {
-                clearInterval(countdownInterval);
-                if(timerDisplay) timerDisplay.textContent = "0";
-                if(btnSendAgain) {
-                    btnSendAgain.style.opacity = "1";
-                    btnSendAgain.style.pointerEvents = "auto";
-                }
-            }
-        }, 1000);
-    };
-
-    if(btnEnterOtp) {
-        btnEnterOtp.addEventListener("click", (e) => {
-            e.preventDefault();
-            const email = inputOtpEmail ? inputOtpEmail.value.trim() : "";
-            
-            if (!email) {
-                alert("Vui lòng nhập Email để nhận mã OTP!");
-                return;
-            }
-
-            const originalText = btnEnterOtp.innerText;
-            btnEnterOtp.innerText = "Sending OTP...";
-            btnEnterOtp.style.pointerEvents = "none";
-
-            // TODO (BACKEND): Viết FETCH API gửi Email OTP tại đây
-
-            setTimeout(() => { 
-                if(otpStep1) otpStep1.style.display = "none";
-                if(otpStep2) otpStep2.style.display = "block";
-                startCountdown();
-                
-                btnEnterOtp.innerText = originalText;
-                btnEnterOtp.style.pointerEvents = "auto";
-            }, 800);
-        });
-    }
-
-    if(btnVerifyOtp) {
-        btnVerifyOtp.addEventListener("click", (e) => {
-            e.preventDefault();
-            const email = inputOtpEmail ? inputOtpEmail.value.trim().toLowerCase() : "";
-            const otpCode = inputOtpCode ? inputOtpCode.value.trim() : "";
-
-            if (!otpCode || otpCode.length < 4) {
-                alert("Vui lòng nhập mã OTP hợp lệ!");
-                return;
-            }
-
-            const originalText = btnVerifyOtp.innerText;
-            btnVerifyOtp.innerText = "Verifying...";
-            btnVerifyOtp.style.pointerEvents = "none";
-
-            // TODO (BACKEND): Viết FETCH API xác nhận OTP tại đây
-
-            setTimeout(() => {
-                if (otpCode === "123456") { 
-                    if (email.includes("assistant")) {
-                        localStorage.setItem('userRole', 'assistant');
-                        window.location.href = "assistant-dashboard.html";
-                    } else {
-                        localStorage.setItem('userRole', 'mangaka');
-                        window.location.href = "dashboard.html";
-                    }
-                } else {
-                    alert("Mã OTP không chính xác. (Mã Demo là: 123456)");
-                    btnVerifyOtp.innerText = originalText;
-                    btnVerifyOtp.style.pointerEvents = "auto";
-                }
-            }, 1000);
-        });
-    }
-
-    if(btnSendAgain) {
-        btnSendAgain.addEventListener("click", (e) => {
-            e.preventDefault();
-            startCountdown();
-            alert("Đã gửi lại mã OTP mới vào hộp thư của bạn!");
-        });
-    }
-
-    /* =======================================================
-       4. LOGIC ĐĂNG KÝ (REGISTRATION)
-       ======================================================= */
-    const btnRegister = document.querySelector(".btn-registrate");
-    
-    if (btnRegister) {
-        btnRegister.addEventListener("click", (e) => {
-            e.preventDefault();
-            
-            const inputs = document.querySelectorAll("#form-register-section input[type='text']");
-            const emailOrName = inputs[0] ? inputs[0].value.trim() : "";
-            const phone = inputs[1] ? inputs[1].value.trim() : "";
-            const passwordElement = document.querySelector("#form-register-section input[type='password']");
-            const password = passwordElement ? passwordElement.value : "";
-            const roleElement = document.querySelector(".role-select");
-            const role = roleElement ? roleElement.value : "mangaka";
-
-            if (!emailOrName || !password) {
-                alert("Vui lòng nhập tối thiểu Tên/Email và Mật khẩu để đăng ký!");
-                return;
-            }
-
-            const originalText = btnRegister.innerText;
-            btnRegister.innerText = "Creating Account...";
-            btnRegister.style.pointerEvents = "none";
-
-            // TODO (BACKEND DEVELOPER): FETCH API Đăng ký tại đây
-
-            setTimeout(() => {
-                alert(`Đăng ký thành công!\nTài khoản: ${emailOrName}\nVai trò: ${role}\n\nHệ thống sẽ chuyển bạn về trang Đăng nhập.`);
-                
-                btnRegister.innerText = originalText;
-                btnRegister.style.pointerEvents = "auto";
-
-                const btnBack = document.getElementById("back-to-login");
-                if(btnBack) btnBack.click();
-                
-            }, 1000);
-        });
-    }
-
-    /* =======================================================
-       5. LOGIC SOCIAL LOGIN (GOOGLE / APPLE)
-       ======================================================= */
-    const btnGoogle = document.getElementById("btn-google");
-    const btnApple = document.getElementById("btn-apple");
-
-    if (btnGoogle) {
-        btnGoogle.addEventListener("click", (e) => {
-            e.preventDefault();
-            const originalHTML = btnGoogle.innerHTML;
-            btnGoogle.innerHTML = "<strong>Đang kết nối...</strong>";
-            btnGoogle.style.pointerEvents = "none";
-            // TODO (BACKEND): Nhúng SDK Google
-            setTimeout(() => {
-                alert("Tính năng Đăng nhập bằng Google đang chờ Backend tích hợp.");
-                btnGoogle.innerHTML = originalHTML;
-                btnGoogle.style.pointerEvents = "auto";
-            }, 800);
-        });
-    }
-
-    if (btnApple) {
-        btnApple.addEventListener("click", (e) => {
-            e.preventDefault();
-            const originalHTML = btnApple.innerHTML;
-            btnApple.innerHTML = "<strong>Đang kết nối...</strong>";
-            btnApple.style.pointerEvents = "none";
-            // TODO (BACKEND): Nhúng SDK Apple
-            setTimeout(() => {
-                alert("Tính năng Đăng nhập bằng Apple ID đang chờ Backend tích hợp.");
-                btnApple.innerHTML = originalHTML;
-                btnApple.style.pointerEvents = "auto";
-            }, 800);
-        });
-    }
-
-    /* =======================================================
-       6. TIỆN ÍCH: ẨN/HIỆN MẬT KHẨU
-       ======================================================= */
-    const eyeIcons = document.querySelectorAll(".eye-icon");
-    eyeIcons.forEach(icon => {
+    $$(".eye-icon").forEach(icon => {
         icon.addEventListener("click", () => {
             const passwordInput = icon.previousElementSibling;
             if (passwordInput && passwordInput.type === "password") {
@@ -292,4 +80,248 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+
+    /* =======================================================
+       2. GỌI API ĐĂNG NHẬP / ĐĂNG KÝ
+       ======================================================= */
+    const btnLogin = $("#btn-login");
+    if (btnLogin) {
+        btnLogin.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const inputUsername = $("#login-username")?.value.trim();
+            const inputPassword = $("#login-password")?.value;
+
+            if (!window.MangaApi) {
+                showStatus("Lỗi cấu hình: Không tìm thấy file api.js", true);
+                return;
+            }
+            if (!inputUsername || !inputPassword) {
+                showStatus("Vui lòng nhập Email/Tên đăng nhập và Mật khẩu.", true);
+                return;
+            }
+
+            // Xử lý cắt đuôi email nếu có
+            const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputUsername);
+            const loginUsername = isEmail ? inputUsername.split("@")[0] : inputUsername;
+
+            setLoading(btnLogin, true, "Đang xác thực...");
+            try {
+                const response = await window.MangaApi.apiFetch(window.MangaApi.API_ENDPOINTS.authLogin, {
+                    method: "POST",
+                    body: { username: loginUsername, password: inputPassword }
+                });
+                
+                if (response && response.token) {
+                    window.MangaApi.setAccessToken(response.token, response.role);
+                    showStatus("Đăng nhập thành công! Đang chuyển hướng...");
+                    window.MangaApi.goToDashboard(response.role);
+                } else {
+                    showStatus("Lỗi: Không nhận được Token từ Server.", true);
+                }
+            } catch (error) {
+                showStatus("Sai tài khoản hoặc mật khẩu.", true);
+            } finally {
+                setLoading(btnLogin, false);
+            }
+        });
+    }
+
+    const btnRegister = $("#btn-register") || $(".btn-registrate");
+    if (btnRegister) {
+        btnRegister.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const email = $("#reg-email")?.value.trim() || $("#register-email")?.value.trim();
+            const password = $("#reg-password")?.value || $("#register-password")?.value;
+            const role = $("#reg-role")?.value || $("#register-role")?.value || "Mangaka";
+
+            if (!email || !password) {
+                showStatus("Vui lòng nhập đầy đủ Email và Mật khẩu.", true);
+                return;
+            }
+
+            const username = email.split("@")[0];
+
+            setLoading(btnRegister, true, "Đang đăng ký...");
+            try {
+                const response = await window.MangaApi.apiFetch(window.MangaApi.API_ENDPOINTS.authRegister, {
+                    method: "POST",
+                    body: { username, email, password, role }
+                });
+                showStatus(response.message || "Đăng ký thành công! Hãy quay lại đăng nhập.");
+                
+                // Tự động chuyển về form đăng nhập
+                if (btnBackToLogin) btnBackToLogin.click();
+            } catch (error) {
+                showStatus(error.message || "Đăng ký thất bại.", true);
+            } finally {
+                setLoading(btnRegister, false);
+            }
+        });
+    }
+
+    /* =======================================================
+       3. CÁC TƯƠNG TÁC UI CŨ (GIỮ NGUYÊN)
+       ======================================================= */
+    $$('a[href="index.html"]').forEach(link => {
+        const text = (link.textContent || "").toLowerCase();
+        if (text.includes("logout") || link.innerHTML.includes("right-from-bracket")) {
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                if (window.MangaApi) window.MangaApi.logout();
+            });
+        }
+    });
+
+    document.querySelectorAll("[data-toast]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            let toast = document.getElementById("toast-msg");
+            if (!toast) {
+                toast = document.createElement("div");
+                toast.id = "toast-msg";
+                toast.style.position = "fixed";
+                toast.style.right = "24px";
+                toast.style.bottom = "24px";
+                toast.style.background = "#111827";
+                toast.style.color = "white";
+                toast.style.padding = "12px 16px";
+                toast.style.borderRadius = "10px";
+                toast.style.zIndex = "999";
+                toast.style.display = "none";
+                document.body.appendChild(toast);
+            }
+            toast.textContent = btn.dataset.toast || "Saved!";
+            toast.style.display = "block";
+            setTimeout(() => toast.style.display = "none", 1800);
+        });
+    });
+
+    document.querySelectorAll("[data-vote]").forEach(card => {
+        card.addEventListener("click", () => {
+            document.querySelectorAll("[data-vote]").forEach(item => item.classList.remove("selected"));
+            card.classList.add("selected");
+        });
+    });
+
+    const slider = document.getElementById("version-range");
+    const label = document.getElementById("version-label");
+    if (slider && label) {
+        slider.addEventListener("input", () => {
+            label.textContent = "Version " + slider.value;
+        });
+    }
+
+    /* =======================================================
+       4. LOGIC UPLOAD ẢNH VÀ TẠO SERIES 
+       ======================================================= */
+    function setupImageUpload(zoneId, inputId, previewId, placeholderId) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+        const placeholder = document.getElementById(placeholderId);
+
+        if (zone && input) {
+            zone.addEventListener("click", () => input.click());
+            input.addEventListener("change", function () {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        preview.src = e.target.result;
+                        preview.style.display = "block";
+                        placeholder.style.display = "none";
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    }
+
+    setupImageUpload("cover-upload-zone", "cover-file-input", "cover-preview", "cover-placeholder");
+    setupImageUpload("bg-upload-zone", "bg-file-input", "bg-preview", "bg-placeholder");
+
+    const btnCreateSeries = document.getElementById("btn-create-series");
+    if (btnCreateSeries) {
+        btnCreateSeries.addEventListener("click", async (e) => {
+            e.preventDefault();
+            
+            const titleInput = document.getElementById("series-title");
+            const descInput = document.getElementById("series-desc");
+            const title = titleInput?.value.trim();
+            const desc = descInput?.value.trim();
+            const coverFile = document.getElementById("cover-file-input")?.files[0];
+            const bgFile = document.getElementById("bg-file-input")?.files[0];
+
+            if (!title) {
+                alert("Vui lòng nhập Tên tác phẩm!");
+                return;
+            }
+            if (!coverFile) {
+                alert("Vui lòng tải lên Ảnh bìa!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("title", title);
+            formData.append("description", desc);
+            formData.append("coverImage", coverFile);
+            if (bgFile) formData.append("backgroundImage", bgFile); 
+
+            const originalText = btnCreateSeries.innerText;
+            btnCreateSeries.innerText = "Đang tải lên Server...";
+            btnCreateSeries.style.pointerEvents = "none";
+
+            try {
+                await window.MangaApi.apiFetch(window.MangaApi.API_ENDPOINTS.mangaSeries, {
+                    method: "POST",
+                    body: formData
+                });
+                
+                alert("Tạo Series thành công! Chuyển về danh sách...");
+                window.location.href = "series.html"; 
+            } catch (error) {
+                alert("Lỗi tạo Series: " + error.message);
+                btnCreateSeries.innerText = originalText;
+                btnCreateSeries.style.pointerEvents = "auto";
+            }
+        });
+    }
+
+    /* =======================================================
+       5. LOGIC HIỂN THỊ DANH SÁCH SERIES
+       ======================================================= */
+    const seriesListContainer = document.getElementById("series-list-container");
+    if (seriesListContainer) {
+        async function loadMySeries() {
+            try {
+                const seriesList = await window.MangaApi.apiFetch(window.MangaApi.API_ENDPOINTS.mySeries);
+                
+                if (seriesList && seriesList.length > 0) {
+                    seriesListContainer.innerHTML = ""; 
+                    seriesListContainer.style.display = "grid";
+                    seriesListContainer.style.gridTemplateColumns = "repeat(auto-fill, minmax(300px, 1fr))";
+                    seriesListContainer.style.gap = "20px";
+
+                    seriesList.forEach(series => {
+                        const coverUrl = series.coverImageUrl || "cover.png";
+                        seriesListContainer.innerHTML += `
+                            <div class="card-box" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; cursor: pointer;">
+                                <div style="height: 200px; background: #e5e7eb;">
+                                    <img src="${coverUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <div style="padding: 15px;">
+                                    <h2 style="font-size: 18px; margin-bottom: 5px;">${series.title}</h2>
+                                    <p style="font-size: 13px; color: #6b7280; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                        ${series.description || "Chưa có mô tả..."}
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            } catch (error) {
+                console.error("Không thể tải danh sách series:", error);
+            }
+        }
+        loadMySeries();
+    }
 });

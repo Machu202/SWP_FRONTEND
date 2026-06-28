@@ -21,108 +21,115 @@
             <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
             <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
             <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
-            <a href="review-submission.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
-        </nav>
-        <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
-            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
-            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+            <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
         </nav>
     </aside>
 
     <main class="main-wrapper">
         <header class="topbar">
             <div class="topbar-left">
-                <a href="dashboard.html" style="color: var(--text-main); font-size: 16px; margin-right: 15px;"><i class="fa-solid fa-arrow-left"></i></a>
-                <strong style="color: black; margin-right: 15px;">Create New Series</strong>
-                <span style="font-weight: 500;">Initialize a new manga project in your Studio Flow workspace.</span>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
             </div>
             <div class="topbar-right">
-                <i class="fa-regular fa-bell top-icon"></i>
-                <button class="btn-publish" onclick="window.location.href='series.html'">Create Series</button>
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div class="avatar-circle" style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">MK</div>
             </div>
         </header>
 
         <div class="content-padding">
-            <div class="grid-layout">
+            <div class="page-header">
+                <div>
+                    <h1>Create New Series</h1>
+                    <p>Initialize a new manga series project and define its core metadata.</p>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-top: 20px;">
+                
                 <div>
                     <div class="form-section">
                         <div class="form-section-title">Core Information</div>
                         <div class="form-group">
-                            <label>Series Title</label>
-                            <input type="text" class="form-control" placeholder="Enter working title...">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Primary Genre</label>
-                                <select class="form-control">
-                                    <option>Select Genre</option>
-                                    <option>Shonen / Action</option>
-                                    <option>Seinen / Mature</option>
-                                    <option>Romance / Slice of Life</option>
-                                    <option>Sci-Fi / Fantasy</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Publication Frequency</label>
-                                <select class="form-control">
-                                    <option>Weekly</option>
-                                    <option>Bi-weekly</option>
-                                    <option>Monthly</option>
-                                </select>
-                            </div>
+                            <label>Series Title <span style="color: red;">*</span></label>
+                            <input type="text" class="form-control" id="series-title" placeholder="Enter series title...">
                         </div>
                         <div class="form-group">
-                            <label>Synopsis / Logline</label>
-                            <textarea class="form-control" rows="4" placeholder="Briefly describe the core premise..."></textarea>
-                            <div class="char-counter">0 / 500</div>
+                            <label>Synopsis / Logline <span style="color: red;">*</span></label>
+                            <textarea class="form-control" id="series-desc" placeholder="Brief summary of the story..." style="height: 120px;"></textarea>
                         </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title">
-                            Storyboard & Concept
-                            <span style="font-size: 12px; font-weight: 500; color: var(--primary-color); cursor: pointer;"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Assets</span>
-                        </div>
-                        <div class="storyboard-grid">
-                            <div class="storyboard-item empty">
-                                <i class="fa-solid fa-arrow-up-from-bracket"></i>
-                                <span>Drag & drop sketches<br>or click to browse</span>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="form-group">
+                                <label>Target Audience</label>
+                                <select class="form-control">
+                                    <option>Shonen (Boys)</option>
+                                    <option>Seinen (Adult Men)</option>
+                                    <option>Shojo (Girls)</option>
+                                    <option>Josei (Adult Women)</option>
+                                </select>
                             </div>
-                            <div class="storyboard-item"><i class="fa-solid fa-file-image"></i><span>Concept_Art_01.png</span></div>
-                            <div class="storyboard-item"><i class="fa-solid fa-file-image"></i><span>Char_Design_Main.png</span></div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select class="form-control">
+                                    <option>Pre-production</option>
+                                    <option>Serialization</option>
+                                    <option>Hiatus</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div>
                     <div class="form-section">
-                        <div class="form-section-title">Series Cover</div>
-                        <div class="upload-box upload-box-large">
-                            <i class="fa-regular fa-image" style="font-size: 40px; margin-bottom: 15px; color: #d1d5db;"></i>
-                            <span style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 5px;">Upload Primary Art</span>
-                            <span style="font-size: 11px;">Recommended: 1200x1800px</span>
+                        <div class="form-section-title">Visual Identity</div>
+                        
+                        <div class="form-group">
+                            <label>Series Cover <span style="color: red;">*</span></label>
+                            <div class="upload-zone" id="cover-upload-zone" style="cursor: pointer; position: relative; overflow: hidden; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <input type="file" id="cover-file-input" accept="image/*" style="display: none;">
+                                <img id="cover-preview" style="display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 10;">
+                                
+                                <div id="cover-placeholder" style="z-index: 1; text-align: center;">
+                                    <i class="fa-solid fa-image" style="font-size: 40px; margin-bottom: 15px; color: #d1d5db;"></i>
+                                    <br>
+                                    <span style="font-size: 13px; font-weight: 600;">Upload Primary Art</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Concept Art / Background</label>
+                            <div class="upload-zone" id="bg-upload-zone" style="cursor: pointer; position: relative; overflow: hidden; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <input type="file" id="bg-file-input" accept="image/*" style="display: none;">
+                                <img id="bg-preview" style="display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 10;">
+                                
+                                <div id="bg-placeholder" style="z-index: 1; text-align: center;">
+                                    <i class="fa-solid fa-panorama" style="font-size: 24px; margin-bottom: 10px; color: #d1d5db;"></i>
+                                    <br>
+                                    <span style="font-size: 12px; font-weight: 600;">Upload Concept</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="form-section">
                         <div class="form-section-title">Technical Settings</div>
                         <div class="form-group">
-                            <label>Target Page Count (per ch.)</label>
+                            <label>Target Page Count</label>
                             <input type="number" class="form-control" value="20">
                         </div>
-                        <div class="form-group">
-                            <label>Read Direction</label>
-                            <div class="direction-group">
-                                <button class="btn-direction active"><i class="fa-solid fa-arrow-right-arrow-left"></i> R to L</button>
-                                <button class="btn-direction"><i class="fa-solid fa-arrow-left-arrow-right"></i> L to R</button>
-                            </div>
-                        </div>
                     </div>
+
+                    <button id="btn-create-series" class="btn-publish" style="width: 100%; margin-top: 20px; padding: 15px; font-size: 16px;">
+                        Create New Series
+                    </button>
                 </div>
             </div>
         </div>
     </main>
+
+    <script src="api.js"></script>
+    <script src="mangaka.js"></script>
 </body>
 </html>

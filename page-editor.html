@@ -53,7 +53,7 @@
                         <button class="tool-btn" id="tool-brush" title="Freehand Draw"><i class="fa-solid fa-paintbrush"></i></button>
                     </div>
 
-                    <div class="manga-page" id="manga-canvas">
+                    <div class="manga-page" id="manga-canvas" style="position: relative; overflow: hidden; background-color: white;">
                         <div class="grid-guide" id="grid-guide-layer"></div>
 
                         <canvas class="drawing-layer" id="freehand-layer" width="550" height="778"></canvas>
@@ -83,6 +83,7 @@
                 <div class="panel-content" id="panel-pages">
                     <div id="page-list-container">
                         </div>
+                    <input type="file" id="page-file-upload" accept="image/*" multiple style="display: none;">
                     <button class="btn-add-page-right" id="btn-add-page"><i class="fa-solid fa-plus"></i> New Page</button>
                 </div>
 
@@ -112,9 +113,9 @@
 
                 <div class="panel-content" id="panel-tasks" style="display: none;">
                     <div style="font-size: 11px; color: #6b7280; font-weight: bold; margin-bottom: 10px;">HƯỚNG DẪN CÔNG CỤ:</div>
-                    <div style="font-size: 12px; margin-bottom: 8px;"><b>1. Chuột (Select):</b> Di chuyển hoặc kéo giãn ô. Rê chuột vào để Xóa.</div>
-                    <div style="font-size: 12px; margin-bottom: 8px;"><b>2. Khối vuông (Draw):</b> Quét chuột trên trang để tạo vùng việc mới.</div>
-                    <div style="font-size: 12px; margin-bottom: 8px;"><b>3. Cây cọ (Brush):</b> Chọn và vẽ tự do trực tiếp lên giấy.</div>
+                    <div style="font-size: 12px; margin-bottom: 8px;"><b>1. Chuột (Select):</b> Rê chuột vào ô tác vụ để Xóa.</div>
+                    <div style="font-size: 12px; margin-bottom: 8px;"><b>2. Khối vuông (Draw):</b> Bấm chọn, sau đó kéo quét chuột trên trang để tạo vùng việc mới.</div>
+                    <div style="font-size: 12px; margin-bottom: 8px;"><b>3. Cây cọ (Brush):</b> Chọn và vẽ tự do (sẽ phát triển sau).</div>
                 </div>
 
                 <div class="page-info-footer">
@@ -131,7 +132,7 @@
     </div>
 
     <div id="task-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 25px; border-radius: 8px; width: 320px;">
+        <div style="background: white; padding: 25px; border-radius: 8px; width: 320px;" id="task-modal-box">
             <h3 style="margin-bottom: 15px; font-size: 16px;">Assign Custom Task</h3>
             
             <label style="font-size: 11px; font-weight: bold; color: #4b5563;">TASK NAME / INSTRUCTION</label>
@@ -154,7 +155,7 @@
         </div>
     </div>
     
-
-    <script src="script-workspace.js"></script>
+    <script src="api.js"></script>
+    <script src="canvas-editor.js"></script>
 </body>
 </html>
