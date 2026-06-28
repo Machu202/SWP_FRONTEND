@@ -12,7 +12,7 @@
   const DEFAULT_WS_URL = "http://localhost:8080/ws";
 
   const ROLE_ROUTES = {
-    mangaka: "mangaka-dashboard.html",
+    mangaka: "dashboard.html",
     assistant: "assistant-dashboard.html",
     tantou: "tantou-dashboard.html",
     editorial: "board-dashboard.html",
@@ -238,6 +238,9 @@
     profile: "/users/profile",
     allUsers: "/users/all",
     mySeries: "/manga-series/my-series",
+    resourceLibrary: "/resources",
+    assistantTasks: "/tasks/assistant",
+    taskDetail: "/tasks",
     mangaSeries: "/manga-series",
     chapters: "/chapters",
     myTasks: "/tasks/my-tasks",

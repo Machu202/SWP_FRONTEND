@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Studio Flow</title>
+    <link rel="stylesheet" href="style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title" style="display: flex; align-items: center; gap: 10px; padding: 15px 20px;">
+            <img src="https://i.pravatar.cc/150?img=12" class="profile-avatar" style="width: 32px; height: 32px; border-radius: 50%;">
+            <span style="color: white; font-weight: bold; font-size: 14px;">Mangaka Workspace</span>
+        </div>
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="analytics.html" class="nav-item active"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
+                    <input type="text" placeholder="Search reports...">
+                </div>
+                <i class="fa-regular fa-bell top-icon"></i>
+                <img src="https://i.pravatar.cc/150?img=12" style="width: 32px; height: 32px; border-radius: 50%;">
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="page-header" style="align-items: center;">
+                <div>
+                    <h1>Analytics & Reports</h1>
+                    <p>Track your studio's performance, team productivity, and publication metrics.</p>
+                </div>
+                <button class="btn-outline" id="btn-export-report"><i class="fa-solid fa-download"></i> Export Report</button>
+            </div>
+
+            <div id="analytics-overview-container" class="empty-state-box" style="margin-bottom: 25px;">
+                <i class="fa-solid fa-chart-pie"></i>
+                <p>Chưa có dữ liệu tổng quan. (Chờ API kết nối Backend)</p>
+            </div>
+            
+            <div class="grid-layout">
+                <div class="card-box" id="chart-productivity-container">
+                    <div class="activity-header">
+                        <h3 style="font-size: 14px; font-weight: 700;">Team Productivity</h3>
+                    </div>
+                    <div class="empty-activity">Chưa có biểu đồ năng suất. (Chờ API)</div>
+                </div>
+
+                <div class="card-box" id="chart-progress-container">
+                    <div class="activity-header">
+                        <h3 style="font-size: 14px; font-weight: 700;">Chapter Progress</h3>
+                    </div>
+                    <div class="empty-activity">Chưa có biểu đồ tiến độ. (Chờ API)</div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="api.js"></script>
+    <script src="realtime.js"></script>
+    <script src="script.js"></script>
+    <script src="script-workspace.js"></script>
+</body>
+</html>

@@ -5,6 +5,9 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "latest"
-  }
+    "vite": "^5.0.0"
+  },
+  "name": "swp-frontend-backend-compatible",
+  "version": "1.0.0",
+  "description": "MangaSystem frontend with backend-compatible API layer and FE core2 UI patch"
 }

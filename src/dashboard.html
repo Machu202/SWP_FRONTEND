@@ -9,22 +9,14 @@
 </head>
 <body>
     <aside class="sidebar">
-        <div class="workspace-title" style="display: flex; align-items: center; gap: 10px; padding: 15px 20px;">
-            <img src="https://i.pravatar.cc/150?img=12" class="profile-avatar" style="width: 32px; height: 32px; border-radius: 50%;">
-            <span style="color: white; font-weight: bold; font-size: 14px;">Mangaka Workspace</span>
-        </div>
+        <div class="workspace-title"><div class="ws-logo">SF</div><div class="ws-name">Mangaka Workspace</div></div>
         <nav class="nav-group">
             <a href="dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
             <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
             <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
-            <a href="review-submission.html" class="nav-item"><i class="fa-solid fa-magnifying-glass-chart"></i> Review</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
-        </nav>
-        <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
-            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
-            <a href="#" class="nav-item"><i class="fa-solid fa-circle-question"></i> Support</a>
+            <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
         </nav>
     </aside>
 
@@ -40,8 +32,6 @@
                     <input type="text" placeholder="Search...">
                 </div>
                 <i class="fa-regular fa-bell top-icon"></i>
-                <i class="fa-regular fa-moon top-icon"></i>
-                <button class="btn-publish">Publish</button>
                 <img src="https://i.pravatar.cc/150?img=12" style="width: 32px; height: 32px; border-radius: 50%;">
             </div>
         </header>
@@ -50,28 +40,18 @@
             <div class="page-header">
                 <div>
                     <h1>Studio Dashboard</h1>
-                    <p>Welcome back, Sensei. Here is your studio's status update.</p>
+                    <p>Welcome back. Here is your studio's status update.</p>
                 </div>
             </div>
 
             <div class="grid-layout">
                 <div>
                     <h3 style="margin-bottom: 15px; font-size: 16px; font-weight: 700;">Active Series</h3>
-                    <div class="series-grid">
-                        <div class="list-card" style="grid-column: span 2; width: 100%;">
-                            <div class="list-card-img"><i class="fa-solid fa-book-open"></i></div>
-                            <div class="list-card-content">
-                                <div style="margin-bottom: 5px;"><span class="badge-tag">Weekly</span></div>
-                                <h2 class="list-card-title">The Awakening</h2>
-                                <p style="font-size: 13px; color: var(--text-muted);">Chapter 42 in progress &bull; Next deadline in 2 days</p>
-                                <div class="progress-wrapper">
-                                    <div class="progress-header"><span>Chapter Progress</span><span>75%</span></div>
-                                    <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 75%;"></div></div>
-                                </div>
-                            </div>
-                            <div class="list-card-actions">
-                                <a href="page-editor.html" class="btn-icon-only" title="Open Editor"><i class="fa-solid fa-file-signature"></i></a>
-                            </div>
+                    
+                    <div id="active-series-container" class="series-grid">
+                        <div class="empty-state-box" style="grid-column: span 2;">
+                            <i class="fa-solid fa-book-open"></i>
+                            <p>Không có series nào đang hoạt động. Vui lòng tạo mới!</p>
                         </div>
                     </div>
                 </div>
@@ -86,14 +66,6 @@
                                 <i class="fa-solid fa-square-plus" style="color: #6366f1;"></i>
                                 <span style="margin-top: 5px;">+ New Series</span>
                             </a>
-                            <a href="#" class="action-btn">
-                                <i class="fa-solid fa-images"></i>
-                                <span>Assets</span>
-                            </a>
-                            <a href="#" class="action-btn">
-                                <i class="fa-solid fa-calendar-days"></i>
-                                <span>Schedule</span>
-                            </a>
                         </div>
                     </div>
 
@@ -101,9 +73,8 @@
                         <div class="activity-header">
                             <h3 style="font-size: 14px; font-weight: 700;">Studio Activity</h3>
                         </div>
-                        <div class="empty-activity">
-                            <p style="text-align: left; line-height: 1.4;"><i class="fa-regular fa-comment-dots" style="margin-right: 8px; color: #6366f1;"></i> Kenji S. submitted Page 14 for review.</p>
-                            <p style="margin-top: 5px; text-align: left; font-size: 11px; color: var(--text-muted);">10 minutes ago</p>
+                        <div id="activity-container" class="empty-activity">
+                            <p>Chưa có hoạt động nào được ghi nhận.</p>
                         </div>
                     </div>
                 </div>
@@ -112,6 +83,7 @@
     </main>
     <script src="api.js"></script>
     <script src="realtime.js"></script>
+    <script src="script.js"></script>
     <script src="script-workspace.js"></script>
 </body>
 </html>

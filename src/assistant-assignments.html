@@ -3,56 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Assignments - MangaSystem</title>
+    <title>My Assignments - Studio Flow</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <aside class="sidebar">
-        <div class="workspace-title">
-            <div class="ws-logo">AS</div>
-            <div class="ws-name">Assistant Workspace</div>
+        <div class="assistant-profile-box">
+            <img src="https://i.pravatar.cc/150?img=11" alt="Profile">
+            <div class="assistant-profile-info">
+                <h3>Studio Flow</h3>
+                <p>Production Assistant</p>
+            </div>
         </div>
         
         <nav class="nav-group">
-            <a href="assistant-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
-<a href="assistant-assignments.html" class="nav-item active"><i class="fa-solid fa-clipboard-list"></i> My Assignments</a>
-<a href="assistant-task-detail.html" class="nav-item "><i class="fa-solid fa-file-pen"></i> Task Detail</a>
-<a href="assistant-resources.html" class="nav-item "><i class="fa-solid fa-folder-open"></i> Resources</a>
-<a href="assistant-upload.html" class="nav-item "><i class="fa-solid fa-cloud-arrow-up"></i> Upload Result</a>
-<a href="assistant-kanban.html" class="nav-item "><i class="fa-solid fa-table-columns"></i> Kanban</a>
+            <a href="assistant-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="assistant-assignments.html" class="nav-item active"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="assistant-resources.html" class="nav-item"><i class="fa-solid fa-box-open"></i> Resource Library</a>
         </nav>
         <div class="sidebar-divider"></div>
         <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
-            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
-            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
         </nav>
     </aside>
+
     <main class="main-wrapper">
         <header class="topbar">
             <div class="topbar-left">
-                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
             </div>
             <div class="topbar-right">
-                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
-                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
-                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AS</div>
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search my tasks..."></div>
+                <i class="fa-regular fa-bell top-icon"></i>
             </div>
         </header>
-        <section class="content-padding">
-            <div class="page-header">
-        <div><h1>My Assignments</h1><p>Role-filtered task board for Assistant work.</p></div>
-        
-    </div>
-<div class="kanban-board">
-    <div class="kanban-column"><div class="kanban-header"><h3>Todo</h3><span>2</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Add screentone</div><div class="task-meta">Silver Rain • Page 12</div></div></div></div>
-    <div class="kanban-column"><div class="kanban-header"><h3>Doing</h3><span>1</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Clean background linework</div><div class="task-meta">Black Moon Contract • Page 05</div></div></div></div>
-    <div class="kanban-column"><div class="kanban-header"><h3>Review</h3><span>3</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Magic effect cleanup</div><div class="task-meta">Neon Fox • Page 08</div></div></div></div>
-    <div class="kanban-column"><div class="kanban-header"><h3>Done</h3><span>15</span></div><div class="kanban-task-list"><div class="kanban-card" draggable="true"><div class="task-title">Page 01 linework</div><div class="task-meta">Approved</div></div></div></div>
-</div>
 
-        </section>
+        <div class="content-padding">
+            <div class="page-header">
+                <div>
+                    <h1>My Assignments Board</h1>
+                    <p>Kéo thả các thẻ nhiệm vụ để cập nhật tiến độ nộp bài của bạn.</p>
+                </div>
+            </div>
+
+            <div class="kanban-board">
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>To Do (Mới nhận)</span><span class="task-count" id="ast-todo-count">0</span></div>
+                    <div class="kanban-task-list" id="ast-todo-list">
+                        </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>In Progress (Đang vẽ)</span><span class="task-count" id="ast-inprogress-count">0</span></div>
+                    <div class="kanban-task-list" id="ast-inprogress-list">
+                        </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>In Review (Đã nộp)</span><span class="task-count" id="ast-review-count">0</span></div>
+                    <div class="kanban-task-list" id="ast-review-list">
+                        </div>
+                </div>
+            </div>
+        </div>
     </main>
     <script src="api.js"></script>
     <script src="realtime.js"></script>

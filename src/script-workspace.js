@@ -171,8 +171,38 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
+
     // ======================================================== 
-    // 4. EDITOR ENGINE (Trang Page Editor)               
+    // 4. DROPZONE UPLOAD UI (mock-safe, backend-ready placeholder)               
+    // ======================================================== 
+    const fileDropzone = document.getElementById('file-dropzone');
+    const btnUploadSubmit = document.getElementById('btn-upload-submit');
+
+    if (fileDropzone) {
+        fileDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropzone.style.borderColor = 'var(--primary-color)';
+            fileDropzone.style.background = 'white';
+        });
+        fileDropzone.addEventListener('dragleave', () => {
+            fileDropzone.style.borderColor = '#d1d5db';
+            fileDropzone.style.background = '#f9fafb';
+        });
+        fileDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileDropzone.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color: #10b981;"></i><p style="color: #10b981;">File attached successfully</p><span>Ready to upload</span>`;
+            fileDropzone.style.borderColor = '#10b981';
+            if (btnUploadSubmit) {
+                btnUploadSubmit.style.background = '#111827';
+                btnUploadSubmit.style.color = 'white';
+                btnUploadSubmit.style.cursor = 'pointer';
+            }
+        });
+    }
+
+    // ======================================================== 
+    // 5. EDITOR ENGINE (Trang Page Editor)               
     // ======================================================== 
     const canvas = document.getElementById('manga-canvas');
     if (!canvas) return; 

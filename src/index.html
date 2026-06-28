@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MangaSystem - Role Login</title>
+    <title>MangaSystem - Authentication</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,13 +24,13 @@
                 <div id="form-password-section" class="form-section">
                     <div class="input-group">
                         <label>Email hoặc Tên đăng nhập</label>
-                        <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka">
+                        <input type="text" id="login-username" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka" name="username" autocomplete="username">
                     </div>
 
                     <div class="input-group">
                         <label>Mật Khẩu</label>
                         <div class="password-wrapper">
-                            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="••••••">
+                            <input type="password" id="login-password" placeholder="••••••" name="password" autocomplete="current-password">
                             <span class="eye-icon">👁️</span>
                         </div>
                     </div>
@@ -40,17 +40,6 @@
                             <input type="checkbox"> Remember password
                         </label>
                         <a href="#" class="forgot-link" id="forgot-password-link">Forgot password?</a>
-                    </div>
-
-                    <div class="input-group">
-                        <label>Login Role</label>
-                        <select class="role-select" id="login-role-select">
-                            <option value="mangaka">Mangaka</option>
-                            <option value="assistant">Assistant</option>
-                            <option value="tantou">Tantou editor</option>
-                            <option value="editorial">Editorial board</option>
-                            <option value="admin">Admin</option>
-                        </select>
                     </div>
 
                     <button class="btn-primary" id="btn-login">Login</button>
@@ -69,27 +58,26 @@
                     
                     <div id="otp-step-1">
                         <div class="input-group">
-                            <label>Enter gmail / Apple ID</label>
-                            <input id="otp-email" name="email" type="email" autocomplete="email" placeholder="Ví dụ: leduchuylt@gmail.com">
+                            <label>Nhập Email / Apple ID</label>
+                            <input type="text" id="otp-email" placeholder="Ví dụ: leduchuylt@gmail.com" name="email" autocomplete="email">
                         </div>
-                        <div class="center-btn">
-                            <button class="btn-secondary" id="btn-enter-otp">Enter</button>
-                        </div>
+                        <button class="btn-primary" id="btn-enter-otp" style="width: 100%; margin-top: 10px;">Send OTP Code</button>
                     </div>
 
                     <div id="otp-step-2" style="display: none;">
                         <div class="input-group">
-                            <input id="otp-code" name="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Ví dụ: 111111" class="otp-input-large">
+                            <label>Nhập mã xác nhận (6 số)</label>
+                            <input type="text" id="otp-code" placeholder="123456" style="text-align: center; letter-spacing: 8px; font-size: 20px; font-weight: bold;" name="otpCode" inputmode="numeric">
                         </div>
                         
-                        <p class="otp-timer-text">OTP has been sent and will expired in <span id="timer-count">60</span>s</p>
-                        
-                        <div class="otp-resend-action">
-                            <span class="not-received-text">Not received OTP?</span>
-                            <button class="btn-orange" id="btn-send-again">Send again</button>
+                        <button class="btn-primary" id="btn-verify-otp" style="width: 100%; margin-top: 10px;">Verify & Login</button>
+
+                        <div style="text-align: center; margin-top: 25px; font-size: 13px;">
+                            <p style="color: #6b7280; margin-bottom: 10px;">Mã OTP sẽ hết hạn sau: <span id="timer-count" style="color: #ef4444; font-weight: bold;">60</span>s</p>
+                            <span style="color: #4b5563;">Chưa nhận được mã?</span>
+                            <button id="btn-send-again" style="background: none; border: none; color: #6366f1; font-weight: bold; cursor: pointer;">Gửi lại</button>
                         </div>
                     </div>
-
                 </div>
 
                 <div id="form-register-section" class="form-section" style="display: none;">
@@ -99,13 +87,13 @@
 
                     <div class="input-group">
                         <label>Email or name</label>
-                        <input id="register-email" name="email" type="email" autocomplete="email" placeholder="nguyenhuy@gmail.com">
+                        <input id="register-email" name="email" autocomplete="email" type="text" placeholder="nguyenhuy@gmail.com or mangaka">
                     </div>
 
                     <div class="input-group">
                         <label>Password</label>
                         <div class="password-wrapper">
-                            <input id="register-password" name="password" type="password" autocomplete="new-password" placeholder="••••••">
+                            <input type="password" placeholder="••••••">
                             <span class="eye-icon">👁️</span>
                         </div>
                     </div>
