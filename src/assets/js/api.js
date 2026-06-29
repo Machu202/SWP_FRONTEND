@@ -1,22 +1,24 @@
 /*
  * MangaSystem frontend/backend compatibility layer.
  * Backend expected: Spring Boot at http://localhost:8080/api/v1
- * Frontend expected by backend CORS: Vite at http://localhost:5173
  */
 (function () {
   const DEFAULT_API_BASE_URL = "http://localhost:8080/api/v1";
 
+  // Cập nhật đường dẫn tương đối chuẩn theo cấu trúc thư mục VS Code của bạn
   const ROLE_ROUTES = {
-    mangaka: "dashboard.html",
-    assistant: "assistant-dashboard.html",
-    tantou: "tantou-dashboard.html",
-    editorial: "board-dashboard.html",
-    admin: "admin-dashboard.html",
+    mangaka: "./src/pages/mangaka/dashboard.html",
+    assistant: "./src/pages/assistant/assistant-dashboard.html",
+    tantou: "./src/pages/shared/tantou-dashboard.html",
+    editorial: "./src/pages/shared/board-dashboard.html",
+    admin: "./src/pages/admin/admin-dashboard.html",
   };
 
   const API_ENDPOINTS = Object.freeze({
     authLogin: "/auth/login",
     authRegister: "/auth/register",
+    verifyOtp: "/auth/verify-otp", // Endpoint xác thực OTP
+    googleLogin: "/auth/google",   // Endpoint đăng nhập Google
     mySeries: "/manga-series/my-series",
     mangaSeries: "/manga-series",
     chapters: "/chapters"
@@ -36,7 +38,6 @@
       localStorage.removeItem("userRole");
   }
 
-  // HÀM GỌI API CHUẨN: Tự động nhét Token vào mọi request
   async function apiFetch(endpoint, options = {}) {
     const url = DEFAULT_API_BASE_URL + endpoint;
     const headers = { ...options.headers };
@@ -46,7 +47,6 @@
         headers["Authorization"] = `Bearer ${token}`;
     }
 
-    // Tự động phân loại dữ liệu: FormData (File) hoặc JSON (Text)
     if (options.body && !(options.body instanceof FormData)) {
         headers["Content-Type"] = headers["Content-Type"] || "application/json";
         if (typeof options.body === "object") {
@@ -64,10 +64,9 @@
     }
 
     if (!response.ok) {
-        // Nếu Token hết hạn hoặc sai (401)
         if (response.status === 401 && endpoint !== API_ENDPOINTS.authLogin) {
             clearAuth();
-            window.location.href = "index.html";
+            window.location.href = "../../../index.html";
             throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
         }
         throw new Error((data && data.message) ? data.message : `Lỗi hệ thống: ${response.status}`);
@@ -76,22 +75,59 @@
     return data;
   }
 
+  // =================================================================
+  // BỔ SUNG 4 HÀM BỊ THIẾU (Đã bọc apiFetch bên trong)
+  // =================================================================
+
+  async function loginWithPassword(username, password) {
+      return await apiFetch(API_ENDPOINTS.authLogin, {
+          method: "POST",
+          body: { username, password }
+      });
+  }
+
+  async function registerUser(userData) {
+      return await apiFetch(API_ENDPOINTS.authRegister, {
+          method: "POST",
+          body: userData
+      });
+  }
+
+  async function verifyOtp(email, otpCode) {
+      return await apiFetch(API_ENDPOINTS.verifyOtp, {
+          method: "POST",
+          body: { email, otpCode }
+      });
+  }
+
+  async function loginWithGoogle(credential) {
+      return await apiFetch(API_ENDPOINTS.googleLogin, {
+          method: "POST",
+          body: { token: credential }
+      });
+  }
+
   function goToDashboard(roleName) {
-    const route = ROLE_ROUTES[(roleName || "mangaka").toLowerCase()] || "index.html";
+    const route = ROLE_ROUTES[(roleName || "mangaka").toLowerCase()] || "./index.html";
     window.location.href = route;
   }
 
   function logout() {
       clearAuth();
-      window.location.href = "index.html";
+      window.location.href = "../../../index.html";
   }
 
+  // Xuất đầy đủ danh sách hàm ra toàn cục
   window.MangaApi = {
     API_ENDPOINTS,
     getAccessToken,
     setAccessToken,
     clearAuth,
     apiFetch,
+    loginWithPassword, // <-- Đã thêm
+    registerUser,      // <-- Đã thêm
+    verifyOtp,         // <-- Đã thêm
+    loginWithGoogle,   // <-- Đã thêm
     goToDashboard,
     logout
   };
