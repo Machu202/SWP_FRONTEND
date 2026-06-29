@@ -41,8 +41,8 @@ function routeForRole(role = "") {
   if (normalized.includes("admin")) return "admin-dashboard.html";
   if (normalized.includes("editorial")) return "board-dashboard.html";
   if (normalized.includes("tantou")) return "tantou-dashboard.html";
-  if (normalized.includes("assistant")) return "assistant-dashboard.html";
-  return "mangaka-dashboard.html";
+  if (normalized.includes("assistant")) return "pages/assistant/assistant-dashboard.html";
+  return "pages/mangaka/dashboard.html";
 }
 
 function objectToQuery(params = {}) {

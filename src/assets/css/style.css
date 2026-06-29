@@ -1,0 +1,300 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    background-color: #f0f2f5;
+}
+
+.split-layout {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+
+/* ================== CỘT TRÁI ================== */
+.left-panel {
+    flex: 0 0 50%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.manga-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+/* Lớp phủ trắng 30% */
+.left-panel::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+}
+
+/* ================== CỘT PHẢI ================== */
+.right-panel {
+    flex: 0 0 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #FFFFFF;
+}
+
+.form-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.logo {
+    text-align: center;
+    color: #6366F1;
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 25px;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    background-color: #E5E7EB;
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 25px;
+}
+
+.tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4B5563;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.tab.active {
+    background-color: #FFFFFF;
+    color: #111827;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* Inputs */
+.input-group {
+    margin-bottom: 16px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 6px;
+}
+
+.input-group input[type="text"],
+.input-group input[type="password"],
+.role-select {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+    color: #111827;
+}
+
+.input-group input:focus, .role-select:focus {
+    border-color: #6366F1;
+}
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.eye-icon {
+    position: absolute;
+    right: 12px;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 16px;
+    user-select: none;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin-bottom: 20px;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+}
+
+.forgot-link {
+    color: #3B82F6;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* Các loại Button */
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: #93C5FD;
+    color: #111827;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.center-btn {
+    display: flex;
+    justify-content: center;
+}
+
+.btn-secondary {
+    padding: 10px 40px;
+    background-color: #D1D5DB; /* Nút Enter xám */
+    color: #111827;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.btn-registrate {
+    background-color: #A5F3FC; /* Xanh ngọc theo hình */
+    color: #0E7490;
+    margin-top: 10px;
+    margin-bottom: 0;
+}
+
+/* OTP Specifics */
+.otp-input-large {
+    text-align: left;
+}
+
+.otp-timer-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 20px;
+}
+
+.otp-resend-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.not-received-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.btn-orange {
+    background-color: #F97316; /* Nút cam */
+    color: #FFFFFF;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-orange:active {
+    background-color: #EA580C;
+}
+
+.divider {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 12px;
+}
+
+.social-login {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.btn-social {
+    flex: 1;
+    padding: 10px;
+    background: #FFFFFF;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.new-account {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.new-account a {
+    color: #3B82F6;
+    text-decoration: none;
+}
+
+/* Registration Header Box */
+.register-header-box {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.register-title {
+    display: inline-block;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    background-color: #FFFFFF;
+}
+
+.role-select {
+    background-color: #FFFFFF;
+    cursor: pointer;
+}

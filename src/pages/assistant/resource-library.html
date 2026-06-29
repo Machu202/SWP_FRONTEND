@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Library - Studio Flow</title>
+    <link rel="stylesheet" href="../../assets/css/style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="assistant-profile-box">
+            <img src="https://i.pravatar.cc/150?img=11" alt="Profile">
+            <div class="assistant-profile-info"><h3>Studio Flow</h3><p>Production Assistant</p></div>
+        </div>
+        <nav class="nav-group">
+            <a href="assistant-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="assistant-assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="resource-library.html" class="nav-item active"><i class="fa-solid fa-box-open"></i> Resource Library</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <span style="font-size: 12px; font-weight: 600; color: #6b7280;">Studio &rsaquo; <span style="color: #111827;">Asset Library</span></span>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search brushes, models..."></div>
+                <i class="fa-solid fa-cloud-arrow-up top-icon"></i>
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px;">
+                <div>
+                    <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 10px;">Resource Library</h1>
+                    <p style="color: #4b5563; font-size: 13px;">Tải về cọ vẽ, bối cảnh 3D và các tài liệu tham khảo chung của Studio.</p>
+                </div>
+            </div>
+
+            <div class="resource-filter-tabs">
+                <div class="r-tab active">All Assets</div>
+                <div class="r-tab">Brushes & Tools</div>
+                <div class="r-tab">3D Models</div>
+                <div class="r-tab">Reference Photos</div>
+                <div class="r-tab">Screentones</div>
+            </div>
+
+            <div class="resource-grid" id="resource-grid-container">
+                <div class="empty-state-box" style="grid-column: span 100%;">
+                    <p>Thư viện hiện đang trống. (Chờ API fetch dữ liệu)</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

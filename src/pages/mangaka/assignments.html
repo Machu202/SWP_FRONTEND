@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangaSystem - Assignments</title>
+    <link rel="stylesheet" href="../../assets/css/style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title"><div class="ws-logo">SF</div><div class="ws-name">Mangaka Workspace</div></div>
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item active"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
+                    <input type="text" placeholder="Search tasks...">
+                </div>
+                <img src="https://i.pravatar.cc/150?img=12" style="width: 32px; height: 32px; border-radius: 50%;">
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="page-header">
+                <div>
+                    <h1>Assignments Board</h1>
+                    <p>Drag and drop tasks to update progress across your assistant team.</p>
+                </div>
+            </div>
+
+            <div class="kanban-board">
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>To Do</span><span class="task-count" id="todo-count">0</span></div>
+                    <div class="kanban-task-list" id="todo-list">
+                        </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>In Progress</span><span class="task-count" id="inprogress-count">0</span></div>
+                    <div class="kanban-task-list" id="inprogress-list">
+                        </div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header"><span>Review & Done</span><span class="task-count" id="done-count">0</span></div>
+                    <div class="kanban-task-list" id="done-list">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="../../assets/js/script-workspace.js"></script>
+</body>
+</html>

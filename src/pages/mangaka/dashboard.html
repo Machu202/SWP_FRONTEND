@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangaSystem - Dashboard</title>
+    <link rel="stylesheet" href="../../assets/css/style-workspace.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title"><div class="ws-logo">SF</div><div class="ws-name">Mangaka Workspace</div></div>
+        <nav class="nav-group">
+            <a href="dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
+            <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
+                    <input type="text" placeholder="Search...">
+                </div>
+                <i class="fa-regular fa-bell top-icon"></i>
+                <img src="https://i.pravatar.cc/150?img=12" style="width: 32px; height: 32px; border-radius: 50%;">
+            </div>
+        </header>
+
+        <div class="content-padding">
+            <div class="page-header">
+                <div>
+                    <h1>Studio Dashboard</h1>
+                    <p>Welcome back. Here is your studio's status update.</p>
+                </div>
+            </div>
+
+            <div class="grid-layout">
+                <div>
+                    <h3 style="margin-bottom: 15px; font-size: 16px; font-weight: 700;">Active Series</h3>
+                    
+                    <div id="active-series-container" class="series-grid">
+                        <div class="empty-state-box" style="grid-column: span 2;">
+                            <i class="fa-solid fa-book-open"></i>
+                            <p>Không có series nào đang hoạt động. Vui lòng tạo mới!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card-box">
+                        <div class="activity-header">
+                            <h3 style="font-size: 14px; font-weight: 700;">Quick Actions</h3>
+                        </div>
+                        <div class="quick-actions-grid">
+                            <a href="create-series.html" class="action-btn">
+                                <i class="fa-solid fa-square-plus" style="color: #6366f1;"></i>
+                                <span style="margin-top: 5px;">+ New Series</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="card-box" style="margin-top: 20px;">
+                        <div class="activity-header">
+                            <h3 style="font-size: 14px; font-weight: 700;">Studio Activity</h3>
+                        </div>
+                        <div id="activity-container" class="empty-activity">
+                            <p>Chưa có hoạt động nào được ghi nhận.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="../../assets/js/script-workspace.js"></script>
+</body>
+</html>
