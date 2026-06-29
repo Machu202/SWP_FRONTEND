@@ -13,20 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     el.textContent = message;
     el.dataset.type = type;
     el.style.display = "block";
-    // Inline fallback style because login pages only load style.css.
-    el.style.position = "fixed";
-    el.style.right = "24px";
-    el.style.bottom = "24px";
-    el.style.zIndex = "9999";
-    el.style.padding = "12px 16px";
-    el.style.borderRadius = "12px";
-    el.style.color = "#fff";
-    el.style.fontWeight = "600";
-    el.style.maxWidth = "420px";
-    el.style.boxShadow = "0 12px 30px rgba(0,0,0,.18)";
-    el.style.background = type === "success" ? "#047857" : type === "error" ? "#b91c1c" : "#111827";
-    clearTimeout(window.__loginToastTimer);
-    window.__loginToastTimer = setTimeout(() => { el.style.display = "none"; }, 3500);
+    setTimeout(() => { el.style.display = "none"; }, 2600);
   };
   window.showToast = toast;
 
@@ -69,37 +56,62 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("#back-to-login")?.addEventListener("click", (e) => { e.preventDefault(); resetToPasswordTab(); });
 
-  $("#btn-login")?.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const btn = e.currentTarget;
-    const inputs = $$("input", formPassword || document);
-    const usernameInput = $("#login-username") || inputs[0];
-    // Do not search by input[type=password] only, because the eye icon changes it to type=text.
-    const passwordInput = $("#login-password") || $(".password-wrapper input", formPassword || document) || inputs[1];
+  async function handleBackendLogin(e) {
+    e?.preventDefault?.();
+
+    const btn = $("#btn-login");
+    const usernameInput = $("#login-username") || $("#username") || $("input[type='text']", formPassword || document);
+    const passwordInput = $("#login-password") || $("input[type='password']", formPassword || document);
+    const selectedRole = "";
+
     const username = usernameInput?.value?.trim() || "";
     const password = passwordInput?.value || "";
 
-    if (!window.MangaApi || !window.MangaApi.login) {
-      return toast("Không tìm thấy api.js. Hãy chạy frontend bằng npm run dev hoặc Live Server.", "error");
+    if (!username || !password) {
+      toast("Enter username/email and password first.", "error");
+      usernameInput?.focus();
+      return;
     }
-    if (!username || !password) return toast("Nhập username/email và password trước.", "error");
 
-    btn.disabled = true;
-    const oldText = btn.textContent;
-    btn.textContent = "Logging in...";
-    try {
-      const data = await window.MangaApi.login({ username, password });
-      toast(data.message || "Đăng nhập thành công.", "success");
-      const route = window.MangaApi.routeForRole(data.role || localStorage.getItem("role"));
-      window.location.assign(route);
-    } catch (err) {
-      console.error("Login failed:", err);
-      toast(err.message || "Đăng nhập thất bại. Kiểm tra backend, CORS, hoặc tài khoản.", "error");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = oldText;
+    const oldText = btn?.textContent || "Login";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Logging in...";
     }
+
+    try {
+      console.log("[Login] POST /api/v1/auth/login", { username });
+      const data = await window.MangaApi.login({ username, password });
+
+      console.log("[Login] Success:", data);
+      toast(data.message || "Login successful.", "success");
+
+      const target = window.MangaApi.routeForRole(data.role || localStorage.getItem("role"));
+      setTimeout(() => {
+        window.location.href = target;
+      }, 250);
+    } catch (err) {
+      console.error("[Login] Failed:", err);
+      const msg = err?.message || "Login failed.";
+      toast(msg, "error");
+      const status = $("#login-status");
+      if (status) {
+        status.textContent = msg;
+        status.dataset.type = "error";
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    }
+  }
+
+  $("#btn-login")?.addEventListener("click", handleBackendLogin);
+  $("#form-password-section")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleBackendLogin(e);
   });
+
 
   $(".btn-registrate")?.addEventListener("click", async (e) => {
     e.preventDefault();

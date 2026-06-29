@@ -24,13 +24,13 @@
                 <div id="form-password-section" class="form-section">
                     <div class="input-group">
                         <label>Email hoặc Tên đăng nhập</label>
-                        <input id="login-username" name="username" type="text" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka">
+                        <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka">
                     </div>
 
                     <div class="input-group">
                         <label>Mật Khẩu</label>
                         <div class="password-wrapper">
-                            <input id="login-password" name="password" type="password" placeholder="••••••">
+                            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="••••••">
                             <span class="eye-icon">👁️</span>
                         </div>
                     </div>
@@ -41,19 +41,9 @@
                         </label>
                         <a href="#" class="forgot-link" id="forgot-password-link">Forgot password?</a>
                     </div>
+<div id="login-status" class="login-status" aria-live="polite"></div>
 
-                    <div class="input-group">
-                        <label>Login Role</label>
-                        <select class="role-select" id="login-role-select">
-                            <option value="mangaka">Mangaka</option>
-                            <option value="assistant">Assistant</option>
-                            <option value="tantou" selected>Tantou editor</option>
-                            <option value="editorial">Editorial board</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-
-                    <button class="btn-primary" id="btn-login">Login as Tantou Editor</button>
+                    <button class="btn-primary" id="btn-login">Login</button>
 
                     <div class="divider">Or login with</div>
 
