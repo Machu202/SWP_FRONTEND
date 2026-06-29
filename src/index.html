@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MangaSystem - Authentication</title>
+    <title>MangaSystem - Role Login</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,13 +24,13 @@
                 <div id="form-password-section" class="form-section">
                     <div class="input-group">
                         <label>Email hoặc Tên đăng nhập</label>
-                        <input type="text" id="login-username" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka" name="username" autocomplete="username">
+                        <input type="text" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka">
                     </div>
 
                     <div class="input-group">
                         <label>Mật Khẩu</label>
                         <div class="password-wrapper">
-                            <input type="password" id="login-password" placeholder="••••••" name="password" autocomplete="current-password">
+                            <input type="password" placeholder="••••••">
                             <span class="eye-icon">👁️</span>
                         </div>
                     </div>
@@ -40,6 +40,17 @@
                             <input type="checkbox"> Remember password
                         </label>
                         <a href="#" class="forgot-link" id="forgot-password-link">Forgot password?</a>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Login Role</label>
+                        <select class="role-select" id="login-role-select">
+                            <option value="mangaka">Mangaka</option>
+                            <option value="assistant">Assistant</option>
+                            <option value="tantou">Tantou editor</option>
+                            <option value="editorial">Editorial board</option>
+                            <option value="admin">Admin</option>
+                        </select>
                     </div>
 
                     <button class="btn-primary" id="btn-login">Login</button>
@@ -58,26 +69,27 @@
                     
                     <div id="otp-step-1">
                         <div class="input-group">
-                            <label>Nhập Email / Apple ID</label>
-                            <input type="text" id="otp-email" placeholder="Ví dụ: leduchuylt@gmail.com" name="email" autocomplete="email">
+                            <label>Enter gmail / Apple ID</label>
+                            <input type="text" placeholder="Ví dụ: leduchuylt@gmail.com">
                         </div>
-                        <button class="btn-primary" id="btn-enter-otp" style="width: 100%; margin-top: 10px;">Send OTP Code</button>
+                        <div class="center-btn">
+                            <button class="btn-secondary" id="btn-enter-otp">Enter</button>
+                        </div>
                     </div>
 
                     <div id="otp-step-2" style="display: none;">
                         <div class="input-group">
-                            <label>Nhập mã xác nhận (6 số)</label>
-                            <input type="text" id="otp-code" placeholder="123456" style="text-align: center; letter-spacing: 8px; font-size: 20px; font-weight: bold;" name="otpCode" inputmode="numeric">
+                            <input type="text" placeholder="Ví dụ: 111-111" class="otp-input-large">
                         </div>
                         
-                        <button class="btn-primary" id="btn-verify-otp" style="width: 100%; margin-top: 10px;">Verify & Login</button>
-
-                        <div style="text-align: center; margin-top: 25px; font-size: 13px;">
-                            <p style="color: #6b7280; margin-bottom: 10px;">Mã OTP sẽ hết hạn sau: <span id="timer-count" style="color: #ef4444; font-weight: bold;">60</span>s</p>
-                            <span style="color: #4b5563;">Chưa nhận được mã?</span>
-                            <button id="btn-send-again" style="background: none; border: none; color: #6366f1; font-weight: bold; cursor: pointer;">Gửi lại</button>
+                        <p class="otp-timer-text">OTP has been sent and will expired in <span id="timer-count">60</span>s</p>
+                        
+                        <div class="otp-resend-action">
+                            <span class="not-received-text">Not received OTP?</span>
+                            <button class="btn-orange" id="btn-send-again">Send again</button>
                         </div>
                     </div>
+
                 </div>
 
                 <div id="form-register-section" class="form-section" style="display: none;">
@@ -87,7 +99,7 @@
 
                     <div class="input-group">
                         <label>Email or name</label>
-                        <input id="register-email" name="email" autocomplete="email" type="text" placeholder="nguyenhuy@gmail.com or mangaka">
+                        <input type="text" placeholder="nguyenhuy@gmail.com or mangaka">
                     </div>
 
                     <div class="input-group">
@@ -105,7 +117,7 @@
 
                     <div class="input-group">
                         <label>Role</label>
-                        <select class="role-select" id="register-role" name="role">
+                        <select class="role-select">
                             <option value="mangaka">Mangaka</option>
                             <option value="assistant">Assistant</option>
                             <option value="tantou">Tantou editor</option>
@@ -113,7 +125,7 @@
                         </select>
                     </div>
 
-                    <button class="btn-primary btn-registrate" id="btn-register">Register</button>
+                    <button class="btn-primary btn-registrate">Registrate</button>
 
                     <p class="new-account" style="margin-top: 15px;">
                         <a href="#" id="back-to-login">Back to Login</a>
@@ -125,7 +137,6 @@
     </div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="api.js"></script>
-    <script src="realtime.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

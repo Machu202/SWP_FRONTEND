@@ -3,109 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assistant Dashboard - Studio Flow</title>
+    <title>Assistant Dashboard - MangaSystem</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <aside class="sidebar">
-        <div class="assistant-profile-box">
-            <img src="https://i.pravatar.cc/150?img=11" alt="Profile">
-            <div class="assistant-profile-info">
-                <h3>Studio Flow</h3>
-                <p>Production Assistant</p>
-            </div>
+        <div class="workspace-title">
+            <div class="ws-logo">AS</div>
+            <div class="ws-name">Assistant Workspace</div>
         </div>
-        
-        <a href="assistant-task-detail.html" class="btn-sidebar-action" style="background: white; color: black; margin-top: 0;"><i class="fa-solid fa-upload"></i> Submit Work</a>
         
         <nav class="nav-group">
             <a href="assistant-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-            <a href="assistant-assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
-            <a href="assistant-resources.html" class="nav-item"><i class="fa-solid fa-box-open"></i> Resource Library</a>
-            </nav>
+<a href="assistant-assignments.html" class="nav-item "><i class="fa-solid fa-clipboard-list"></i> My Assignments</a>
+<a href="assistant-task-detail.html" class="nav-item "><i class="fa-solid fa-file-pen"></i> Task Detail</a>
+<a href="assistant-resources.html" class="nav-item "><i class="fa-solid fa-folder-open"></i> Resources</a>
+<a href="assistant-upload.html" class="nav-item "><i class="fa-solid fa-cloud-arrow-up"></i> Upload Result</a>
+<a href="assistant-kanban.html" class="nav-item "><i class="fa-solid fa-table-columns"></i> Kanban</a>
+        </nav>
         <div class="sidebar-divider"></div>
         <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
-            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
-            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         </nav>
     </aside>
-
     <main class="main-wrapper">
         <header class="topbar">
             <div class="topbar-left">
-                <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
-                <a href="#" style="color: #111827; border-bottom: 2px solid #111827; padding-bottom: 20px;">Tasks</a>
-                <a href="#">Guidelines</a>
-                <a href="#">Assets</a>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
             </div>
             <div class="topbar-right">
-                <button class="btn-publish" onclick="window.location.href='assistant-task-detail.html'">Upload Submission</button>
-                <i class="fa-regular fa-bell top-icon"></i>
-                <img src="https://i.pravatar.cc/150?img=11" style="width: 32px; height: 32px; border-radius: 50%;">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AS</div>
             </div>
         </header>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Assistant Dashboard</h1><p>Tasks assigned from Mangaka hitboxes and review queue.</p></div>
+        <a class="btn-publish" href="assistant-assignments.html">Open Tasks</a>
+    </div>
+<div class="stats-grid" style="margin-bottom:30px;">
+    <div class="stat-card"><div class="stat-value">7</div><div class="stat-label">Assigned Tasks</div></div>
+    <div class="stat-card"><div class="stat-value">2</div><div class="stat-label">Doing</div></div>
+    <div class="stat-card"><div class="stat-value">3</div><div class="stat-label">In Review</div></div>
+    <div class="stat-card"><div class="stat-value">15</div><div class="stat-label">Completed</div></div>
+</div>
+<div class="grid-layout">
+    <div class="card-box">
+        <h3 style="margin-bottom:15px;">Current Assistant Work</h3>
+        <div class="list-card"><div><h2 class="list-card-title">Clean background linework</h2><p class="list-card-meta">Black Moon Contract • Page 05 • Due tomorrow</p></div><a href="assistant-task-detail.html" class="btn-icon-only"><i class="fa-solid fa-arrow-right"></i></a></div>
+        <div class="list-card"><div><h2 class="list-card-title">Add screentone</h2><p class="list-card-meta">Silver Rain • Page 12 • Todo</p></div><a href="assistant-task-detail.html" class="btn-icon-only"><i class="fa-solid fa-arrow-right"></i></a></div>
+    </div>
+    <div class="card-box">
+        <h3 style="margin-bottom:15px;">Quick Actions</h3>
+        <a href="assistant-resources.html" class="action-btn"><i class="fa-solid fa-folder-open"></i> Download Resources</a>
+        <a href="assistant-upload.html" class="action-btn"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Result</a>
+        <a href="assistant-kanban.html" class="action-btn"><i class="fa-solid fa-table-columns"></i> Open Kanban</a>
+    </div>
+</div>
 
-        <div class="content-padding">
-            <div class="ast-dashboard-header">
-                <span id="overview-tag">OVERVIEW</span>
-                <h1>Good morning, Assistant. <span class="date" id="current-date">--/--/----</span></h1>
-            </div>
-
-            <div class="ast-stats-grid" style="grid-template-columns: 1fr;">
-                <div class="ast-stat-card">
-                    <div class="ast-stat-title">Monthly Page Target <span style="background: #f3f4f6; color: #111827; padding: 4px 8px; border-radius: 4px; font-size: 10px;" id="target-status">Chờ dữ liệu...</span></div>
-                    <p style="font-size: 12px; color: #6b7280; margin-bottom: 20px;" id="target-project">Chưa có thông tin dự án</p>
-                    <div class="ast-stat-value" id="pages-completed">0 <span>/ 0 Pages</span></div>
-                    <div class="progress-wrapper" style="max-width: 100%; margin-top: 15px;">
-                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%; background: #111827;"></div></div>
-                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; margin-top: 5px; font-weight: 600;"><span>0%</span><span id="progress-text">0% Completed</span><span>100%</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid-layout">
-                <div>
-                    <div class="page-header" style="margin-bottom: 15px;">
-                        <h2 style="font-size: 18px; font-weight: 700;">Active Assignments</h2>
-                        <a href="assistant-assignments.html" style="font-size: 12px; font-weight: 600; color: #6b7280; text-decoration: none;">Go to Board &rarr;</a>
-                    </div>
-                    
-                    <div class="ast-task-list" id="ast-dashboard-task-list">
-                        <div class="empty-state-box">
-                            <i class="fa-solid fa-clipboard-list" style="font-size: 24px; color: #d1d5db; margin-bottom: 10px;"></i>
-                            <p>Không có nhiệm vụ nào đang thực hiện. (Chờ API)</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="ast-side-card">
-                        <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 20px;"><i class="fa-regular fa-calendar"></i> Upcoming Deadlines</h3>
-                        
-                        <div id="ast-deadlines-list">
-                            <div class="empty-activity" style="text-align: center; padding: 20px;">
-                                <i class="fa-regular fa-calendar-xmark" style="font-size: 24px; color: #d1d5db; margin-bottom: 10px; display: block;"></i>
-                                Chưa có deadline nào sắp tới.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="ast-side-card" style="background: #f3f4f6; border: none;">
-                        <h3 style="font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 15px;">Quick Resources</h3>
-                        <div class="ast-quick-grid">
-                            <div class="ast-quick-btn" onclick="window.location.href='assistant-resources.html'"><i class="fa-solid fa-paint-brush"></i> Brush Sets</div>
-                            <div class="ast-quick-btn"><i class="fa-solid fa-border-all"></i> Templates</div>
-                            <div class="ast-quick-btn"><i class="fa-solid fa-book-open"></i> Style Guide</div>
-                            <div class="ast-quick-btn"><i class="fa-solid fa-cube"></i> 3D Assets</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
     </main>
     <script src="api.js"></script>
-    <script src="realtime.js"></script>
     <script src="script.js"></script>
     <script src="script-workspace.js"></script>
 </body>

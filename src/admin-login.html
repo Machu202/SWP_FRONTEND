@@ -24,13 +24,13 @@
                 <div id="form-password-section" class="form-section">
                     <div class="input-group">
                         <label>Email hoặc Tên đăng nhập</label>
-                        <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka">
+                        <input type="text" placeholder="Ví dụ: leduchuylt@gmail.com hoặc mangaka">
                     </div>
 
                     <div class="input-group">
                         <label>Mật Khẩu</label>
                         <div class="password-wrapper">
-                            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="••••••">
+                            <input type="password" placeholder="••••••">
                             <span class="eye-icon">👁️</span>
                         </div>
                     </div>
@@ -70,7 +70,7 @@
                     <div id="otp-step-1">
                         <div class="input-group">
                             <label>Enter gmail / Apple ID</label>
-                            <input id="otp-email" name="email" type="email" autocomplete="email" placeholder="Ví dụ: leduchuylt@gmail.com">
+                            <input type="text" placeholder="Ví dụ: leduchuylt@gmail.com">
                         </div>
                         <div class="center-btn">
                             <button class="btn-secondary" id="btn-enter-otp">Enter</button>
@@ -79,7 +79,7 @@
 
                     <div id="otp-step-2" style="display: none;">
                         <div class="input-group">
-                            <input id="otp-code" name="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Ví dụ: 111111" class="otp-input-large">
+                            <input type="text" placeholder="Ví dụ: 111-111" class="otp-input-large">
                         </div>
                         
                         <p class="otp-timer-text">OTP has been sent and will expired in <span id="timer-count">60</span>s</p>
@@ -99,13 +99,13 @@
 
                     <div class="input-group">
                         <label>Email or name</label>
-                        <input id="register-email" name="email" type="email" autocomplete="email" placeholder="nguyenhuy@gmail.com">
+                        <input type="text" placeholder="nguyenhuy@gmail.com or mangaka">
                     </div>
 
                     <div class="input-group">
                         <label>Password</label>
                         <div class="password-wrapper">
-                            <input id="register-password" name="password" type="password" autocomplete="new-password" placeholder="••••••">
+                            <input type="password" placeholder="••••••">
                             <span class="eye-icon">👁️</span>
                         </div>
                     </div>
@@ -117,7 +117,7 @@
 
                     <div class="input-group">
                         <label>Role</label>
-                        <select class="role-select" id="register-role" name="role">
+                        <select class="role-select">
                             <option value="mangaka">Mangaka</option>
                             <option value="assistant">Assistant</option>
                             <option value="tantou">Tantou editor</option>
@@ -125,7 +125,7 @@
                         </select>
                     </div>
 
-                    <button class="btn-primary btn-registrate" id="btn-register">Register</button>
+                    <button class="btn-primary btn-registrate">Registrate</button>
 
                     <p class="new-account" style="margin-top: 15px;">
                         <a href="#" id="back-to-login">Back to Login</a>
@@ -137,8 +137,6 @@
     </div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="api.js"></script>
-    <script src="realtime.js"></script>
     <script src="script.js"></script>
-    <script src="script-workspace.js"></script>
 </body>
 </html>

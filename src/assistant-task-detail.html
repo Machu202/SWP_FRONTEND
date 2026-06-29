@@ -3,103 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Detail - Studio Flow</title>
+    <title>Task Detail - MangaSystem</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <aside class="sidebar">
-        <div class="assistant-profile-box">
-            <img src="https://i.pravatar.cc/150?img=11" alt="Profile">
-            <div class="assistant-profile-info"><h3>Studio Flow</h3><p>Production Assistant</p></div>
+        <div class="workspace-title">
+            <div class="ws-logo">AS</div>
+            <div class="ws-name">Assistant Workspace</div>
         </div>
+        
         <nav class="nav-group">
-            <a href="assistant-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-            <a href="assistant-assignments.html" class="nav-item active"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
-            <a href="assistant-resources.html" class="nav-item"><i class="fa-solid fa-box-open"></i> Resource Library</a>
+            <a href="assistant-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="assistant-assignments.html" class="nav-item "><i class="fa-solid fa-clipboard-list"></i> My Assignments</a>
+<a href="assistant-task-detail.html" class="nav-item active"><i class="fa-solid fa-file-pen"></i> Task Detail</a>
+<a href="assistant-resources.html" class="nav-item "><i class="fa-solid fa-folder-open"></i> Resources</a>
+<a href="assistant-upload.html" class="nav-item "><i class="fa-solid fa-cloud-arrow-up"></i> Upload Result</a>
+<a href="assistant-kanban.html" class="nav-item "><i class="fa-solid fa-table-columns"></i> Kanban</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         </nav>
     </aside>
-
     <main class="main-wrapper">
         <header class="topbar">
             <div class="topbar-left">
-                <a href="assistant-assignments.html" style="color: var(--text-main); font-size: 16px; margin-right: 15px;"><i class="fa-solid fa-arrow-left"></i></a>
-                <strong style="color: black;">Task Details</strong>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
             </div>
             <div class="topbar-right">
-                <button class="btn-publish" id="btn-submit-work">Upload Submission</button>
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AS</div>
             </div>
         </header>
-
-        <div class="content-padding">
-            <div class="task-detail-header">
-                <div class="task-detail-meta" style="justify-content: flex-start; gap: 5px; margin-bottom: 10px;" id="task-breadcrumb">
-                    Chờ dữ liệu...
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <h1 id="task-title">Tên nhiệm vụ...</h1>
-                        <p style="color: #4b5563;" id="task-desc">Mô tả nhiệm vụ...</p>
-                    </div>
-                    <span class="badge-tag" id="task-status-tag" style="background: #e5e7eb; color: #4b5563;">Status</span>
-                </div>
-            </div>
-
-            <div class="task-content-grid">
-                <div>
-                    <div class="task-box">
-                        <div class="task-box-title"><span><i class="fa-regular fa-image"></i> Reference / Draft from Mangaka</span></div>
-                        <div id="ref-img-container" class="empty-activity" style="padding: 40px; background: #f9fafb; border: 1px dashed #d1d5db; text-align: center;">
-                            Chưa có ảnh tham khảo. (Chờ API load ảnh)
-                        </div>
-                    </div>
-
-                    <div class="task-box">
-                        <div class="task-box-title"><span><i class="fa-solid fa-pen-nib"></i> Director's Notes</span></div>
-                        <div class="director-notes" id="director-notes-content">
-                            <div class="empty-activity">Chưa có ghi chú chỉ đạo. (Chờ API)</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="task-box">
-                        <div class="task-box-title">Logistics</div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 15px;">
-                            <span style="font-size: 12px; color: #6b7280;"><i class="fa-regular fa-calendar"></i> Due Date</span>
-                            <span style="font-size: 12px; font-weight: 700; color: #ef4444;" id="task-due-date">--/--/----</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="font-size: 12px; color: #6b7280;"><i class="fa-solid fa-ruler-combined"></i> Format</span>
-                            <span style="font-size: 10px; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-weight: 600;" id="task-format">--</span>
-                        </div>
-                    </div>
-
-                    <div class="task-box">
-                        <div class="task-box-title"><span>Source Files</span></div>
-                        <div id="source-files-list">
-                            <div class="empty-activity" style="font-size: 11px;">Không có file đính kèm.</div>
-                        </div>
-                    </div>
-
-                    <div class="task-box">
-                        <div class="task-box-title">Submit Finished Work</div>
-                        <div class="upload-dropzone" id="file-dropzone">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <p>Click to browse or drag file here</p>
-                            <span>Supports .clip, .psd, .png</span>
-                        </div>
-                        <label style="font-size: 11px; display: flex; align-items: center; gap: 8px; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="check-final-review"> Mark as ready for Final Review
-                        </label>
-                        <button class="btn-publish" style="width: 100%; padding: 12px; background: #e5e7eb; color: #9ca3af; cursor: not-allowed;" id="btn-upload-submit">Upload & Notify Mangaka</button>
-                    </div>
-                </div>
-            </div>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Task Detail</h1><p>Download source page, follow Mangaka instructions, and upload final work.</p></div>
+        
+    </div>
+<div class="grid-layout">
+    <div class="card-box">
+        <h3 style="margin-bottom:15px;">Assigned Hitbox</h3>
+        <div class="preview-panel" style="height:520px; position:relative;">
+            <div style="position:absolute;left:20%;top:30%;width:58%;height:30%;border:2px solid #ef4444;background:rgba(239,68,68,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#991b1b;">Your Work Area</div>
         </div>
+    </div>
+    <div class="card-box">
+        <span class="status-tag progress">Doing</span>
+        <h2 style="margin:15px 0 10px;">Clean background linework</h2>
+        <p style="color:var(--text-muted);line-height:1.6;">Clean background lines and add light moon shading. Do not change character art.</p>
+        <div style="margin-top:20px;">
+            <button class="btn-publish" data-toast="Source downloaded">Download Source Page</button>
+            <a class="btn-publish" style="display:inline-block;text-decoration:none;margin-left:8px;" href="assistant-upload.html">Upload Result</a>
+        </div>
+    </div>
+</div>
+
+        </section>
     </main>
     <script src="api.js"></script>
-    <script src="realtime.js"></script>
     <script src="script.js"></script>
     <script src="script-workspace.js"></script>
 </body>

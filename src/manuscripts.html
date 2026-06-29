@@ -9,14 +9,25 @@
 </head>
 <body>
     <aside class="sidebar">
-        <div class="workspace-title"><div class="ws-logo">SF</div><div class="ws-name">Mangaka Workspace</div></div>
+        <div class="workspace-title">
+            <div class="ws-logo">SF</div>
+            <div class="ws-name">Mangaka Workspace</div>
+        </div>
+        
+        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
+        
         <nav class="nav-group">
             <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
             <a href="manuscripts.html" class="nav-item active"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
             <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
-            <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
-            <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+            <a href="review-submission.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
         </nav>
     </aside>
 
@@ -24,6 +35,7 @@
         <header class="topbar">
             <div class="topbar-left">
                 <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
             </div>
             <div class="topbar-right">
                 <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
@@ -40,15 +52,35 @@
                 <button class="btn-publish" onclick="window.location.href='create-chapter.html'"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Chapter</button>
             </div>
 
-            <div id="chapter-list-container" class="empty-state-box" style="margin-top: 50px;">
-                <i class="fa-solid fa-file-lines"></i>
-                <p>Chưa có bản thảo nào được tạo. Nhấn "New Chapter" để bắt đầu.</p>
+            <div class="list-card">
+                <div class="list-card-img"><i class="fa-solid fa-file-lines" style="color: #6366f1;"></i></div>
+                <div class="list-card-content">
+                    <div style="margin-bottom: 5px;"><span class="badge-tag review">In Review</span></div>
+                    <h2 class="list-card-title">Chapter 42: The Awakening</h2>
+                    <p style="font-size: 13px; color: var(--text-muted);">Target: 20 pages &bull; 2 active assistant assignments</p>
+                    <div class="progress-wrapper">
+                        <div class="progress-header"><span>Inking & Screentone Completion</span><span>75%</span></div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 75%;"></div></div>
+                    </div>
+                </div>
+                <div class="list-card-actions">
+                    <a href="page-editor.html" class="btn-icon-only" title="Open Page Editor Layout"><i class="fa-solid fa-file-signature"></i></a>
+                </div>
+            </div>
+
+            <div class="list-card">
+                <div class="list-card-img"><i class="fa-solid fa-file-shield" style="color: #10b981;"></i></div>
+                <div class="list-card-content">
+                    <div style="margin-bottom: 5px;"><span class="badge-tag completed">Completed</span></div>
+                    <h2 class="list-card-title">Chapter 41: The Calm Before</h2>
+                    <p style="font-size: 13px; color: var(--text-muted);">Published on June 15, 2026 &bull; Archival Copy available</p>
+                </div>
+                <div class="list-card-actions">
+                    <button class="btn-icon-only" title="View Archives"><i class="fa-solid fa-box-archive"></i></button>
+                </div>
             </div>
         </div>
     </main>
-    <script src="api.js"></script>
-    <script src="realtime.js"></script>
-    <script src="script.js"></script>
     <script src="script-workspace.js"></script>
 </body>
 </html>

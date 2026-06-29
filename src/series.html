@@ -9,14 +9,25 @@
 </head>
 <body>
     <aside class="sidebar">
-        <div class="workspace-title"><div class="ws-logo">SF</div><div class="ws-name">Mangaka Workspace</div></div>
+        <div class="workspace-title">
+            <div class="ws-logo">SF</div>
+            <div class="ws-name">Mangaka Workspace</div>
+        </div>
+        
+        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
+        
         <nav class="nav-group">
             <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="series.html" class="nav-item active"><i class="fa-solid fa-book"></i> Series</a>
             <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
             <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
-            <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
-            <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+            <a href="review-submission.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+            <a href="#" class="nav-item"><i class="fa-regular fa-circle-question"></i> Support</a>
         </nav>
     </aside>
 
@@ -24,10 +35,11 @@
         <header class="topbar">
             <div class="topbar-left">
                 <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
+                <a href="#">Workflow</a>
             </div>
             <div class="topbar-right">
                 <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
-                <img src="https://i.pravatar.cc/150?img=12" style="width: 32px; height: 32px; border-radius: 50%;">
+                <button class="btn-publish" onclick="window.location.href='create-series.html'">Publish</button>
             </div>
         </header>
 
@@ -40,15 +52,11 @@
                 <button class="btn-publish" onclick="window.location.href='create-series.html'"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> Add New Series</button>
             </div>
 
-            <div id="series-list-container" class="empty-state-box" style="margin-top: 50px;">
+            <div class="empty-state-box" style="margin-top: 50px;">
                 <i class="fa-solid fa-book-open"></i>
                 <p>Hiện tại không có series nào. Hãy tạo series mới để bắt đầu!</p>
             </div>
         </div>
     </main>
-    <script src="api.js"></script>
-    <script src="realtime.js"></script>
-    <script src="script.js"></script>
-    <script src="script-workspace.js"></script>
 </body>
 </html>
