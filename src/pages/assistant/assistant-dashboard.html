@@ -10,20 +10,20 @@
 <body>
     <aside class="sidebar">
         <div class="assistant-profile-box">
-            <img src="https://i.pravatar.cc/150?img=11" alt="Profile">
+            <img src="https://ui-avatars.com/api/?name=Assistant&background=e0e7ff&color=4f46e5" alt="Profile">
             <div class="assistant-profile-info">
                 <h3>Studio Flow</h3>
                 <p>Production Assistant</p>
             </div>
         </div>
         
-        <a href="task-detail.html" class="btn-sidebar-action" style="background: white; color: black; margin-top: 0;"><i class="fa-solid fa-upload"></i> Submit Work</a>
+        <a href="assistant-assignments.html" class="btn-sidebar-action" style="background: white; color: black; margin-top: 0;"><i class="fa-solid fa-upload"></i> Submit Work</a>
         
         <nav class="nav-group">
             <a href="assistant-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="assistant-assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
             <a href="resource-library.html" class="nav-item"><i class="fa-solid fa-box-open"></i> Resource Library</a>
-            </nav>
+        </nav>
         <div class="sidebar-divider"></div>
         <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
             <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
@@ -39,10 +39,34 @@
                 <a href="#">Guidelines</a>
                 <a href="#">Assets</a>
             </div>
-            <div class="topbar-right">
-                <button class="btn-publish" onclick="window.location.href='task-detail.html'">Upload Submission</button>
-                <i class="fa-regular fa-bell top-icon"></i>
-                <img src="https://i.pravatar.cc/150?img=11" style="width: 32px; height: 32px; border-radius: 50%;">
+            
+            <div class="topbar-right" style="position: relative; display: flex; align-items: center; gap: 20px;">
+                <!-- NÚT CHUÔNG API ĐỒNG BỘ -->
+                <div style="position: relative;">
+                    <i class="fa-regular fa-bell top-icon" id="btn-noti-toggle" style="cursor: pointer; color: #64748b; font-size: 20px;"></i>
+                    <span id="noti-badge" style="position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: none; align-items: center; justify-content: center; pointer-events: none;">0</span>
+                    
+                    <div id="noti-dropdown" style="display: none; position: absolute; right: -10px; top: 35px; width: 320px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 100; overflow: hidden;">
+                        <div style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #1e293b; background: #f8fafc;">Thông báo</div>
+                        <div id="noti-list" style="max-height: 300px; overflow-y: auto;">
+                            <div style="padding: 20px; text-align: center; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AVATAR DROPDOWN API ĐỒNG BỘ -->
+                <div style="position: relative;">
+                    <div id="btn-avatar-toggle" style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold; cursor: pointer; border: 2px solid #c7d2fe; transition: 0.2s;">AS</div>
+                    
+                    <div id="avatar-dropdown" style="display: none; position: absolute; right: 0; top: 40px; width: 220px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 100; overflow: hidden;">
+                        <div style="padding: 15px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                            <div style="font-weight: bold; color: #1e293b; font-size: 14px;" id="dropdown-user-name">Đang tải...</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;" id="dropdown-user-email">Đang tải...</div>
+                        </div>
+                        <a href="../../profile.html" style="display: block; padding: 12px 15px; color: #334155; text-decoration: none; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600;"><i class="fa-regular fa-user" style="margin-right: 10px; color: #64748b;"></i> Hồ sơ cá nhân</a>
+                        <a href="#" id="btn-global-logout" style="display: block; padding: 12px 15px; color: #ef4444; text-decoration: none; font-size: 13px; font-weight: 600;"><i class="fa-solid fa-right-from-bracket" style="margin-right: 10px;"></i> Đăng xuất</a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -54,7 +78,7 @@
 
             <div class="ast-stats-grid" style="grid-template-columns: 1fr;">
                 <div class="ast-stat-card">
-                    <div class="ast-stat-title">Monthly Page Target <span style="background: #f3f4f6; color: #111827; padding: 4px 8px; border-radius: 4px; font-size: 10px;" id="target-status">Chờ dữ liệu...</span></div>
+                    <div class="ast-stat-title">Monthly Page Target <span style="background: #f3f4f6; color: #111827; padding: 4px 8px; border-radius: 4px; font-size: 10px;" id="target-status">Đang tải API...</span></div>
                     <p style="font-size: 12px; color: #6b7280; margin-bottom: 20px;" id="target-project">Chưa có thông tin dự án</p>
                     <div class="ast-stat-value" id="pages-completed">0 <span>/ 0 Pages</span></div>
                     <div class="progress-wrapper" style="max-width: 100%; margin-top: 15px;">
@@ -73,8 +97,8 @@
                     
                     <div class="ast-task-list" id="ast-dashboard-task-list">
                         <div class="empty-state-box">
-                            <i class="fa-solid fa-clipboard-list" style="font-size: 24px; color: #d1d5db; margin-bottom: 10px;"></i>
-                            <p>Không có nhiệm vụ nào đang thực hiện. (Chờ API)</p>
+                            <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: #d1d5db; margin-bottom: 10px;"></i>
+                            <p>Đang tải danh sách nhiệm vụ...</p>
                         </div>
                     </div>
                 </div>
@@ -85,8 +109,8 @@
                         
                         <div id="ast-deadlines-list">
                             <div class="empty-activity" style="text-align: center; padding: 20px;">
-                                <i class="fa-regular fa-calendar-xmark" style="font-size: 24px; color: #d1d5db; margin-bottom: 10px; display: block;"></i>
-                                Chưa có deadline nào sắp tới.
+                                <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: #d1d5db; margin-bottom: 10px; display: block;"></i>
+                                Đang kiểm tra deadline...
                             </div>
                         </div>
                     </div>
@@ -104,7 +128,9 @@
             </div>
         </div>
     </main>
+
     <script src="../../assets/js/api.js"></script>
     <script src="../../assets/js/script-workspace.js"></script>
+    <script src="assistant.js"></script>
 </body>
 </html>

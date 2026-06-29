@@ -10,7 +10,7 @@
 <body>
     <aside class="sidebar">
         <div class="assistant-profile-box">
-            <img src="https://i.pravatar.cc/150?img=11" alt="Profile">
+            <img src="https://ui-avatars.com/api/?name=Assistant&background=e0e7ff&color=4f46e5" alt="Profile">
             <div class="assistant-profile-info"><h3>Studio Flow</h3><p>Production Assistant</p></div>
         </div>
         <nav class="nav-group">
@@ -26,22 +26,50 @@
                 <a href="assistant-assignments.html" style="color: var(--text-main); font-size: 16px; margin-right: 15px;"><i class="fa-solid fa-arrow-left"></i></a>
                 <strong style="color: black;">Task Details</strong>
             </div>
-            <div class="topbar-right">
-                <button class="btn-publish" id="btn-submit-work">Upload Submission</button>
+            
+            <div class="topbar-right" style="position: relative; display: flex; align-items: center; gap: 20px;">
+                <button class="btn-publish" id="btn-submit-work" style="display: none;">Upload</button>
+
+                <!-- NÚT CHUÔNG API ĐỒNG BỘ -->
+                <div style="position: relative;">
+                    <i class="fa-regular fa-bell top-icon" id="btn-noti-toggle" style="cursor: pointer; color: #64748b; font-size: 20px;"></i>
+                    <span id="noti-badge" style="position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: none; align-items: center; justify-content: center; pointer-events: none;">0</span>
+                    
+                    <div id="noti-dropdown" style="display: none; position: absolute; right: -10px; top: 35px; width: 320px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 100; overflow: hidden;">
+                        <div style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #1e293b; background: #f8fafc;">Thông báo</div>
+                        <div id="noti-list" style="max-height: 300px; overflow-y: auto;">
+                            <div style="padding: 20px; text-align: center; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AVATAR DROPDOWN API ĐỒNG BỘ -->
+                <div style="position: relative;">
+                    <div id="btn-avatar-toggle" style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold; cursor: pointer; border: 2px solid #c7d2fe; transition: 0.2s;">AS</div>
+                    
+                    <div id="avatar-dropdown" style="display: none; position: absolute; right: 0; top: 40px; width: 220px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 100; overflow: hidden;">
+                        <div style="padding: 15px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                            <div style="font-weight: bold; color: #1e293b; font-size: 14px;" id="dropdown-user-name">Đang tải...</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;" id="dropdown-user-email">Đang tải...</div>
+                        </div>
+                        <a href="../../profile.html" style="display: block; padding: 12px 15px; color: #334155; text-decoration: none; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600;"><i class="fa-regular fa-user" style="margin-right: 10px; color: #64748b;"></i> Hồ sơ cá nhân</a>
+                        <a href="#" id="btn-global-logout" style="display: block; padding: 12px 15px; color: #ef4444; text-decoration: none; font-size: 13px; font-weight: 600;"><i class="fa-solid fa-right-from-bracket" style="margin-right: 10px;"></i> Đăng xuất</a>
+                    </div>
+                </div>
             </div>
         </header>
 
         <div class="content-padding">
             <div class="task-detail-header">
                 <div class="task-detail-meta" style="justify-content: flex-start; gap: 5px; margin-bottom: 10px;" id="task-breadcrumb">
-                    Chờ dữ liệu...
+                    <i class="fa-solid fa-spinner fa-spin"></i> Đang tải dữ liệu API...
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                     <div>
-                        <h1 id="task-title">Tên nhiệm vụ...</h1>
-                        <p style="color: #4b5563;" id="task-desc">Mô tả nhiệm vụ...</p>
+                        <h1 id="task-title">Đang kết nối Server...</h1>
+                        <p style="color: #4b5563;" id="task-desc">...</p>
                     </div>
-                    <span class="badge-tag" id="task-status-tag" style="background: #e5e7eb; color: #4b5563;">Status</span>
+                    <span class="badge-tag" id="task-status-tag" style="background: #e5e7eb; color: #4b5563;">--</span>
                 </div>
             </div>
 
@@ -50,14 +78,14 @@
                     <div class="task-box">
                         <div class="task-box-title"><span><i class="fa-regular fa-image"></i> Reference / Draft from Mangaka</span></div>
                         <div id="ref-img-container" class="empty-activity" style="padding: 40px; background: #f9fafb; border: 1px dashed #d1d5db; text-align: center;">
-                            Chưa có ảnh tham khảo. (Chờ API load ảnh)
+                            <i class="fa-solid fa-spinner fa-spin"></i> Đang tải ảnh gốc...
                         </div>
                     </div>
 
                     <div class="task-box">
                         <div class="task-box-title"><span><i class="fa-solid fa-pen-nib"></i> Director's Notes</span></div>
                         <div class="director-notes" id="director-notes-content">
-                            <div class="empty-activity">Chưa có ghi chú chỉ đạo. (Chờ API)</div>
+                            <div class="empty-activity"><i class="fa-solid fa-spinner fa-spin"></i></div>
                         </div>
                     </div>
                 </div>
@@ -71,14 +99,7 @@
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span style="font-size: 12px; color: #6b7280;"><i class="fa-solid fa-ruler-combined"></i> Format</span>
-                            <span style="font-size: 10px; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-weight: 600;" id="task-format">--</span>
-                        </div>
-                    </div>
-
-                    <div class="task-box">
-                        <div class="task-box-title"><span>Source Files</span></div>
-                        <div id="source-files-list">
-                            <div class="empty-activity" style="font-size: 11px;">Không có file đính kèm.</div>
+                            <span style="font-size: 10px; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-weight: 600;" id="task-format">B4 Manga</span>
                         </div>
                     </div>
 
@@ -92,13 +113,15 @@
                         <label style="font-size: 11px; display: flex; align-items: center; gap: 8px; margin-bottom: 15px; cursor: pointer;">
                             <input type="checkbox" id="check-final-review"> Mark as ready for Final Review
                         </label>
-                        <button class="btn-publish" style="width: 100%; padding: 12px; background: #e5e7eb; color: #9ca3af; cursor: not-allowed;" id="btn-upload-submit">Upload & Notify Mangaka</button>
+                        <button class="btn-publish" style="width: 100%; padding: 12px; background: #e5e7eb; color: #9ca3af; cursor: not-allowed;" id="btn-upload-submit" disabled>Upload & Notify Mangaka</button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
+
     <script src="../../assets/js/api.js"></script>
     <script src="../../assets/js/script-workspace.js"></script>
+    <script src="assistant.js"></script>
 </body>
 </html>

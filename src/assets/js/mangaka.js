@@ -60,12 +60,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!desc) { alert("⛔ Vui lòng nhập Tóm tắt nội dung!"); descInput.focus(); return; }
 
             // Backend /manga-series expects JSON: title, genre, summary.
-            // Cover/background upload is visual-only on this screen unless Resource/Page upload is used later.
             const payload = {
                 title,
                 genre: genre || "",
                 summary: [desc, targetAudience ? `Target: ${targetAudience}` : "", status ? `Status: ${status}` : ""].filter(Boolean).join("\n")
-            };
+            }; 
 
             const originalText = btnCreateSeries.innerHTML;
             btnCreateSeries.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tải lên Server...`;

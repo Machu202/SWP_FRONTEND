@@ -1,5 +1,5 @@
 // ==========================================
-// manuscripts.js - LOGIC QUẢN LÝ CHAPTERS
+// manuscripts.js - QUẢN LÝ CÂY THƯ MỤC CHAPTERS & PAGES
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
     
@@ -13,25 +13,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnOpenModal = document.getElementById("btn-open-modal");
 
     // =======================================================
-    // 1. XỬ LÝ TRẠNG THÁI CHƯA CHỌN TRUYỆN (Sửa lỗi đá văng)
+    // 1. KIỂM TRA ĐÃ CHỌN TRUYỆN CHƯA
     // =======================================================
     if (!seriesId) {
-        // KHÔNG redirect nữa. Ở lại trang và báo trạng thái trống.
         if (headerTitle) headerTitle.innerHTML = `<i class="fa-solid fa-book-open" style="margin-right:5px;"></i> Chưa chọn Tác phẩm`;
         
         if (chaptersList) {
             chaptersList.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 60px; background: white; border-radius: 10px; border: 2px dashed #cbd5e1;">
+                <div style="text-align: center; padding: 60px;">
                     <i class="fa-solid fa-folder-tree" style="font-size: 40px; color: #94a3b8; margin-bottom: 15px;"></i>
                     <h3 style="color: #334155; margin: 0 0 10px 0;">Chưa có Tác phẩm nào được chọn</h3>
-                    <p style="color: #64748b; margin: 0;">Vui lòng sử dụng <strong>Cây thư mục (Explorer Tree)</strong> hoặc quay lại trang Series để chọn dự án.</p>
+                    <p style="color: #64748b; margin: 0;">Vui lòng quay lại trang Series để chọn dự án.</p>
                     <button onclick="window.location.href='series.html'" style="margin-top: 20px; padding: 10px 20px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; font-weight: bold; cursor: pointer;">
                         Đến trang Series
                     </button>
                 </div>`;
         }
         
-        // Vô hiệu hóa nút tạo Chapter vì chưa biết tạo cho truyện nào
         if (btnOpenModal) {
             btnOpenModal.style.opacity = "0.5";
             btnOpenModal.style.cursor = "not-allowed";
@@ -40,25 +38,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert("Vui lòng chọn một Tác phẩm trước khi tạo Chapter mới!");
             };
         }
-        return; // Dừng chạy các hàm bên dưới
+        return; 
     }
 
-    // =======================================================
-    // 2. NẾU ĐÃ CÓ ID TRUYỆN -> TẢI CHAPTER BÌNH THƯỜNG
-    // =======================================================
-    if (headerTitle) {
-        headerTitle.innerHTML = `<i class="fa-solid fa-book-open" style="margin-right:5px;"></i> ${seriesTitle}`;
-    }
+    if (headerTitle) headerTitle.innerHTML = `<i class="fa-solid fa-book-open" style="margin-right:5px;"></i> ${seriesTitle}`;
 
+    // =======================================================
+    // 2. GỌI API & VẼ CÂY THƯ MỤC
+    // =======================================================
     async function fetchChapters() {
         if (!chaptersList) return;
         
         try {
+            // BACKEND CẦN API: Trả về danh sách Chapters, trong mỗi Chapter có mảng con chứa các Pages
             const chapters = await window.MangaApi.apiFetch(`/chapters/series/${seriesId}`);
 
             if (!chapters || chapters.length === 0) {
                 chaptersList.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 60px; background: white; border-radius: 10px; border: 2px dashed #cbd5e1;">
+                    <div style="text-align: center; padding: 60px;">
                         <i class="fa-solid fa-file-circle-plus" style="font-size: 40px; color: #94a3b8; margin-bottom: 15px;"></i>
                         <h3 style="color: #334155; margin: 0 0 10px 0;">Chưa có Chương nào</h3>
                         <p style="color: #64748b; margin: 0;">Hãy bấm 'Thêm Chapter' để bắt đầu vẽ trang truyện.</p>
@@ -68,41 +65,80 @@ document.addEventListener("DOMContentLoaded", () => {
 
             chaptersList.innerHTML = "";
             
+            // Sắp xếp chapter từ thấp đến cao
             chapters.sort((a, b) => a.chapterNumber - b.chapterNumber).forEach(chapter => {
-                const card = document.createElement("div");
-                card.style = "background: white; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #4f46e5; cursor: pointer; transition: 0.2s;";
-                card.onmouseover = () => card.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
-                card.onmouseout = () => card.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+                const pages = chapter.pages || []; // Lấy danh sách trang của chapter (từ Backend)
 
-                const titleText = chapter.title ? `: ${chapter.title}` : "";
-                
-                card.innerHTML = `
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-                            <h3 style="margin: 0; font-size: 18px; color: #1e293b;">Chapter ${chapter.chapterNumber}${titleText}</h3>
-                            <span style="background: #f1f5f9; color: #64748b; font-size: 12px; padding: 4px 8px; border-radius: 20px; font-weight: 600;">
-                                ${chapter.status || 'Draft'}
-                            </span>
-                        </div>
-                        <div style="display: flex; gap: 15px; color: #64748b; font-size: 13px;">
-                            <span><i class="fa-regular fa-file-image"></i> ${chapter.pageCount || 0} Pages</span>
-                            <span><i class="fa-solid fa-list-check"></i> ${chapter.taskCount || 0} Tasks</span>
-                        </div>
+                const chapterWrap = document.createElement("div");
+
+                // --- THANH TIÊU ĐỀ CHAPTER ---
+                const chapHeader = document.createElement("div");
+                chapHeader.className = "tree-chapter-header";
+                chapHeader.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <i class="fa-solid fa-folder" style="color: #6366f1; font-size: 18px; margin-right: 12px;"></i>
+                        <span>Chapter ${chapter.chapterNumber} ${chapter.title ? `- ${chapter.title}` : ''}</span>
+                    </div>
+                    <div style="font-size: 12px; color: #64748b;">
+                        <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 12px; margin-right: 10px;">${pages.length} Trang</span>
+                        <i class="fa-solid fa-chevron-down toggle-icon"></i>
                     </div>
                 `;
 
-                card.addEventListener("click", () => {
-                    localStorage.setItem("currentChapterId", chapter.id);
-                    localStorage.setItem("currentChapterNumber", chapter.chapterNumber);
-                    alert(`Đã chọn Chapter ${chapter.chapterNumber}. Chuyển sang Upload Trang (FE-32)...`);
+                // --- CONTAINER CHỨA CÁC TRANG (PAGES) ---
+                const pagesContainer = document.createElement("div");
+                pagesContainer.style.display = "none"; // Ẩn mặc định
+
+                if (pages.length === 0) {
+                    pagesContainer.innerHTML = `<div style="padding: 15px 50px; font-size: 13px; color: #9ca3af; border-bottom: 1px solid #f1f5f9;">Chưa có bản thảo nào. Tải trang lên ở góc phải màn hình Canvas.</div>`;
+                } else {
+                    pages.forEach(page => {
+                        const pageItem = document.createElement("div");
+                        pageItem.className = "tree-page-item";
+                        pageItem.innerHTML = `
+                            <div style="font-size: 13px; color: #475569; display: flex; align-items: center;">
+                                <i class="fa-regular fa-file-image" style="color: #10b981; margin-right: 10px; font-size: 16px;"></i>
+                                Trang ${page.pageNumber || 'Không tên'}
+                            </div>
+                            <div style="font-size: 11px; background: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 4px; font-weight: 600;">
+                                Mở Canvas <i class="fa-solid fa-arrow-right" style="margin-left: 5px;"></i>
+                            </div>
+                        `;
+
+                        // CLICK VÀO TRANG -> MỞ EDITOR (Vá lỗ hổng 2)
+                        pageItem.addEventListener("click", () => {
+                            localStorage.setItem("currentChapterId", chapter.id);
+                            localStorage.setItem("currentPageId", page.id);
+                            window.location.href = "page-editor.html";
+                        });
+
+                        pagesContainer.appendChild(pageItem);
+                    });
+                }
+
+                // Hiệu ứng Đóng/Mở thư mục
+                chapHeader.addEventListener("click", () => {
+                    const isHidden = pagesContainer.style.display === "none";
+                    pagesContainer.style.display = isHidden ? "block" : "none";
+                    
+                    const icon = chapHeader.querySelector('.toggle-icon');
+                    if (isHidden) {
+                        icon.classList.replace("fa-chevron-down", "fa-chevron-up");
+                        chapHeader.querySelector('.fa-folder').classList.replace('fa-folder', 'fa-folder-open');
+                    } else {
+                        icon.classList.replace("fa-chevron-up", "fa-chevron-down");
+                        chapHeader.querySelector('.fa-folder-open').classList.replace('fa-folder-open', 'fa-folder');
+                    }
                 });
 
-                chaptersList.appendChild(card);
+                chapterWrap.appendChild(chapHeader);
+                chapterWrap.appendChild(pagesContainer);
+                chaptersList.appendChild(chapterWrap);
             });
 
         } catch (error) {
             chaptersList.innerHTML = `
-                <div style="grid-column: 1 / -1; padding: 20px; background: #fee2e2; color: #991b1b; border-radius: 8px;">
+                <div style="padding: 20px; color: #991b1b; text-align: center; background: #fee2e2;">
                     Lỗi tải danh sách: ${error.message}
                 </div>`;
         }
@@ -111,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchChapters();
 
     // =======================================================
-    // 3. LOGIC MODAL TẠO CHAPTER
+    // 3. LOGIC MODAL TẠO CHAPTER MỚI
     // =======================================================
     const modal = document.getElementById("chapter-modal");
     const btnClose = document.getElementById("btn-close-modal");
