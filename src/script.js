@@ -13,7 +13,20 @@ document.addEventListener("DOMContentLoaded", () => {
     el.textContent = message;
     el.dataset.type = type;
     el.style.display = "block";
-    setTimeout(() => { el.style.display = "none"; }, 2600);
+    // Inline fallback style because login pages only load style.css.
+    el.style.position = "fixed";
+    el.style.right = "24px";
+    el.style.bottom = "24px";
+    el.style.zIndex = "9999";
+    el.style.padding = "12px 16px";
+    el.style.borderRadius = "12px";
+    el.style.color = "#fff";
+    el.style.fontWeight = "600";
+    el.style.maxWidth = "420px";
+    el.style.boxShadow = "0 12px 30px rgba(0,0,0,.18)";
+    el.style.background = type === "success" ? "#047857" : type === "error" ? "#b91c1c" : "#111827";
+    clearTimeout(window.__loginToastTimer);
+    window.__loginToastTimer = setTimeout(() => { el.style.display = "none"; }, 3500);
   };
   window.showToast = toast;
 
@@ -60,18 +73,28 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const btn = e.currentTarget;
     const inputs = $$("input", formPassword || document);
-    const username = inputs[0]?.value?.trim();
-    const password = inputs.find((input) => input.type === "password")?.value || "";
+    const usernameInput = $("#login-username") || inputs[0];
+    // Do not search by input[type=password] only, because the eye icon changes it to type=text.
+    const passwordInput = $("#login-password") || $(".password-wrapper input", formPassword || document) || inputs[1];
+    const username = usernameInput?.value?.trim() || "";
+    const password = passwordInput?.value || "";
+
+    if (!window.MangaApi || !window.MangaApi.login) {
+      return toast("Không tìm thấy api.js. Hãy chạy frontend bằng npm run dev hoặc Live Server.", "error");
+    }
     if (!username || !password) return toast("Nhập username/email và password trước.", "error");
+
     btn.disabled = true;
     const oldText = btn.textContent;
     btn.textContent = "Logging in...";
     try {
       const data = await window.MangaApi.login({ username, password });
       toast(data.message || "Đăng nhập thành công.", "success");
-      window.location.href = window.MangaApi.routeForRole(data.role || localStorage.getItem("role"));
+      const route = window.MangaApi.routeForRole(data.role || localStorage.getItem("role"));
+      window.location.assign(route);
     } catch (err) {
-      toast(err.message || "Đăng nhập thất bại.", "error");
+      console.error("Login failed:", err);
+      toast(err.message || "Đăng nhập thất bại. Kiểm tra backend, CORS, hoặc tài khoản.", "error");
     } finally {
       btn.disabled = false;
       btn.textContent = oldText;

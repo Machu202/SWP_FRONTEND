@@ -247,11 +247,10 @@
           <table class="data-table"><tbody><tr><th>Genre</th><td>${esc(s?.genre || "—")}</td></tr><tr><th>Status</th><td>${badge(s?.status)}</td></tr><tr><th>Mangaka</th><td>${esc(s?.mangakaName || "—")}</td></tr><tr><th>Tantou</th><td>${esc(s?.tantouName || "—")}</td></tr></tbody></table>
           <div class="form-group"><label>Recommendation Notes (frontend only)</label><textarea class="form-control" id="report-notes">Ready for board review after Tantou inspection.</textarea></div>
           <button id="submit-board" class="btn-publish">Submit to Editorial Board</button>
-          <a class="btn-outline" href="board-submissions.html" style="margin-left:10px;text-decoration:none;display:inline-flex;">Open Board View</a>
         </div>`;
       bindCommonPickers(tantouReport);
       $("#submit-board")?.addEventListener("click", async () => {
-        try { await Api.updateSeriesStatus(Api.getActiveSeriesId(), "REVIEWING"); toast("Submitted to board queue.", "success"); }
+        try { await Api.updateSeriesStatus(Api.getActiveSeriesId(), "REVIEWING"); toast("Submitted to Editorial Board queue. Board members can now review it from their own dashboard.", "success"); location.href = "tantou-dashboard.html"; }
         catch (err) { toast(err.message, "error"); }
       });
     } catch (err) { errorBox(root, err); }

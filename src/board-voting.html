@@ -3,57 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Board Voting - MangaSystem</title>
+    <title>Editorial Voting - Manga Editorial Board</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body>
-    <aside class="sidebar">
-        <div class="workspace-title">
-            <div class="ws-logo">EB</div>
-            <div class="ws-name">Editorial Board</div>
+<body class="board-screen" data-page="voting">
+    <aside class="sidebar board-sidebar">
+        <div class="board-brand-block">
+            <div class="board-brand-head">
+                <div class="board-brand-avatar">MB</div>
+                <div>
+                    <div class="board-name">Manga Board</div>
+                    <div class="board-role">Management Portal</div>
+                </div>
+            </div>
+            <a class="sidebar-cta" href="board-voting.html"><i class="fa-solid fa-plus"></i><span>New Decision</span></a>
         </div>
-        
-        <nav class="nav-group">
-            <a href="board-dashboard.html" class="nav-item "><i class="fa-solid fa-border-all"></i> Dashboard</a>
-<a href="board-submissions.html" class="nav-item "><i class="fa-solid fa-inbox"></i> Submissions</a>
-<a href="board-voting.html" class="nav-item active"><i class="fa-solid fa-vote-yea"></i> Voting</a>
-<a href="board-result.html" class="nav-item "><i class="fa-solid fa-circle-check"></i> Final Result</a>
+        <nav class="nav-group board-nav">
+                <a href="board-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i><span>Dashboard</span></a>
+                <a href="board-submissions.html" class="nav-item"><i class="fa-solid fa-folder-open"></i><span>Review Queue</span></a>
+                <a href="board-voting.html" class="nav-item active"><i class="fa-solid fa-scale-balanced"></i><span>Voting</span></a>
+                <a href="board-result.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left"></i><span>Decision History</span></a>
         </nav>
+        <div class="sidebar-spacer"></div>
         <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
-            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
-            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        <nav class="nav-group board-nav footer-nav">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+            <a href="notifications.html" class="nav-item"><i class="fa-regular fa-circle-question"></i><span>Help</span></a>
         </nav>
     </aside>
-    <main class="main-wrapper">
-        <header class="topbar">
-            <div class="topbar-left">
-                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
-            </div>
+    <main class="main-wrapper board-main">
+        <header class="topbar board-topbar">
+            <div class="board-header-title">Manga Editorial Board</div>
             <div class="topbar-right">
-                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <div class="search-box board-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Search proposals..."></div>
                 <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
-                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">EB</div>
+                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-envelope"></i></a>
+                <a href="profile.html" class="board-top-avatar">MB</a>
             </div>
         </header>
-        <section class="content-padding">
-            <div class="page-header">
-        <div><h1>Board Voting</h1><p>Cast Approve, Reject, or Request Revision vote.</p></div>
-        
-    </div>
-<div class="card-box">
-    <div class="series-grid">
-        <button class="action-btn" data-vote="Approve"><i class="fa-solid fa-check"></i> Approve</button>
-        <button class="action-btn" data-vote="Reject"><i class="fa-solid fa-xmark"></i> Reject</button>
-        <button class="action-btn selected" data-vote="Request Revision"><i class="fa-solid fa-rotate-left"></i> Request Revision</button>
-    </div>
-    <div class="form-group" style="margin-top:20px;"><label>Board Comment</label><textarea>Pacing should be improved before publication.</textarea></div>
-    <a class="btn-publish" href="board-result.html">Submit Vote</a>
-</div>
-
-        </section>
+        <section class="content-padding"></section>
     </main>
     <script src="api.js"></script>
     <script src="script.js"></script>

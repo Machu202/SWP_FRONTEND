@@ -3,57 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tantou Dashboard - MangaSystem</title>
+    <title>Dashboard - MangaFlow Editorial</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body>
-    <aside class="sidebar">
-        <div class="workspace-title">
-            <div class="ws-logo">TE</div>
-            <div class="ws-name">Tantou Workspace</div>
+<body class="tantou-screen" data-page="dashboard">
+    <aside class="sidebar tantou-sidebar">
+        <div class="tantou-brand-block">
+            <div class="editor-card">
+                <div class="editor-avatar"><img src="cover.png" alt="Tantou avatar"></div>
+                <div>
+                    <div class="editor-name">Tantou Editorial</div>
+                    <div class="editor-role">Production Manager</div>
+                </div>
+            </div>
+            <a class="sidebar-cta" href="tantou-review.html"><i class="fa-solid fa-play"></i><span>Start Review</span></a>
         </div>
-        
-        <nav class="nav-group">
-            <a href="tantou-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-<a href="tantou-review.html" class="nav-item "><i class="fa-solid fa-message"></i> Chapter Review</a>
-<a href="tantou-feedback.html" class="nav-item "><i class="fa-solid fa-comments"></i> Feedback Tracking</a>
-<a href="tantou-revision.html" class="nav-item "><i class="fa-solid fa-clock-rotate-left"></i> Revision Tracking</a>
-<a href="tantou-report.html" class="nav-item "><i class="fa-solid fa-file-signature"></i> Editorial Report</a>
+
+        <nav class="nav-group tantou-nav">
+                <a href="tantou-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i><span>Dashboard</span></a>
+                <a href="tantou-review.html" class="nav-item"><i class="fa-solid fa-list-check"></i><span>Chapter Review</span></a>
+                <a href="tantou-feedback.html" class="nav-item"><i class="fa-solid fa-pen-to-square"></i><span>Annotation & Feedback</span></a>
+                <a href="tantou-revision.html" class="nav-item"><i class="fa-solid fa-arrows-rotate"></i><span>Revision Tracking</span></a>
+                <a href="tantou-report.html" class="nav-item"><i class="fa-solid fa-chart-column"></i><span>Editorial Report</span></a>
         </nav>
+
+        <div class="sidebar-spacer"></div>
         <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
-            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
-            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        <nav class="nav-group tantou-nav footer-nav">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
         </nav>
     </aside>
-    <main class="main-wrapper">
-        <header class="topbar">
-            <div class="topbar-left">
-                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+
+    <main class="main-wrapper tantou-main">
+        <header class="topbar tantou-topbar">
+            <div class="topbar-brand">
+                <div class="brand-lockup">
+                    <div class="brand-wordmark">MangaFlow Editorial</div>
+                    <div class="brand-context">Production overview and live editorial queue.</div>
+                </div>
             </div>
             <div class="topbar-right">
-                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
+                <div class="search-box tantou-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Search series, mangaka, or tasks..."></div>
                 <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
-                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">TE</div>
+                <a href="#" class="top-icon"><i class="fa-solid fa-clock-rotate-left"></i></a>
+                <a href="#" class="top-icon"><i class="fa-regular fa-circle-question"></i></a>
+                <button class="mode-chip">Editor Mode</button>
+                <a href="profile.html" class="topbar-avatar"><img src="cover.png" alt="User avatar"></a>
             </div>
         </header>
-        <section class="content-padding">
-            <div class="page-header">
-        <div><h1>Tantou Dashboard</h1><p>Submitted chapters waiting for editor review.</p></div>
-        <a class="btn-publish" href="tantou-review.html">Open Review</a>
-    </div>
-<div class="stats-grid" style="margin-bottom:30px;">
-    <div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Pending Reviews</div></div>
-    <div class="stat-card"><div class="stat-value">9</div><div class="stat-label">Open Feedback</div></div>
-    <div class="stat-card"><div class="stat-value">2</div><div class="stat-label">Revision Checks</div></div>
-    <div class="stat-card"><div class="stat-value">1</div><div class="stat-label">Ready for Board</div></div>
-</div>
-<div class="card-box"><div class="list-card"><div><h2 class="list-card-title">Black Moon Contract</h2><p class="list-card-meta">Chapter 01 • Waiting for Tantou Review</p></div><a href="tantou-review.html" class="btn-icon-only"><i class="fa-solid fa-arrow-right"></i></a></div></div>
-
-        </section>
+        <section class="content-padding"></section>
     </main>
+
     <script src="api.js"></script>
     <script src="script.js"></script>
     <script src="script-workspace.js"></script>
