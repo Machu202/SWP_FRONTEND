@@ -58,10 +58,27 @@
                             <label>Synopsis / Logline <span style="color: red;">*</span></label>
                             <textarea class="form-control" id="series-desc" placeholder="Brief summary of the story..." style="height: 120px;"></textarea>
                         </div>
+                        
+                        <div class="form-group">
+                            <label>Genre (Thể loại) <span style="color: red;">*</span></label>
+                            <select class="form-control" id="series-genre">
+                                <option value="Action">Action (Hành động)</option>
+                                <option value="Adventure">Adventure (Phiêu lưu)</option>
+                                <option value="Comedy">Comedy (Hài hước)</option>
+                                <option value="Romance">Romance (Tình cảm)</option>
+                                <option value="Fantasy">Fantasy (Kỳ ảo)</option>
+                                <option value="Sci-Fi">Sci-Fi (Viễn tưởng)</option>
+                                <option value="Horror">Horror (Kinh dị)</option>
+                                <option value="Slice of Life">Slice of Life (Đời thường)</option>
+                                <option value="Mystery">Mystery (Bí ẩn/Trinh thám)</option>
+                                <option value="Sports">Sports (Thể thao)</option>
+                            </select>
+                        </div>
+
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div class="form-group">
                                 <label>Target Audience</label>
-                                <select class="form-control">
+                                <select class="form-control" id="series-target">
                                     <option>Shonen (Boys)</option>
                                     <option>Seinen (Adult Men)</option>
                                     <option>Shojo (Girls)</option>
@@ -70,7 +87,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Status</label>
-                                <select class="form-control">
+                                <select class="form-control" id="series-status">
                                     <option>Pre-production</option>
                                     <option>Serialization</option>
                                     <option>Hiatus</option>
@@ -89,7 +106,6 @@
                             <div class="upload-zone" id="cover-upload-zone" style="cursor: pointer; position: relative; overflow: hidden; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <input type="file" id="cover-file-input" accept="image/*" style="display: none;">
                                 <img id="cover-preview" style="display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 10;">
-                                
                                 <div id="cover-placeholder" style="z-index: 1; text-align: center;">
                                     <i class="fa-solid fa-image" style="font-size: 40px; margin-bottom: 15px; color: #d1d5db;"></i>
                                     <br>
@@ -103,7 +119,6 @@
                             <div class="upload-zone" id="bg-upload-zone" style="cursor: pointer; position: relative; overflow: hidden; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <input type="file" id="bg-file-input" accept="image/*" style="display: none;">
                                 <img id="bg-preview" style="display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 10;">
-                                
                                 <div id="bg-placeholder" style="z-index: 1; text-align: center;">
                                     <i class="fa-solid fa-panorama" style="font-size: 24px; margin-bottom: 10px; color: #d1d5db;"></i>
                                     <br>
@@ -117,7 +132,7 @@
                         <div class="form-section-title">Technical Settings</div>
                         <div class="form-group">
                             <label>Target Page Count</label>
-                            <input type="number" class="form-control" value="20">
+                            <input type="number" class="form-control" id="series-page-count" value="20">
                         </div>
                     </div>
 

@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!chaptersList) return;
         
         try {
-            const chapters = await window.MangaApi.apiFetch(`/chapters?seriesId=${seriesId}`);
+            const chapters = await window.MangaApi.apiFetch(`/chapters/series/${seriesId}`);
 
             if (!chapters || chapters.length === 0) {
                 chaptersList.innerHTML = `

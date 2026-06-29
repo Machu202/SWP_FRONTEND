@@ -6,8 +6,10 @@ function getAccessToken() {
 }
 
 function setSession(data = {}) {
-  if (data.token) {
-    localStorage.setItem("accessToken", data.token);
+  const token = data.token || data.accessToken || data.jwt || "";
+  if (token) {
+    localStorage.setItem("accessToken", token);
+    localStorage.setItem("token", token);
   }
   if (data.id || data.userId) {
     localStorage.setItem("userId", String(data.id || data.userId));
@@ -66,9 +68,19 @@ async function apiFetch(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
+  const normalizedOptions = { ...options };
+  if (
+    normalizedOptions.body &&
+    typeof normalizedOptions.body === "object" &&
+    !(normalizedOptions.body instanceof FormData) &&
+    !(normalizedOptions.body instanceof URLSearchParams) &&
+    !(normalizedOptions.body instanceof Blob)
+  ) {
+    normalizedOptions.body = JSON.stringify(normalizedOptions.body);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include",
-    ...options,
+    ...normalizedOptions,
     headers,
   });
 

@@ -10,6 +10,9 @@
 <body>
     <aside class="sidebar">
         <div class="workspace-title"><div class="ws-logo">SF</div><div class="ws-name">Mangaka Workspace</div></div>
+        
+        <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
+        
         <nav class="nav-group">
             <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
@@ -25,12 +28,36 @@
             <div class="topbar-left">
                 <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
             </div>
-            <div class="topbar-right">
-                <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i>
-                    <input type="text" placeholder="Search tasks...">
+            
+            <div class="topbar-right" style="position: relative; display: flex; align-items: center; gap: 20px;">
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search tasks..."></div>
+                
+                <!-- CHUÔNG THÔNG BÁO -->
+                <div style="position: relative;">
+                    <i class="fa-regular fa-bell top-icon" id="btn-noti-toggle" style="cursor: pointer; color: #64748b; font-size: 20px;"></i>
+                    <span id="noti-badge" style="position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: none; align-items: center; justify-content: center; pointer-events: none;">0</span>
+                    
+                    <div id="noti-dropdown" style="display: none; position: absolute; right: -10px; top: 35px; width: 320px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 100; overflow: hidden;">
+                        <div style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #1e293b; background: #f8fafc;">Thông báo của bạn</div>
+                        <div id="noti-list" style="max-height: 300px; overflow-y: auto;">
+                            <div style="padding: 20px; text-align: center; color: #64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>
+                        </div>
+                    </div>
                 </div>
-                <img src="https://i.pravatar.cc/150?img=12" style="width: 32px; height: 32px; border-radius: 50%;">
+
+                <!-- MENU TÀI KHOẢN (AVATAR) -->
+                <div style="position: relative;">
+                    <div id="btn-avatar-toggle" style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold; cursor: pointer; border: 2px solid #c7d2fe; transition: 0.2s;">MK</div>
+                    
+                    <div id="avatar-dropdown" style="display: none; position: absolute; right: 0; top: 40px; width: 220px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 100; overflow: hidden;">
+                        <div style="padding: 15px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                            <div style="font-weight: bold; color: #1e293b; font-size: 14px;" id="dropdown-user-name">Đang tải...</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;" id="dropdown-user-email">Đang tải...</div>
+                        </div>
+                        <a href="../../profile.html" style="display: block; padding: 12px 15px; color: #334155; text-decoration: none; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600;"><i class="fa-regular fa-user" style="margin-right: 10px; color: #64748b;"></i> Hồ sơ cá nhân</a>
+                        <a href="#" id="btn-global-logout" style="display: block; padding: 12px 15px; color: #ef4444; text-decoration: none; font-size: 13px; font-weight: 600;"><i class="fa-solid fa-right-from-bracket" style="margin-right: 10px;"></i> Đăng xuất</a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -45,24 +72,22 @@
             <div class="kanban-board">
                 <div class="kanban-column">
                     <div class="kanban-column-header"><span>To Do</span><span class="task-count" id="todo-count">0</span></div>
-                    <div class="kanban-task-list" id="todo-list">
-                        </div>
+                    <div class="kanban-task-list" id="todo-list"></div>
                 </div>
 
                 <div class="kanban-column">
                     <div class="kanban-column-header"><span>In Progress</span><span class="task-count" id="inprogress-count">0</span></div>
-                    <div class="kanban-task-list" id="inprogress-list">
-                        </div>
+                    <div class="kanban-task-list" id="inprogress-list"></div>
                 </div>
 
                 <div class="kanban-column">
                     <div class="kanban-column-header"><span>Review & Done</span><span class="task-count" id="done-count">0</span></div>
-                    <div class="kanban-task-list" id="done-list">
-                        </div>
+                    <div class="kanban-task-list" id="done-list"></div>
                 </div>
             </div>
         </div>
     </main>
+    <script src="../../assets/js/api.js"></script>
     <script src="../../assets/js/script-workspace.js"></script>
 </body>
 </html>

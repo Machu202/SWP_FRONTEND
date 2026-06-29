@@ -4,7 +4,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     
     // 1. Kiểm tra an ninh & Lấy ID Chapter hiện tại
-    const chapterId = localStorage.getItem("currentChapterId");
+    const chapterId = localStorage.getItem("currentChapterId") || localStorage.getItem("activeChapterId");
     if (!chapterId && window.MangaApi) {
         alert("Chưa xác định được Chapter. Trở về màn hình Quản lý Bản thảo.");
         window.location.href = "manuscripts.html";
@@ -182,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 // GỌI API GIAO VIỆC XUỐNG BACKEND
                 if (window.MangaApi) {
-                    await window.MangaApi.apiFetch("/tasks", {
+                    await window.MangaApi.apiFetch("/workspace/pages/" + (localStorage.getItem("activePageId") || localStorage.getItem("currentPageId") || "1") + "/hitboxes?x=" + encodeURIComponent(boxCoords.left) + "&y=" + encodeURIComponent(boxCoords.top) + "&width=" + encodeURIComponent(boxCoords.width) + "&height=" + encodeURIComponent(boxCoords.height), {
                         method: "POST",
                         body: {
                             chapterId: chapterId,

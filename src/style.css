@@ -298,20 +298,19 @@ body {
     background-color: #FFFFFF;
     cursor: pointer;
 }
-/* Login API feedback */
-.toast {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 9999;
-  padding: 12px 16px;
-  border-radius: 12px;
-  color: #fff;
-  font-weight: 600;
-  max-width: 420px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.18);
-  display: none;
+
+.login-status {
+    min-height: 18px;
+    margin: -4px 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #DC2626;
 }
-.toast[data-type="success"] { background: #047857; }
-.toast[data-type="error"] { background: #b91c1c; }
-.toast[data-type="info"] { background: #111827; }
+
+.login-status[data-type="success"] {
+    color: #059669;
+}
+
+.login-status[data-type="error"] {
+    color: #DC2626;
+}

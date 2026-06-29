@@ -3,49 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Command Center - Admin Console</title>
+    <title>Admin Dashboard - MangaSystem</title>
     <link rel="stylesheet" href="style-workspace.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="admin-screen" data-page="dashboard">
-    <aside class="sidebar admin-sidebar">
-        <div class="admin-brand-block">
-            <div class="admin-brand-head">
-                <div class="admin-brand-avatar">AD</div>
-                <div>
-                    <div class="admin-name">Admin Console</div>
-                    <div class="admin-role">Publishing Control</div>
-                </div>
-            </div>
-            <a class="sidebar-cta" href="admin-final-approval.html"><i class="fa-solid fa-bolt"></i><span>Review Decisions</span></a>
+<body>
+    <aside class="sidebar">
+        <div class="workspace-title">
+            <div class="ws-logo">AD</div>
+            <div class="ws-name">Admin Workspace</div>
         </div>
-        <nav class="nav-group admin-nav">
-                <a href="admin-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i><span>Dashboard</span></a>
-                <a href="admin-users.html" class="nav-item"><i class="fa-solid fa-users"></i><span>Users</span></a>
-                <a href="admin-settings.html" class="nav-item"><i class="fa-solid fa-sliders"></i><span>System Settings</span></a>
-                <a href="admin-calendar.html" class="nav-item"><i class="fa-solid fa-calendar-days"></i><span>Scheduling</span></a>
-                <a href="admin-deadlines.html" class="nav-item"><i class="fa-solid fa-triangle-exclamation"></i><span>Deadlines</span></a>
-                <a href="admin-final-approval.html" class="nav-item"><i class="fa-solid fa-stamp"></i><span>Final Approval</span></a>
+        
+        <nav class="nav-group">
+            <a href="admin-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+<a href="admin-users.html" class="nav-item "><i class="fa-solid fa-users"></i> Users</a>
+<a href="admin-settings.html" class="nav-item "><i class="fa-solid fa-gear"></i> System Settings</a>
+<a href="admin-calendar.html" class="nav-item "><i class="fa-solid fa-calendar-days"></i> Publishing Calendar</a>
+<a href="admin-deadlines.html" class="nav-item "><i class="fa-solid fa-triangle-exclamation"></i> Deadlines</a>
+<a href="admin-final-approval.html" class="nav-item "><i class="fa-solid fa-stamp"></i> Final Approval</a>
+<a href="feature-map.html" class="nav-item "><i class="fa-solid fa-diagram-project"></i> Feature Map</a>
         </nav>
-        <div class="sidebar-spacer"></div>
         <div class="sidebar-divider"></div>
-        <nav class="nav-group admin-nav footer-nav">
-            <a href="profile.html" class="nav-item"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
+        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
+            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         </nav>
     </aside>
-    <main class="main-wrapper admin-main">
-        <header class="topbar admin-topbar">
-            <div class="admin-header-title">Publishing Administration</div>
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="#">Workflow</a><a href="#">Schedule</a><a href="#">Assets</a>
+            </div>
             <div class="topbar-right">
-                <div class="search-box admin-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Search series, reports, or proposals..."></div>
+                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
                 <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
-                <a href="#" class="top-icon"><i class="fa-solid fa-gear"></i></a>
-                <button class="mode-chip">Admin Mode</button>
-                <a href="profile.html" class="admin-top-avatar">AD</a>
+                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">AD</div>
             </div>
         </header>
-        <section class="content-padding"></section>
+        <section class="content-padding">
+            <div class="page-header">
+        <div><h1>Admin Dashboard</h1><p>System administration, users, settings, schedule, and final approval.</p></div>
+        
+    </div>
+<div class="stats-grid"><div class="stat-card"><div class="stat-value">28</div><div class="stat-label">Users</div></div><div class="stat-card"><div class="stat-value">5</div><div class="stat-label">Roles</div></div><div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Final Approvals</div></div><div class="stat-card"><div class="stat-value">6</div><div class="stat-label">Deadline Warnings</div></div></div>
+
+        </section>
     </main>
     <script src="api.js"></script>
     <script src="script.js"></script>

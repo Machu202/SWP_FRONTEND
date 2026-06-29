@@ -6,46 +6,61 @@ function getAccessToken() {
 }
 
 function setSession(data = {}) {
-  if (data.token) {
-    localStorage.setItem("accessToken", data.token);
+  const token = data.token || data.accessToken || data.jwt || "";
+  if (token) {
+    localStorage.setItem("accessToken", token);
+    localStorage.setItem("token", token);
   }
-  if (data.id || data.userId) {
-    localStorage.setItem("userId", String(data.id || data.userId));
+
+  const userId = data.id || data.userId || data.user_id;
+  if (userId) {
+    localStorage.setItem("userId", String(userId));
   }
-  if (data.username) {
-    localStorage.setItem("username", data.username);
-  }
-  if (data.email) {
-    localStorage.setItem("email", data.email);
-  }
-  if (data.role) {
-    localStorage.setItem("role", data.role);
-  }
+
+  if (data.username) localStorage.setItem("username", data.username);
+  if (data.email) localStorage.setItem("email", data.email);
+  if (data.role || data.roleName) localStorage.setItem("role", data.role || data.roleName);
+  if (data.type) localStorage.setItem("tokenType", data.type);
+
   return data;
 }
 
 function clearSession() {
-  ["accessToken", "token", "userId", "username", "email", "role", "activeSeriesId", "activeChapterId", "activePageId"].forEach((key) => localStorage.removeItem(key));
+  [
+    "accessToken",
+    "token",
+    "tokenType",
+    "userId",
+    "username",
+    "email",
+    "role",
+    "activeSeriesId",
+    "activeChapterId",
+    "activePageId"
+  ].forEach((key) => localStorage.removeItem(key));
 }
 
 function normalizeRole(role = "") {
-  return String(role)
+  return String(role || "")
     .replace(/^ROLE_/i, "")
+    .replace(/_/g, " ")
     .toLowerCase()
-    .replace(/[\s_-]+/g, " ")
+    .replace(/[\s-]+/g, " ")
     .trim();
 }
 
 function routeForRole(role = "") {
   const normalized = normalizeRole(role);
   if (normalized.includes("admin")) return "admin-dashboard.html";
-  if (normalized.includes("editorial")) return "board-dashboard.html";
+  if (normalized.includes("editorial") || normalized.includes("board")) return "board-dashboard.html";
   if (normalized.includes("tantou")) return "tantou-dashboard.html";
-  if (normalized.includes("assistant")) return "assistant-dashboard.html";
-  return "mangaka-dashboard.html";
+  if (normalized.includes("assistant")) return "pages/assistant/assistant-dashboard.html";
+  if (normalized.includes("mangaka")) return "pages/mangaka/dashboard.html";
+  return "index.html";
 }
 
 function objectToQuery(params = {}) {
+
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") query.set(key, value);
@@ -67,7 +82,6 @@ async function apiFetch(path, options = {}) {
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include",
     ...options,
     headers,
   });
@@ -131,10 +145,27 @@ const MangaApi = {
   getActivePageId,
   setActivePageId,
 
-  login: async ({ username, password }) => setSession(await apiFetch("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ username, password }),
-  })),
+  login: async ({ username, password }) => {
+    const loginName = String(username || "").trim();
+    if (!loginName || !password) {
+      throw new Error("Please enter username/email and password.");
+    }
+
+    // Backend LoginRequest requires fields named username + password.
+    // UserDetailsService accepts username OR email in that username field.
+    const data = await apiFetch("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username: loginName, password }),
+    });
+
+    setSession(data);
+
+    if (!data.token && !data.accessToken && !data.jwt) {
+      throw new Error("Login succeeded but backend did not return a JWT token.");
+    }
+
+    return data;
+  },
 
   register: (payload) => apiFetch("/auth/register", {
     method: "POST",
