@@ -66,10 +66,10 @@
 
   async function loadSeries() {
     try {
-      state.series = await Api.allSeries();
+      state.series = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
     } catch (err) {
       // Mangaka-only fallback if backend role does not allow global listing.
-      state.series = await Api.mySeries();
+      state.series = Api.unwrapPage ? Api.unwrapPage(await Api.mySeries()) : await Api.mySeries();
     }
     if (state.series.length && !Api.getActiveSeriesId()) Api.setActiveSeriesId(state.series[0].id);
     return state.series;

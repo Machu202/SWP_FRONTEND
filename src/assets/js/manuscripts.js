@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         // CLICK VÀO TRANG -> MỞ EDITOR (Vá lỗ hổng 2)
                         pageItem.addEventListener("click", () => {
-                            localStorage.setItem("currentChapterId", chapter.id);
+                            localStorage.setItem("currentChapterId", chapter.id); localStorage.setItem("activeChapterId", chapter.id);
                             localStorage.setItem("currentPageId", page.id);
                             window.location.href = "page-editor.html";
                         });

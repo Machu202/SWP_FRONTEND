@@ -4,7 +4,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     
     // 1. Kiểm tra an ninh & Lấy ID Chapter hiện tại
-    const chapterId = localStorage.getItem("currentChapterId") || localStorage.getItem("activeChapterId");
+    const chapterId = localStorage.getItem("currentChapterId") || localStorage.getItem("activeChapterId") || new URLSearchParams(location.search).get("chapterId");
     if (!chapterId && window.MangaApi) {
         alert("Chưa xác định được Chapter. Trở về màn hình Quản lý Bản thảo.");
         window.location.href = "manuscripts.html";
@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             // BE CẦN CUNG CẤP API: GET /users/assistants (Trả về mảng user có role assistant)
-            const assistants = await window.MangaApi.apiFetch("/users/assistants");
+            const assistants = await window.MangaApi.usersByRole("Assistant");
 
             assigneeSelect.innerHTML = '<option value="Unassigned">Unassigned (Open to all)</option>';
 
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 assistants.forEach(ast => {
                     const option = document.createElement("option");
                     option.value = ast.id; // Lấy ID thật của Trợ lý
-                    option.textContent = ast.username || ast.email; // Hiển thị Tên thật
+                    option.textContent = ast.fullName || ast.username || ast.email; // Hiển thị Tên thật
                     assigneeSelect.appendChild(option);
                 });
             }
@@ -68,19 +68,66 @@ document.addEventListener("DOMContentLoaded", () => {
         btnAddPage.addEventListener('click', () => fileUpload.click());
         fileUpload.addEventListener('change', async (e) => {
             const files = e.target.files;
-            if (files.length === 0) return;
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            const oldText = btnAddPage.innerHTML;
+            btnAddPage.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+            try {
+                const existingPages = window.MangaApi ? await window.MangaApi.pages(chapterId).catch(() => []) : [];
+                const nextPageNumber = (existingPages?.length || 0) + 1;
+                const savedPage = await window.MangaApi.createPage(chapterId, nextPageNumber, file);
+                const pageId = savedPage.id;
+                if (pageId) {
+                    localStorage.setItem('activePageId', pageId);
+                    localStorage.setItem('currentPageId', pageId);
+                }
+                const imageUrl = savedPage.imageUrl;
+                if (imageUrl) {
+                    canvas.style.backgroundImage = `url('${imageUrl}')`;
+                    canvas.style.backgroundSize = 'contain';
+                    canvas.style.backgroundRepeat = 'no-repeat';
+                    canvas.style.backgroundPosition = 'center';
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = (event) => { canvas.style.backgroundImage = `url('${event.target.result}')`; };
+                    reader.readAsDataURL(file);
+                }
+                showToast("Page uploaded to backend successfully.");
+            } catch (error) {
+                alert("Page upload failed: " + error.message);
+            } finally {
+                btnAddPage.innerHTML = oldText;
+            }
+        });
+    }
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                canvas.style.backgroundImage = `url('${event.target.result}')`;
+    async function loadCurrentPageFromBackend() {
+        const pageId = localStorage.getItem('activePageId') || localStorage.getItem('currentPageId') || new URLSearchParams(location.search).get('pageId');
+        if (!pageId || !window.MangaApi || !canvas) return;
+        try {
+            const init = await window.MangaApi.canvasInit(pageId);
+            if (init?.imageUrl) {
+                canvas.style.backgroundImage = `url('${init.imageUrl}')`;
                 canvas.style.backgroundSize = 'contain';
                 canvas.style.backgroundRepeat = 'no-repeat';
                 canvas.style.backgroundPosition = 'center';
-                showToast("Tải trang truyện lên thành công!");
-            };
-            reader.readAsDataURL(files[0]);
-        });
+            }
+            (init?.hitboxes || []).forEach(h => {
+                const box = document.createElement('div');
+                box.className = 'editor-hitbox hitbox-purple';
+                box.style.left = (h.xCoord ?? h.x ?? 0) + '%';
+                box.style.top = (h.yCoord ?? h.y ?? 0) + '%';
+                box.style.width = (h.width ?? 0) + '%';
+                box.style.height = (h.height ?? 0) + '%';
+                box.style.pointerEvents = 'auto';
+                box.innerHTML = `<div class="hitbox-tag">Hitbox #${h.id}</div>`;
+                canvas.appendChild(box);
+            });
+        } catch (error) {
+            console.warn('Canvas init failed:', error.message);
+        }
     }
+    loadCurrentPageFromBackend();
 
     /* =======================================================
        4. TÍNH NĂNG KÉO THẢ VẼ HITBOX (FE-34)
@@ -202,27 +249,28 @@ document.addEventListener("DOMContentLoaded", () => {
             btnConfirmTask.disabled = true;
 
             try {
-                // GỌI API GIAO VIỆC XUỐNG BACKEND (Kèm ID của Trợ lý thay vì tên cứng)
+                // Create hitbox first, then create a task under that hitbox, then optionally assign Assistant.
+                let createdTask = null;
                 if (window.MangaApi) {
-                    await window.MangaApi.apiFetch("/workspace/pages/" + (localStorage.getItem("activePageId") || localStorage.getItem("currentPageId") || "1") + "/hitboxes?x=" + encodeURIComponent(boxCoords.left) + "&y=" + encodeURIComponent(boxCoords.top) + "&width=" + encodeURIComponent(boxCoords.width) + "&height=" + encodeURIComponent(boxCoords.height), {
-                        method: "POST",
-                        body: {
-                            chapterId: chapterId,
-                            title: taskName,
-                            assigneeId: assigneeId === 'Unassigned' ? null : assigneeId, // Gửi ID thực sự
-                            status: "TODO", 
-                            hitboxX: boxCoords.left,
-                            hitboxY: boxCoords.top,
-                            hitboxWidth: boxCoords.width,
-                            hitboxHeight: boxCoords.height
-                        }
+                    const pageId = localStorage.getItem("activePageId") || localStorage.getItem("currentPageId") || new URLSearchParams(location.search).get("pageId");
+                    if (!pageId) throw new Error("No page selected. Upload or select a page first.");
+                    const hitbox = await window.MangaApi.createHitbox(pageId, {
+                        x: boxCoords.left,
+                        y: boxCoords.top,
+                        width: boxCoords.width,
+                        height: boxCoords.height
                     });
+                    createdTask = await window.MangaApi.assignTaskToHitbox(hitbox.id, taskName);
+                    if (assigneeId && assigneeId !== "Unassigned" && createdTask?.id) {
+                        createdTask = await window.MangaApi.assignTask(createdTask.id, assigneeId);
+                    }
                 }
 
                 // Thành công -> Trang trí cho tempBox thành Hitbox thật
                 const tag = document.createElement('div');
                 tag.className = 'hitbox-tag';
                 tag.innerText = assigneeId !== 'Unassigned' ? `[${assigneeName}] ${taskName}` : taskName;
+                if (createdTask?.id) tempBox.dataset.taskId = createdTask.id;
                 
                 const btnDelete = document.createElement('button');
                 btnDelete.className = 'hitbox-delete';

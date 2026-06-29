@@ -13,15 +13,11 @@ function setSession(data = {}) {
   }
 
   const userId = data.id || data.userId || data.user_id;
-  if (userId) {
-    localStorage.setItem("userId", String(userId));
-  }
-
+  if (userId) localStorage.setItem("userId", String(userId));
   if (data.username) localStorage.setItem("username", data.username);
   if (data.email) localStorage.setItem("email", data.email);
   if (data.role || data.roleName) localStorage.setItem("role", data.role || data.roleName);
   if (data.type) localStorage.setItem("tokenType", data.type);
-
   return data;
 }
 
@@ -60,7 +56,6 @@ function routeForRole(role = "") {
 }
 
 function objectToQuery(params = {}) {
-
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") query.set(key, value);
@@ -69,27 +64,54 @@ function objectToQuery(params = {}) {
   return text ? `?${text}` : "";
 }
 
+function unwrapPage(payload) {
+  if (payload && Array.isArray(payload.content)) return payload.content;
+  return payload || [];
+}
+
+function normalizeTaskStatus(status = "") {
+  const s = String(status || "").toUpperCase().replace(/[\s-]+/g, "_");
+  if (s === "IN_PROGRESS" || s === "PROGRESS" || s === "DOING") return "DOING";
+  if (s === "REVIEW" || s === "DONE" || s === "REVIEWING") return "REVIEWING";
+  if (s === "APPROVED" || s === "COMPLETE" || s === "COMPLETED") return "APPROVED";
+  return "TODO";
+}
+
 async function apiFetch(path, options = {}) {
   const token = getAccessToken();
-  const isFormData = options.body instanceof FormData;
-  const headers = {
-    ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...(options.headers || {}),
-  };
+  const normalizedOptions = { ...options };
+  const isFormData = normalizedOptions.body instanceof FormData;
+  const isUrlEncoded = normalizedOptions.body instanceof URLSearchParams;
+  const isBlob = typeof Blob !== "undefined" && normalizedOptions.body instanceof Blob;
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (
+    normalizedOptions.body &&
+    typeof normalizedOptions.body === "object" &&
+    !isFormData &&
+    !isUrlEncoded &&
+    !isBlob &&
+    typeof normalizedOptions.body !== "string"
+  ) {
+    normalizedOptions.body = JSON.stringify(normalizedOptions.body);
   }
 
+  const headers = {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(normalizedOptions.headers || {}),
+  };
+
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
+    ...normalizedOptions,
     headers,
   });
 
   const contentType = response.headers.get("content-type") || "";
-  let payload;
+  let payload = null;
   if (contentType.includes("application/json")) {
-    payload = await response.json();
+    const text = await response.text();
+    payload = text ? JSON.parse(text) : null;
   } else {
     payload = await response.text();
   }
@@ -133,6 +155,8 @@ const MangaApi = {
   apiFetch,
   apiForm,
   objectToQuery,
+  unwrapPage,
+  normalizeTaskStatus,
   getAccessToken,
   setSession,
   clearSession,
@@ -173,7 +197,9 @@ const MangaApi = {
   }),
 
   profile: () => apiFetch("/users/profile"),
+  updateProfile: (payload) => apiFetch("/users/profile", { method: "PUT", body: payload }),
   users: () => apiFetch("/users/all"),
+  usersByRole: (role) => apiFetch(`/users${objectToQuery({ role })}`),
   lockUser: (id, isActive) => apiFetch(`/users/${id}/lock${objectToQuery({ isActive })}`, { method: "PATCH" }),
   assignRole: (id, roleName) => apiFetch(`/users/${id}/role${objectToQuery({ roleName })}`, { method: "PATCH" }),
 
@@ -182,26 +208,47 @@ const MangaApi = {
   updateParameter: (key, value) => apiFetch(`/system-parameters/${encodeURIComponent(key)}${objectToQuery({ value })}`, { method: "PUT" }),
   deleteParameter: (key) => apiFetch(`/system-parameters/${encodeURIComponent(key)}`, { method: "DELETE" }),
 
-  allSeries: () => apiFetch("/manga-series"),
+  allSeries: async (params = {}) => unwrapPage(await apiFetch(`/manga-series${objectToQuery(params)}`)),
   mySeries: () => apiFetch("/manga-series/my-series"),
   series: (id) => apiFetch(`/manga-series/${id}`),
   updateSeriesStatus: (id, newStatus) => apiFetch(`/manga-series/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
-  adminDecision: (id, isApproved) => apiFetch(`/manga-series/${id}/admin-decision${objectToQuery({ isApproved })}`, { method: "PATCH" }),
+  adminDecision: (id, isApproved, tantouId) => apiFetch(`/manga-series/${id}/admin-decision${objectToQuery({ isApproved, tantouId })}`, { method: "PATCH" }),
 
   chapters: (seriesId) => apiFetch(`/chapters/series/${seriesId}`),
   chapter: (id) => apiFetch(`/chapters/${id}`),
   updateChapterStatus: (id, newStatus) => apiFetch(`/chapters/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
   pages: (chapterId) => apiFetch(`/pages/chapter/${chapterId}`),
+  createPage: (chapterId, pageNumber, file) => {
+    const fd = new FormData();
+    fd.append("pageNumber", pageNumber);
+    fd.append("file", file);
+    return apiForm(`/pages/chapter/${chapterId}`, fd, { method: "POST" });
+  },
+  updatePageImage: (pageId, file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiForm(`/pages/${pageId}/image`, fd, { method: "PUT" });
+  },
   canvasInit: (pageId) => apiFetch(`/workspace/pages/${pageId}/canvas-init`),
+  createHitbox: (pageId, box) => apiFetch(`/workspace/pages/${pageId}/hitboxes${objectToQuery({ x: box.x, y: box.y, width: box.width, height: box.height })}`, { method: "POST" }),
+  assignTaskToHitbox: (hitboxId, description) => apiFetch(`/workspace/hitboxes/${hitboxId}/task`, { method: "POST", body: { description } }),
 
   tasks: () => apiFetch("/tasks/my-tasks"),
-  updateTaskStatus: (taskId, newStatus) => apiFetch(`/tasks/${taskId}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
+  tasksBySeries: (seriesId) => apiFetch(`/tasks/series/${seriesId}`),
+  taskById: async (taskId) => {
+    const tasks = await apiFetch("/tasks/my-tasks");
+    return (tasks || []).find(t => String(t.id) === String(taskId));
+  },
+  updateTaskStatus: (taskId, newStatus) => apiFetch(`/tasks/${taskId}/status${objectToQuery({ newStatus: normalizeTaskStatus(newStatus) })}`, { method: "PATCH" }),
+  assignTask: (taskId, assistantId) => apiFetch(`/tasks/${taskId}/assign${objectToQuery({ assistantId })}`, { method: "PATCH" }),
+  submitTask: (taskId, imageUrl) => apiFetch(`/tasks/${taskId}/submit${objectToQuery({ imageUrl })}`, { method: "PATCH" }),
 
   feedbacks: (pageId) => apiFetch(`/tantou-feedbacks/pages/${pageId}`),
   createFeedback: (pageId, data) => apiFetch(`/tantou-feedbacks/pages/${pageId}${objectToQuery(data)}`, { method: "POST" }),
   resolveFeedback: (id) => apiFetch(`/tantou-feedbacks/${id}/resolve`, { method: "PATCH" }),
 
   voteSummary: (seriesId) => apiFetch(`/votes/series/${seriesId}/summary`),
+  telemetry: (seriesId) => apiFetch(`/telemetry/series/${seriesId}`),
   castVote: (seriesId, isApproved) => apiFetch(`/votes/series/${seriesId}${objectToQuery({ isApproved })}`, { method: "POST" }),
 
   schedules: (seriesId) => apiFetch(`/schedules/series/${seriesId}`),
@@ -223,6 +270,11 @@ const MangaApi = {
 
   unreadNotifications: () => apiFetch("/notifications/unread"),
   markNotificationRead: (id) => apiFetch(`/notifications/${id}/read`, { method: "PATCH" }),
+
+  logout() {
+    clearSession();
+    window.location.href = routeForRole("").replace("index.html", "index.html");
+  },
 
   connectNotifications(userId, onMessage) {
     if (!userId || typeof SockJS === "undefined" || typeof StompJs === "undefined") return null;

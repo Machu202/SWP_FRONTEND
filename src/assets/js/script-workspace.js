@@ -1,4 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const toBackendTaskStatus = (status = "") => window.MangaApi?.normalizeTaskStatus ? window.MangaApi.normalizeTaskStatus(status) : String(status || "TODO").toUpperCase();
+    const taskTitleOf = (task) => task.title || task.description || `Task #${task.id}`;
+    const taskAssigneeOf = (task) => task.assignee?.username || task.assistant?.username || task.assistantName || task.assignee || "Unassigned";
+    const taskStatusOf = (task) => toBackendTaskStatus(task.status || "TODO");
     
     // ======================================================== 
     // 1. KANBAN BOARD - GỌI API & KÉO THẢ (Cho cả Mangaka & Assistant)
@@ -23,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!tasks || tasks.length === 0) {
                     tasks = [
                         { id: "task-1", title: "Draw Backgrounds - Ch.42", assignee: "Kenji", status: "TODO" },
-                        { id: "task-2", title: "Inking Needed - Ch.42", assignee: "Yui", status: "IN_PROGRESS" }
+                        { id: "task-2", title: "Inking Needed - Ch.42", assignee: "Yui", status: "DOING" }
                     ];
                 }
 
@@ -34,20 +38,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 let cTodo = 0, cProg = 0, cDone = 0;
 
                 tasks.forEach(task => {
-                    const status = task.status || "TODO";
+                    const status = taskStatusOf(task);
                     const card = document.createElement("div");
                     card.className = "kanban-card";
                     card.draggable = true;
                     card.dataset.id = task.id;
 
                     card.innerHTML = `
-                        <div class="tag">${task.assignee || 'Unassigned'}</div>
-                        <div class="task-title">${task.title}</div>
+                        <div class="tag">${taskAssigneeOf(task)}</div>
+                        <div class="task-title">${taskTitleOf(task)}</div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 11px; color: #6b7280;"><i class="fa-regular fa-clock"></i> ASAP</span>
                             <i class="fa-solid fa-grip-lines" style="color: #d1d5db;"></i>
                         </div>
                     `;
+
+                    card.addEventListener("click", () => {
+                        if (!String(task.id).startsWith("task-")) {
+                            localStorage.setItem("currentTaskId", task.id);
+                            if (location.pathname.includes("/assistant/")) location.href = "task-detail.html";
+                        }
+                    });
 
                     card.addEventListener("dragstart", (e) => {
                         e.dataTransfer.setData("text/plain", task.id);
@@ -63,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (status === "TODO") {
                         todoList.appendChild(card);
                         cTodo++;
-                    } else if (status === "IN_PROGRESS") {
+                    } else if (status === "DOING") {
                         inprogressList.appendChild(card);
                         cProg++;
                     } else {
@@ -87,8 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!taskList) return;
 
             let colStatus = "TODO";
-            if (taskList.id.includes("inprogress")) colStatus = "IN_PROGRESS";
-            if (taskList.id.includes("done") || taskList.id.includes("review")) colStatus = "REVIEW";
+            if (taskList.id.includes("inprogress")) colStatus = "DOING";
+            if (taskList.id.includes("done") || taskList.id.includes("review")) colStatus = "REVIEWING";
 
             taskList.addEventListener("dragover", e => {
                 e.preventDefault(); 
@@ -109,9 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 if (window.MangaApi && taskId && !taskId.startsWith('task-')) {
                     try {
-                        await window.MangaApi.apiFetch(`/tasks/${taskId}/status?newStatus=${encodeURIComponent(colStatus)}`, {
-                            method: "PATCH"
-                        });
+                        await window.MangaApi.updateTaskStatus(taskId, colStatus);
                         loadAssignments(); 
                     } catch (error) {
                         alert("Lỗi cập nhật tiến độ: " + error.message);
@@ -127,58 +136,69 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ======================================================== 
-    // 2. MÔ PHỎNG DROPZONE UPLOAD TRỢ LÝ NỘP BÀI               
+    // 2. ASSISTANT SUBMIT WORK - upload resource then submit task
     // ======================================================== 
     const fileDropzone = document.getElementById('file-dropzone');
     const btnUploadSubmit = document.getElementById('btn-upload-submit');
     const checkFinalReview = document.getElementById('check-final-review');
-    let hasUploadedFile = false;
+    let selectedSubmitFile = null;
 
     if (fileDropzone) {
-        fileDropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            fileDropzone.style.borderColor = 'var(--primary-color)';
-            fileDropzone.style.background = 'white';
-        });
-        fileDropzone.addEventListener('dragleave', () => {
-            fileDropzone.style.borderColor = '#d1d5db';
-            fileDropzone.style.background = '#f9fafb';
-        });
-        fileDropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            hasUploadedFile = true;
-            fileDropzone.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color: #10b981;"></i><p style="color: #10b981;">Bản thảo đã được đính kèm</p><span>Sẵn sàng để Upload</span>`;
-            fileDropzone.style.borderColor = '#10b981';
-            checkReadyState();
-        });
-        fileDropzone.addEventListener('click', () => {
-            hasUploadedFile = true;
-            fileDropzone.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color: #10b981;"></i><p style="color: #10b981;">Bản thảo đã được đính kèm</p><span>Sẵn sàng để Upload</span>`;
-            fileDropzone.style.borderColor = '#10b981';
-            checkReadyState();
-        });
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'file';
+        hiddenInput.accept = 'image/*,.png,.jpg,.jpeg,.webp,.psd,.clip';
+        hiddenInput.style.display = 'none';
+        document.body.appendChild(hiddenInput);
 
-        if (checkFinalReview) {
-            checkFinalReview.addEventListener('change', checkReadyState);
+        function setFile(file) {
+            selectedSubmitFile = file || null;
+            if (selectedSubmitFile) {
+                fileDropzone.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color: #10b981;"></i><p style="color: #10b981;">${selectedSubmitFile.name}</p><span>Ready to upload</span>`;
+                fileDropzone.style.borderColor = '#10b981';
+            }
+            checkReadyState();
         }
+
+        fileDropzone.addEventListener('dragover', (e) => { e.preventDefault(); fileDropzone.style.borderColor = 'var(--primary-color)'; fileDropzone.style.background = 'white'; });
+        fileDropzone.addEventListener('dragleave', () => { fileDropzone.style.borderColor = '#d1d5db'; fileDropzone.style.background = '#f9fafb'; });
+        fileDropzone.addEventListener('drop', (e) => { e.preventDefault(); setFile(e.dataTransfer?.files?.[0]); });
+        fileDropzone.addEventListener('click', () => hiddenInput.click());
+        hiddenInput.addEventListener('change', (e) => setFile(e.target.files?.[0]));
+        if (checkFinalReview) checkFinalReview.addEventListener('change', checkReadyState);
 
         function checkReadyState() {
-            if (hasUploadedFile && checkFinalReview && checkFinalReview.checked) {
-                btnUploadSubmit.style.background = '#111827';
-                btnUploadSubmit.style.color = 'white';
-                btnUploadSubmit.style.cursor = 'pointer';
-            } else {
-                btnUploadSubmit.style.background = '#e5e7eb';
-                btnUploadSubmit.style.color = '#9ca3af';
-                btnUploadSubmit.style.cursor = 'not-allowed';
-            }
+            const ready = !!selectedSubmitFile && (!checkFinalReview || checkFinalReview.checked);
+            if (!btnUploadSubmit) return;
+            btnUploadSubmit.disabled = !ready;
+            btnUploadSubmit.style.background = ready ? '#111827' : '#e5e7eb';
+            btnUploadSubmit.style.color = ready ? 'white' : '#9ca3af';
+            btnUploadSubmit.style.cursor = ready ? 'pointer' : 'not-allowed';
         }
-        
+
         if (btnUploadSubmit) {
-            btnUploadSubmit.addEventListener('click', () => {
-                if(btnUploadSubmit.style.cursor === 'pointer') {
-                    alert("Tải lên thành công! Đã gửi thông báo cho Mangaka duyệt bài.");
-                    window.location.href = "assistant-assignments.html";
+            btnUploadSubmit.addEventListener('click', async () => {
+                if (btnUploadSubmit.disabled || !selectedSubmitFile) return;
+                const taskId = localStorage.getItem('currentTaskId') || new URLSearchParams(location.search).get('taskId');
+                if (!taskId) return alert('No task selected. Open this page from Assignments first.');
+                const oldText = btnUploadSubmit.textContent;
+                btnUploadSubmit.disabled = true;
+                btnUploadSubmit.textContent = 'Uploading...';
+                try {
+                    let imageUrl = '';
+                    if (window.MangaApi?.uploadResource) {
+                        const resource = await window.MangaApi.uploadResource(selectedSubmitFile, 'ASSISTANT_SUBMISSION');
+                        imageUrl = resource.fileUrl || resource.url || resource.imageUrl || resource.secureUrl;
+                    }
+                    if (!imageUrl) imageUrl = selectedSubmitFile.name;
+                    await window.MangaApi.submitTask(taskId, imageUrl);
+                    alert('Upload successful. Task moved to Reviewing.');
+                    window.location.href = 'assistant-assignments.html';
+                } catch (error) {
+                    alert('Upload failed: ' + error.message);
+                } finally {
+                    btnUploadSubmit.disabled = false;
+                    btnUploadSubmit.textContent = oldText;
+                    checkReadyState();
                 }
             });
         }
@@ -615,7 +635,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const user = await window.MangaApi.apiFetch("/users/profile");
                 document.getElementById("profile-name").value = user.username || "";
                 document.getElementById("profile-email").value = user.email || "";
-                document.getElementById("profile-phone").value = user.phone || "";
+                let profileData = {};
+                try { profileData = JSON.parse(user.profileData || "{}"); } catch {}
+                document.getElementById("profile-phone").value = profileData.phone || user.phoneNumber || "";
                 if (user.avatarUrl) {
                     document.getElementById("profile-avatar-preview").src = user.avatarUrl;
                 }
@@ -647,20 +669,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (!username) return alert("Vui lòng nhập tên hiển thị!");
 
-            const formData = new FormData();
-            formData.append("username", username);
-            formData.append("phone", phone);
-            if (file) formData.append("avatar", file);
+            const profilePayload = {
+                fullName: username,
+                profileData: JSON.stringify({ phone })
+            };
 
             const oldText = btnSaveProfile.innerHTML;
             btnSaveProfile.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...';
             btnSaveProfile.disabled = true;
 
             try {
-                await window.MangaApi.apiFetch("/users/profile", {
-                    method: "PUT",
-                    body: formData
-                });
+                await window.MangaApi.updateProfile(profilePayload);
                 alert("Cập nhật hồ sơ thành công!");
                 window.location.reload();
             } catch (error) {

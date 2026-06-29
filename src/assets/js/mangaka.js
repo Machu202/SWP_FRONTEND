@@ -135,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     `;
                     
                     card.addEventListener("click", () => {
-                        localStorage.setItem("currentSeriesId", series.id);
+                        localStorage.setItem("currentSeriesId", series.id); localStorage.setItem("activeSeriesId", series.id);
                         localStorage.setItem("currentSeriesTitle", series.title);
                         window.location.href = "manuscripts.html"; 
                     });
