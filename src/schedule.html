@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mangaka Publishing Schedule</title>
+  <link rel="stylesheet" href="assets/css/style-workspace.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="schedule-page">
+  <main class="schedule-shell">
+    <header class="schedule-topbar">
+      <div>
+        <a href="javascript:history.back()" class="btn-outline"><i class="fa-solid fa-arrow-left"></i> Back</a>
+      </div>
+      <div class="schedule-brand">
+        <strong>Studio Flow</strong>
+        <span>Mangaka-owned Publishing Schedule</span>
+      </div>
+      <div class="schedule-role">Role: <strong id="schedule-role-label">User</strong></div>
+    </header>
+
+    <section class="schedule-hero">
+      <div>
+        <h1>Mangaka Publishing Schedule</h1>
+        <p>Manage the release/deadline schedule for your own manga series. Other roles can view only.</p>
+      </div>
+      <button class="btn-publish" id="schedule-refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    </section>
+
+    <div id="schedule-permission-note" class="schedule-permission-note" hidden></div>
+
+    <section class="schedule-layout">
+      <div class="schedule-main card-box">
+        <div class="schedule-toolbar">
+          <div class="search-box schedule-search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="schedule-search" placeholder="Search deadlines...">
+          </div>
+          <select id="schedule-status-filter" class="form-control">
+            <option value="ALL">All Status</option>
+            <option value="OPEN">Open</option>
+            <option value="DONE">Done</option>
+          </select>
+          <span class="status-tag progress"><span id="schedule-count">0</span> items</span>
+        </div>
+        <div id="schedule-list" class="schedule-list">
+          <div class="api-loading">Loading schedule...</div>
+        </div>
+      </div>
+
+      <aside class="schedule-side card-box" id="schedule-editor-panel" data-mangaka-only="true">
+        <h2>Add Publishing Schedule Item</h2>
+        <form id="manual-schedule-form" class="feature-form">
+          <div class="form-group">
+            <label>Title</label>
+            <input id="manual-title" class="form-control" placeholder="Example: Chapter 3 release" required>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input id="manual-date" class="form-control" type="date" required>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="manual-description" class="form-control" placeholder="Optional notes..."></textarea>
+          </div>
+          <button class="btn-publish" type="submit"><i class="fa-solid fa-plus"></i> Add Schedule</button>
+        </form>
+        <p class="muted-note">Only Mangaka can create/edit schedule items because the current backend authorizes schedule ownership by Mangaka ID.</p>
+      </aside>
+    </section>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/schedule.js"></script>
+</body>
+</html>

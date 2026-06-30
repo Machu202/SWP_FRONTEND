@@ -1030,16 +1030,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function referenceImageOf(task) {
             return task?.referenceImageUrl ||
+                task?.originalImageUrl ||
                 task?.pageImageUrl ||
+                task?.page?.imageUrl ||
                 task?.hitbox?.page?.imageUrl ||
                 task?.hitbox?.pageImageUrl ||
+                task?.hitbox?.imageUrl ||
                 '';
         }
 
         function submittedImageOf(task) {
             return task?.submittedImageUrl ||
+                task?.submissionImageUrl ||
+                task?.submittedWorkUrl ||
+                task?.submittedFileUrl ||
                 task?.submissionUrl ||
                 task?.submittedUrl ||
+                task?.resultImageUrl ||
+                task?.finalImageUrl ||
+                task?.outputImageUrl ||
+                task?.resourceUrl ||
                 task?.imageUrl ||
                 '';
         }
@@ -1053,8 +1063,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function isReviewableTask(task) {
-            const status = normalizeReviewStatus(task);
-            return status === 'REVIEWING';
+            const rawStatus = String(task?.status || task?.taskStatus || task?.state || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+            const normalized = normalizeReviewStatus(task);
+            const hasSubmission = Boolean(submittedImageOf(task));
+
+            if (normalized === 'APPROVED' || rawStatus === 'APPROVED') return false;
+
+            return normalized === 'REVIEWING' ||
+                ['REVIEWING', 'SUBMITTED', 'SUBMISSION_SENT', 'PENDING_REVIEW', 'WAITING_REVIEW', 'IN_REVIEW', 'DONE'].includes(rawStatus) ||
+                (hasSubmission && !['TODO', 'DOING', 'IN_PROGRESS'].includes(rawStatus));
         }
 
         async function resolveReferenceImageForReview(task) {
@@ -1115,7 +1132,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                         <a class="btn-outline" href="dashboard.html#kanban"><i class="fa-solid fa-table-columns"></i> Back to Kanban</a>
                     </div>
-                    <div class="empty-state-box">Assistant submissions will appear here after they upload work and the task moves to REVIEWING.</div>
+                    <div class="empty-state-box">Assistant submissions will appear here after they upload work. The page now checks both /tasks/my-tasks and /tasks/series/{seriesId}.</div>
                 `;
                 return;
             }
@@ -1161,33 +1178,114 @@ document.addEventListener("DOMContentLoaded", () => {
             bindReviewModeTabs('assistant');
         }
 
+        function reviewTaskMergeKey(task) {
+            return String(taskIdOf(task) || `${task?.seriesId || ''}-${task?.pageId || ''}-${task?.description || ''}`).trim();
+        }
+
+        function mergeReviewTasks(...lists) {
+            const merged = new Map();
+
+            lists.flat().filter(Boolean).forEach(task => {
+                const key = reviewTaskMergeKey(task);
+                if (!key) return;
+                merged.set(key, {
+                    ...(merged.get(key) || {}),
+                    ...task
+                });
+            });
+
+            return Array.from(merged.values());
+        }
+
+        async function loadSeriesForReviewTasks() {
+            const lists = [];
+
+            if (window.MangaApi.mySeries) {
+                try { lists.push(getArr(await window.MangaApi.mySeries())); }
+                catch (error) { console.warn('Could not load Mangaka series for review:', error.message); }
+            }
+
+            if (window.MangaApi.allSeries) {
+                try { lists.push(getArr(await window.MangaApi.allSeries())); }
+                catch (error) { console.warn('Could not load all series for review:', error.message); }
+            }
+
+            const seen = new Map();
+            lists.flat().filter(Boolean).forEach(series => {
+                const id = series?.id ?? series?.seriesId;
+                if (id) seen.set(String(id), series);
+            });
+
+            return Array.from(seen.values());
+        }
+
         async function loadAllReviewTasks() {
-            const tasks = getArr(await window.MangaApi.tasks());
-            return tasks.filter(isReviewableTask);
+            const taskSources = [];
+
+            // /tasks/my-tasks is often Assistant-focused. Keep it, but do not rely on it alone.
+            if (window.MangaApi.tasks) {
+                try {
+                    taskSources.push(getArr(await window.MangaApi.tasks()));
+                } catch (error) {
+                    console.warn('Could not load /tasks/my-tasks for review:', error.message);
+                }
+            }
+
+            // Mangaka needs to review tasks created under their series, so load tasks by series too.
+            if (window.MangaApi.tasksBySeries) {
+                const seriesList = await loadSeriesForReviewTasks();
+                const seriesTasks = await Promise.all(seriesList.map(async (series) => {
+                    const seriesId = series?.id ?? series?.seriesId;
+                    if (!seriesId) return [];
+
+                    try {
+                        const tasks = getArr(await window.MangaApi.tasksBySeries(seriesId));
+                        return tasks.map(task => ({
+                            seriesId,
+                            seriesTitle: series?.title || series?.name || task?.seriesTitle,
+                            ...task
+                        }));
+                    } catch (error) {
+                        console.warn(`Could not load tasks for series ${seriesId}:`, error.message);
+                        return [];
+                    }
+                }));
+
+                taskSources.push(seriesTasks.flat());
+            }
+
+            return mergeReviewTasks(...taskSources)
+                .filter(isReviewableTask)
+                .sort((a, b) => Number(taskIdOf(b) || 0) - Number(taskIdOf(a) || 0));
         }
 
         async function loadReviewTask() {
             try {
                 const reviewableTasks = await loadAllReviewTasks();
 
-                if (!selectedReviewTaskId && reviewableTasks.length === 1) {
+                let task = selectedReviewTaskId
+                    ? reviewableTasks.find(t => String(taskIdOf(t)) === String(selectedReviewTaskId))
+                    : null;
+
+                // If localStorage still points to an old task, do not leave the page empty.
+                // Auto-select the newest available submission instead.
+                if (!task && reviewableTasks.length) {
                     setSelectedTask(taskIdOf(reviewableTasks[0]));
+                    task = reviewableTasks[0];
                 }
 
                 renderSubmissionPicker(reviewableTasks);
 
-                if (!selectedReviewTaskId) {
-                    reviewPageTitle.textContent = 'Select a submission to review...';
-                    showReviewEmpty('Choose one of the submitted tasks above.');
+                if (!reviewableTasks.length) {
+                    reviewPageTitle.textContent = 'No Assistant submissions waiting for review.';
+                    showReviewEmpty('No submitted Assistant work is currently in REVIEWING status. Check Kanban or ask Assistant to upload first.');
                     loadedReviewTask = null;
                     return null;
                 }
 
-                const task = reviewableTasks.find(t => String(taskIdOf(t)) === String(selectedReviewTaskId));
-
                 if (!task) {
-                    reviewPageTitle.textContent = `Task #${selectedReviewTaskId} is no longer in REVIEWING status.`;
-                    showReviewEmpty('Choose another submitted task above, or return to Kanban.');
+                    reviewPageTitle.textContent = 'Select a submission to review...';
+                    showReviewEmpty('Choose one of the submitted tasks above.');
                     loadedReviewTask = null;
                     return null;
                 }

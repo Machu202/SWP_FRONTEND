@@ -4261,3 +4261,224 @@ textarea.form-control {
   box-shadow: 0 10px 15px rgba(0,0,0,0.1);
 }
 
+
+
+/* ========================================= */
+/* --- SCHEDULE / DEADLINE PAGE --- */
+/* ========================================= */
+.deadline-hint {
+  display: block;
+  margin-top: 6px;
+}
+
+.schedule-page {
+  background: #f3f4f8;
+  color: #111827;
+}
+
+.schedule-shell {
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.schedule-topbar,
+.schedule-hero,
+.schedule-toolbar,
+.schedule-item,
+.schedule-item-title-row,
+.schedule-actions,
+.schedule-meta {
+  display: flex;
+  align-items: center;
+}
+
+.schedule-topbar {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.schedule-brand {
+  text-align: center;
+  display: grid;
+  gap: 3px;
+}
+
+.schedule-brand span,
+.schedule-role,
+.schedule-hero p,
+.schedule-meta {
+  color: #64748b;
+}
+
+.schedule-hero {
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.schedule-hero h1 {
+  margin: 0 0 6px;
+  font-size: 34px;
+}
+
+.schedule-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: start;
+}
+
+.schedule-toolbar {
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.schedule-search-box {
+  flex: 1;
+  min-width: 260px;
+}
+
+.schedule-search-box input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  background: transparent;
+}
+
+.schedule-list {
+  display: grid;
+  gap: 12px;
+}
+
+.schedule-item {
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.schedule-item.done {
+  opacity: .65;
+}
+
+.schedule-item-main {
+  min-width: 0;
+}
+
+.schedule-item-title-row {
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.schedule-item h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.schedule-item p {
+  margin: 0 0 10px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.schedule-meta {
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.schedule-actions {
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.schedule-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.schedule-badge.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.schedule-badge.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.schedule-badge.danger {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.schedule-badge.neutral {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.mini-btn.danger {
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.schedule-side h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+@media (max-width: 980px) {
+  .schedule-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* ========================================= */
+/* --- MANGAKA-OWNED SCHEDULE PERMISSIONS --- */
+/* ========================================= */
+.schedule-permission-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.schedule-permission-note[hidden] {
+  display: none !important;
+}
+
+.schedule-readonly-hidden {
+  display: none !important;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA REVIEW SUBMISSIONS LOADING FIX --- */
+/* ========================================= */
+.submission-picker-panel .empty-state-box {
+  text-align: center;
+  color: #64748b;
+}

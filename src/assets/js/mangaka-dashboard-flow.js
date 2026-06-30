@@ -522,6 +522,11 @@
               </div>
               <div class="form-group"><label>Assistant</label><select id="inline-assistant-select" class="form-control"></select></div>
               <div class="form-group">
+                <label>Scheduled Deadline Date</label>
+                <input id="inline-task-deadline" class="form-control" type="date">
+                <small class="muted-note">Optional: this will be added to the Assistant task and shown on the Schedule page.</small>
+              </div>
+              <div class="form-group">
                 <label>Task Description</label>
                 <textarea id="inline-task-desc" class="form-control" required placeholder="Describe the work..."></textarea>
                 <small id="inline-chapter-script-hint" class="muted-note"></small>
@@ -679,8 +684,10 @@
         const chapterId = $("#inline-canvas-chapter")?.value;
         const chapter = state.chapters.find((c) => String(c.id ?? c.chapterId) === String(chapterId));
         const chapterScript = chapter?.script || chapter?.scriptText || chapter?.content || Api.getChapterScript?.(chapterId) || "";
+        const deadlineDate = $("#inline-task-deadline")?.value || "";
         const taskDescription = [
           description,
+          deadlineDate ? `Deadline: ${deadlineDate}` : "",
           chapterScript ? `\n--- Chapter Script / Notes ---\n${chapterScript}` : ""
         ].filter(Boolean).join("\n");
 
@@ -690,7 +697,39 @@
           const task = await Api.assignTaskToHitbox(hitboxId, taskDescription);
           const taskId = task?.id || task?.taskId;
           if (taskId && assistantId) await Api.assignTask(taskId, assistantId);
-          log.innerHTML = `<div class="log-ok">✓ Hitbox task created successfully.</div>`;
+
+          if (deadlineDate) {
+            const seriesId = $("#inline-canvas-series")?.value || Api.getActiveSeriesId?.();
+            const selectedSeries = state.series.find((s) => String(s.id ?? s.seriesId) === String(seriesId));
+            const selectedAssistant = $("#inline-assistant-select")?.selectedOptions?.[0]?.textContent?.trim() || "";
+            const title = `Task ${taskId ? `#${taskId}` : ""}: ${description.slice(0, 70)}`;
+
+            Api.addScheduleItem?.({
+              type: "TASK_DEADLINE",
+              source: "MANGAKA_CANVAS",
+              title,
+              description: taskDescription,
+              deadlineDate,
+              date: deadlineDate,
+              seriesId,
+              seriesTitle: selectedSeries?.title || selectedSeries?.name || "",
+              chapterId,
+              chapterTitle: chapter?.title || "",
+              pageId,
+              taskId,
+              assistantId,
+              assistantName: selectedAssistant,
+              status: "OPEN"
+            });
+
+            if (seriesId && Api.createDeadline) {
+              Api.createDeadline(seriesId, title, deadlineDate).catch((deadlineError) => {
+                console.warn("Backend deadline creation failed; local schedule item was saved.", deadlineError);
+              });
+            }
+          }
+
+          log.innerHTML = `<div class="log-ok">✓ Hitbox task created successfully${deadlineDate ? " with scheduled deadline." : "."}</div>`;
           await renderPage();
         } catch (error) {
           log.innerHTML = `<div class="log-error">✕ ${esc(error.message)}</div>`;

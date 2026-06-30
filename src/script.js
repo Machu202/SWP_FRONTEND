@@ -56,24 +56,44 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("#back-to-login")?.addEventListener("click", (e) => { e.preventDefault(); resetToPasswordTab(); });
 
+  function setLoginStatus(message = "", type = "info") {
+    const status = $("#login-status");
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.type = type;
+    status.style.display = message ? "block" : "none";
+  }
+
+  function getLoginPasswordInput() {
+    // Important: when "show password" is ON, the input type becomes text.
+    // Do not search only input[type='password'] or login will fail while visible.
+    return $("#login-password") ||
+      $(".password-wrapper input", formPassword || document) ||
+      $("input[autocomplete='current-password']", formPassword || document) ||
+      $("input[type='password']", formPassword || document);
+  }
+
   async function handleBackendLogin(e) {
     e?.preventDefault?.();
 
     const btn = $("#btn-login");
     const usernameInput = $("#login-username") || $("#username") || $("input[type='text']", formPassword || document);
-    const passwordInput = $("#login-password") || $("input[type='password']", formPassword || document);
+    const passwordInput = getLoginPasswordInput();
     const selectedRole = "";
 
     const username = usernameInput?.value?.trim() || "";
     const password = passwordInput?.value || "";
 
     if (!username || !password) {
-      toast("Enter username/email and password first.", "error");
-      usernameInput?.focus();
+      const msg = "Please enter both username/email and password.";
+      setLoginStatus(msg, "error");
+      toast(msg, "error");
+      (username ? passwordInput : usernameInput)?.focus();
       return;
     }
 
     const oldText = btn?.textContent || "Login";
+    setLoginStatus("Checking credentials...", "info");
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Logging in...";
@@ -84,21 +104,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await window.MangaApi.login({ username, password });
 
       console.log("[Login] Success:", data);
-      toast(data.message || "Login successful.", "success");
+      const successMessage = data.message || "Login successful. Redirecting...";
+      setLoginStatus(successMessage, "success");
+      toast(successMessage, "success");
 
       const target = window.MangaApi.routeForRole(data.role || localStorage.getItem("role"));
       setTimeout(() => {
         window.location.href = target;
-      }, 250);
+      }, 900);
     } catch (err) {
       console.error("[Login] Failed:", err);
-      const msg = err?.message || "Login failed.";
+      const backendMsg = err?.message || "Login failed.";
+      const msg = /bad credentials|unauthorized|401/i.test(backendMsg)
+        ? "Login failed: wrong username/email or password."
+        : `Login failed: ${backendMsg}`;
+      setLoginStatus(msg, "error");
       toast(msg, "error");
-      const status = $("#login-status");
-      if (status) {
-        status.textContent = msg;
-        status.dataset.type = "error";
-      }
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -106,6 +127,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   }
+
+  // LOGIN STATUS CLEAR ON INPUT
+  [$("#login-username"), getLoginPasswordInput()].filter(Boolean).forEach((input) => {
+    input.addEventListener("input", () => setLoginStatus("", "info"));
+  });
 
   $("#btn-login")?.addEventListener("click", handleBackendLogin);
   $("#form-password-section")?.addEventListener("keydown", (e) => {
@@ -166,11 +192,24 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#btn-send-again")?.addEventListener("click", (e) => { e.preventDefault(); startCountdown(); toast("Đã gửi lại mã OTP mới.", "success"); });
 
   $$(".eye-icon").forEach((icon) => {
-    icon.addEventListener("click", () => {
-      const passwordInput = icon.previousElementSibling;
+    icon.setAttribute("role", "button");
+    icon.setAttribute("tabindex", "0");
+    icon.setAttribute("aria-label", "Show or hide password");
+
+    const togglePassword = () => {
+      const passwordInput = icon.closest(".password-wrapper")?.querySelector("input") || icon.previousElementSibling;
       if (!passwordInput) return;
       passwordInput.type = passwordInput.type === "password" ? "text" : "password";
       icon.textContent = passwordInput.type === "password" ? "👁️" : "🔒";
+      icon.setAttribute("aria-pressed", passwordInput.type === "text" ? "true" : "false");
+    };
+
+    icon.addEventListener("click", togglePassword);
+    icon.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        togglePassword();
+      }
     });
   });
 

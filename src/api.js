@@ -253,6 +253,53 @@ function resolveMediaUrl(url) {
   }
 }
 
+
+// LOCAL SCHEDULE ITEMS
+// Used by the shared Schedule page and as a fallback when the backend has no task-deadline field.
+function getLocalScheduleItems() {
+  try {
+    return JSON.parse(localStorage.getItem("studioScheduleItems") || "[]");
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveLocalScheduleItems(items) {
+  localStorage.setItem("studioScheduleItems", JSON.stringify(Array.isArray(items) ? items : []));
+}
+
+function addLocalScheduleItem(item = {}) {
+  const items = getLocalScheduleItems();
+  const id = item.id || `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const saved = {
+    id,
+    createdAt: new Date().toISOString(),
+    status: "OPEN",
+    ...item,
+    id
+  };
+
+  const existingIndex = items.findIndex(existing => String(existing.id) === String(id));
+  if (existingIndex >= 0) items[existingIndex] = { ...items[existingIndex], ...saved };
+  else items.unshift(saved);
+
+  saveLocalScheduleItems(items);
+  return saved;
+}
+
+function updateLocalScheduleItem(id, patch = {}) {
+  const items = getLocalScheduleItems();
+  const updated = items.map(item => String(item.id) === String(id) ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item);
+  saveLocalScheduleItems(updated);
+  return updated.find(item => String(item.id) === String(id));
+}
+
+function deleteLocalScheduleItem(id) {
+  const items = getLocalScheduleItems().filter(item => String(item.id) !== String(id));
+  saveLocalScheduleItems(items);
+  return true;
+}
+
 const MangaApi = {
   API_BASE_URL,
   WS_BASE_URL,
@@ -314,6 +361,11 @@ const MangaApi = {
 
   profile: () => apiFetch("/users/profile"),
   updateProfile: (payload) => apiFetch("/users/profile", { method: "PUT", body: payload }),
+
+  getScheduleItems: getLocalScheduleItems,
+  addScheduleItem: addLocalScheduleItem,
+  updateScheduleItem: updateLocalScheduleItem,
+  deleteScheduleItem: deleteLocalScheduleItem,
   users: () => apiFetch("/users/all"),
   usersByRole: (role) => apiFetch(`/users${objectToQuery({ role })}`),
   getRoles: () => Promise.resolve([
