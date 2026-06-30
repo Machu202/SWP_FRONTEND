@@ -90,7 +90,7 @@
                     <h1>Quản lý Bản thảo (Chapters)</h1>
                     <p>Mở rộng các Chapter để xem từng trang và giao việc cho Trợ lý.</p>
                 </div>
-                <button id="btn-open-modal" class="btn-publish" style="padding: 10px 20px; font-size: 14px;">
+                <button id="btn-open-modal" class="btn-publish" type="button" onclick="window.MangakaOpenChaptersAndPagesTab ? window.MangakaOpenChaptersAndPagesTab(event) : (event.preventDefault(), window.location.href='dashboard.html#chapters');" style="padding: 10px 20px; font-size: 14px;">
                     <i class="fa-solid fa-plus" style="margin-right: 5px;"></i> Thêm Chapter
                 </button>
             </div>
@@ -106,7 +106,7 @@
     </main>
 
     <!-- Modal Tạo Chapter -->
-    <div class="modal-overlay" id="chapter-modal">
+    <div class="modal-overlay" id="chapter-modal-disabled" data-disabled-modal="true">
         <div class="modal-box">
             <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Tạo Chapter Mới</h2>
             
@@ -121,7 +121,7 @@
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button id="btn-close-modal" style="padding: 10px 15px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; font-weight: 600; cursor: pointer;">Hủy</button>
+                <button id="btn-close-modal-disabled" style="padding: 10px 15px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; font-weight: 600; cursor: pointer;">Hủy</button>
                 <button id="btn-submit-chapter" class="btn-publish" style="padding: 10px 20px;">Tạo ngay</button>
             </div>
         </div>

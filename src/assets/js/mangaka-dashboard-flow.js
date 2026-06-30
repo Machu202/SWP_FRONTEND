@@ -92,28 +92,47 @@
       </div>`;
     }
 
+    function seriesMergeKey(series) {
+      return String(series?.id ?? series?.seriesId ?? series?.title ?? series?.name ?? "").trim().toLowerCase();
+    }
+
+    function mergeSeriesLists(...lists) {
+      const merged = new Map();
+
+      lists.flat().filter(Boolean).forEach((series) => {
+        const key = seriesMergeKey(series);
+        if (!key) return;
+        merged.set(key, {
+          ...(merged.get(key) || {}),
+          ...series
+        });
+      });
+
+      return Array.from(merged.values());
+    }
+
     async function loadMangakaSeriesList() {
-      let items = [];
+      let mySeries = [];
+      let allSeries = [];
 
       try {
-        items = getArray(await Api.mySeries());
+        mySeries = getArray(await Api.mySeries());
       } catch (error) {
         console.warn("Could not load /manga-series/my-series", error);
-        items = [];
+        mySeries = [];
       }
 
-      // Some backend builds return an empty array for /my-series depending on role/user seed data.
-      // Fall back to the general series endpoint so Mangaka can still manage chapters/pages.
-      if (!items.length) {
-        try {
-          items = getArray(await Api.allSeries());
-        } catch (fallbackError) {
-          console.warn("Could not load fallback /manga-series", fallbackError);
-          items = [];
-        }
+      try {
+        allSeries = getArray(await Api.allSeries());
+      } catch (error) {
+        console.warn("Could not load /manga-series", error);
+        allSeries = [];
       }
 
-      return items;
+      // Important: always merge both endpoints.
+      // /my-series can return only the newly created Mangaka-owned series,
+      // while /manga-series can return older/imported visible series.
+      return mergeSeriesLists(allSeries, mySeries);
     }
 
     async function enrichChaptersWithPages(chapters = []) {
@@ -132,6 +151,35 @@
       }));
     }
 
+
+    function openScriptModal(chapter, scriptText = "") {
+      const existing = document.getElementById("chapter-script-modal");
+      if (existing) existing.remove();
+
+      const chapterLabel = `Ch. ${chapter?.chapterNumber ?? chapter?.number ?? "?"} — ${chapter?.title || "Untitled"}`;
+      document.body.insertAdjacentHTML("beforeend", `
+        <div class="chapter-script-modal" id="chapter-script-modal">
+          <div class="chapter-script-dialog">
+            <div class="chapter-script-header">
+              <div>
+                <span class="eyebrow">Chapter Script</span>
+                <h2>${esc(chapterLabel)}</h2>
+              </div>
+              <button type="button" class="modal-x" id="close-chapter-script"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <pre class="chapter-script-content">${esc(scriptText || "No script saved for this chapter.")}</pre>
+          </div>
+        </div>
+      `);
+
+      const modal = document.getElementById("chapter-script-modal");
+      const close = () => modal?.remove();
+      document.getElementById("close-chapter-script")?.addEventListener("click", close);
+      modal?.addEventListener("click", (event) => {
+        if (event.target === modal) close();
+      });
+    }
+
     async function renderChapters() {
       inlinePanel.innerHTML = `
         ${panelHeader("Chapters & Pages", "Create chapters and upload manga page images without leaving the Mangaka dashboard.", `<button class="btn-publish" id="inline-refresh-chapters"><i class="fa-solid fa-rotate"></i> Refresh</button>`)}
@@ -144,6 +192,11 @@
               <div class="form-row">
                 <div class="form-group"><label>Chapter Number</label><input id="inline-chapter-number" class="form-control" type="number" min="1" required></div>
                 <div class="form-group"><label>Chapter Title</label><input id="inline-chapter-title" class="form-control" placeholder="Chapter title"></div>
+              </div>
+              <div class="form-group">
+                <label>Chapter Script / Notes</label>
+                <textarea id="inline-chapter-script" class="form-control chapter-script-input" placeholder="Add chapter script, dialogue, panel notes, or direction for this chapter..."></textarea>
+                <small class="muted-note">This script is attached to the chapter and can be used when creating Assistant tasks.</small>
               </div>
               <button class="btn-publish" type="submit"><i class="fa-solid fa-plus"></i> Create Chapter</button>
             </form>
@@ -211,13 +264,28 @@
             ? items.map((c) => `<option value="${c.id ?? c.chapterId}">Ch. ${c.chapterNumber ?? c.number ?? "?"} — ${esc(c.title || "Untitled")}</option>`).join("")
             : `<option value="">No chapters yet</option>`;
           chaptersTable.innerHTML = items.length
-            ? `<table class="data-table"><thead><tr><th>Chapter</th><th>Title</th><th>Pages</th><th>Status</th><th>Action</th></tr></thead><tbody>${items.map((c) => {
+            ? `<table class="data-table"><thead><tr><th>Chapter</th><th>Title</th><th>Pages</th><th>Script</th><th>Status</th><th>Action</th></tr></thead><tbody>${items.map((c) => {
                 const id = c.id ?? c.chapterId;
                 const pageCount = getArray(c.pages).length;
-                return `<tr><td><strong>Ch. ${c.chapterNumber ?? c.number ?? "?"}</strong></td><td>${esc(c.title || "Untitled")}</td><td><span class="status-tag progress">${pageCount} page${pageCount === 1 ? "" : "s"}</span></td><td><span class="status-tag progress">${esc(c.status || "DRAFT")}</span></td><td><button class="btn-outline mini-btn" data-open-canvas="${id}">Open Canvas</button></td></tr>`;
+                const chapterScript = c.script || c.scriptText || c.content || Api.getChapterScript?.(id) || "";
+                return `<tr>
+                  <td><strong>Ch. ${c.chapterNumber ?? c.number ?? "?"}</strong></td>
+                  <td>${esc(c.title || "Untitled")}</td>
+                  <td><span class="status-tag progress">${pageCount} page${pageCount === 1 ? "" : "s"}</span></td>
+                  <td>${chapterScript ? `<button class="btn-outline mini-btn" data-view-script="${id}"><i class="fa-solid fa-scroll"></i> View Script</button>` : `<span class="muted-note">No script</span>`}</td>
+                  <td><span class="status-tag progress">${esc(c.status || "DRAFT")}</span></td>
+                  <td><button class="btn-outline mini-btn" data-open-canvas="${id}">Open Canvas</button></td>
+                </tr>`;
               }).join("")}</tbody></table>`
             : `<div class="empty-state-box">No chapters yet. Create the first chapter above.</div>`;
           if (chapterSelect.value) Api.setActiveChapterId(chapterSelect.value);
+
+          $$("[data-view-script]").forEach((btn) => btn.addEventListener("click", () => {
+            const chapterId = btn.dataset.viewScript;
+            const chapter = items.find((c) => String(c.id ?? c.chapterId) === String(chapterId));
+            const scriptText = chapter?.script || chapter?.scriptText || chapter?.content || Api.getChapterScript?.(chapterId) || "";
+            openScriptModal(chapter, scriptText);
+          }));
 
           $$("[data-open-canvas]").forEach((btn) => btn.addEventListener("click", () => {
             const chapterId = btn.dataset.openCanvas;
@@ -241,11 +309,18 @@
         const seriesId = seriesSelect.value;
         if (!seriesId) return alert("Select a series first.");
         try {
-          await Api.createChapter({
+          const scriptText = $("#inline-chapter-script")?.value.trim() || "";
+          const createdChapter = await Api.createChapter({
             seriesId: Number(seriesId),
             chapterNumber: Number($("#inline-chapter-number").value),
             title: $("#inline-chapter-title").value.trim()
           });
+
+          const createdChapterId = createdChapter?.id || createdChapter?.chapterId;
+          if (createdChapterId && scriptText) {
+            Api.saveChapterScript?.(createdChapterId, scriptText);
+          }
+
           event.target.reset();
           await loadChapters();
         } catch (error) {
@@ -304,7 +379,11 @@
                 <div class="form-group"><label>H %</label><input id="inline-box-h" class="form-control" type="number" step="0.01" readonly></div>
               </div>
               <div class="form-group"><label>Assistant</label><select id="inline-assistant-select" class="form-control"></select></div>
-              <div class="form-group"><label>Task Description</label><textarea id="inline-task-desc" class="form-control" required placeholder="Describe the work..."></textarea></div>
+              <div class="form-group">
+                <label>Task Description</label>
+                <textarea id="inline-task-desc" class="form-control" required placeholder="Describe the work..."></textarea>
+                <small id="inline-chapter-script-hint" class="muted-note"></small>
+              </div>
               <button class="btn-publish" type="submit">Create Hitbox Task</button>
             </form>
             <div id="inline-workspace-log" class="upload-log"></div>
@@ -317,6 +396,18 @@
       });
 
       const state = { series: [], chapters: [], pages: [], lastBox: null };
+
+      function updateChapterScriptHint() {
+        const chapterId = $("#inline-canvas-chapter")?.value;
+        const chapter = state.chapters.find((c) => String(c.id ?? c.chapterId) === String(chapterId));
+        const scriptText = chapter?.script || chapter?.scriptText || chapter?.content || Api.getChapterScript?.(chapterId) || "";
+        const hint = $("#inline-chapter-script-hint");
+        if (hint) {
+          hint.innerHTML = scriptText
+            ? `<i class="fa-solid fa-scroll"></i> Chapter script available. It will be appended to the task note.`
+            : "";
+        }
+      }
 
       async function loadSeries() {
         state.series = await loadMangakaSeriesList();
@@ -443,10 +534,18 @@
         if (!pageId || !state.lastBox) return alert("Draw a hitbox first.");
         if (!description) return alert("Enter task description.");
 
+        const chapterId = $("#inline-canvas-chapter")?.value;
+        const chapter = state.chapters.find((c) => String(c.id ?? c.chapterId) === String(chapterId));
+        const chapterScript = chapter?.script || chapter?.scriptText || chapter?.content || Api.getChapterScript?.(chapterId) || "";
+        const taskDescription = [
+          description,
+          chapterScript ? `\n--- Chapter Script / Notes ---\n${chapterScript}` : ""
+        ].filter(Boolean).join("\n");
+
         try {
           const hitbox = await Api.createHitbox(pageId, state.lastBox);
           const hitboxId = hitbox?.id || hitbox?.hitboxId || hitbox;
-          const task = await Api.assignTaskToHitbox(hitboxId, description);
+          const task = await Api.assignTaskToHitbox(hitboxId, taskDescription);
           const taskId = task?.id || task?.taskId;
           if (taskId && assistantId) await Api.assignTask(taskId, assistantId);
           log.innerHTML = `<div class="log-ok">✓ Hitbox task created successfully.</div>`;

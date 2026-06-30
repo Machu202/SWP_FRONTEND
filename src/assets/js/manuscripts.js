@@ -1,6 +1,39 @@
 // ==========================================
 // manuscripts.js - QUẢN LÝ CÂY THƯ MỤC CHAPTERS & PAGES
 // ==========================================
+
+// FORCE ADD CHAPTER REDIRECT
+// Manuscripts is a read/browse page. Creating chapters must happen in the dashboard Chapters & Pages tab.
+window.MangakaOpenChaptersAndPagesTab = function(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const sid = window.MangaApi?.getActiveSeriesId?.() ||
+        localStorage.getItem("currentSeriesId") ||
+        localStorage.getItem("activeSeriesId") ||
+        "";
+
+    const stitle = localStorage.getItem("currentSeriesTitle") ||
+        localStorage.getItem("activeSeriesTitle") ||
+        "";
+
+    if (sid) {
+        localStorage.setItem("activeSeriesId", String(sid));
+        localStorage.setItem("currentSeriesId", String(sid));
+    }
+
+    if (stitle) {
+        localStorage.setItem("activeSeriesTitle", stitle);
+        localStorage.setItem("currentSeriesTitle", stitle);
+    }
+
+    window.location.href = "dashboard.html#chapters";
+};
+
+
 document.addEventListener("DOMContentLoaded", () => {
     
     if (!window.MangaApi) return;
@@ -11,6 +44,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const headerTitle = document.getElementById("header-series-title");
     const chaptersList = document.getElementById("chapters-list");
     const btnOpenModal = document.getElementById("btn-open-modal");
+
+    function openChaptersAndPagesTab() {
+        if (seriesId) {
+            localStorage.setItem("activeSeriesId", String(seriesId));
+            localStorage.setItem("currentSeriesId", String(seriesId));
+        }
+        if (seriesTitle) {
+            localStorage.setItem("activeSeriesTitle", seriesTitle);
+            localStorage.setItem("currentSeriesTitle", seriesTitle);
+        }
+        window.location.href = "dashboard.html#chapters";
+    }
 
     // =======================================================
     // 1. KIỂM TRA ĐÃ CHỌN TRUYỆN CHƯA
@@ -169,7 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // =======================================================
     // 3. LOGIC MODAL TẠO CHAPTER MỚI
     // =======================================================
-    const modal = document.getElementById("chapter-modal");
+    const modal = document.getElementById("chapter-modal-disabled");
     const btnClose = document.getElementById("btn-close-modal");
     const btnSubmit = document.getElementById("btn-submit-chapter");
 
@@ -220,5 +265,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 btnSubmit.disabled = false;
             }
         });
+    }
+    // FORCE CAPTURE REDIRECT HANDLER
+    if (btnOpenModal) {
+        btnOpenModal.onclick = window.MangakaOpenChaptersAndPagesTab;
+        btnOpenModal.addEventListener("click", window.MangakaOpenChaptersAndPagesTab, true);
     }
 });

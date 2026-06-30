@@ -39,6 +39,59 @@ document.addEventListener("DOMContentLoaded", () => {
     setupImageUpload("cover-upload-zone", "cover-file-input", "cover-preview", "cover-placeholder");
     setupImageUpload("bg-upload-zone", "bg-file-input", "bg-preview", "bg-placeholder");
 
+    function fileToDataUrl(file) {
+        return new Promise((resolve) => {
+            if (!file) return resolve("");
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(String(event.target?.result || ""));
+            reader.onerror = () => resolve("");
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function getPendingSeriesMetaStore() {
+        try {
+            return JSON.parse(localStorage.getItem("mangakaPendingSeriesMetaByTitle") || "{}");
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function savePendingSeriesMeta(title, meta = {}) {
+        const key = String(title || "").trim().toLowerCase();
+        if (!key) return;
+        const store = getPendingSeriesMetaStore();
+        store[key] = { ...(store[key] || {}), ...meta };
+        localStorage.setItem("mangakaPendingSeriesMetaByTitle", JSON.stringify(store));
+    }
+
+    function getPendingSeriesMeta(title) {
+        const key = String(title || "").trim().toLowerCase();
+        return getPendingSeriesMetaStore()[key] || {};
+    }
+
+    function seriesKey(series) {
+        return String(series?.id ?? series?.seriesId ?? series?.title ?? series?.name ?? "").trim().toLowerCase();
+    }
+
+    function mergeSeriesLists(...lists) {
+        const merged = new Map();
+
+        lists.flat().filter(Boolean).forEach(series => {
+            const key = seriesKey(series);
+            if (!key) return;
+
+            // Prefer later values only when they have real fields,
+            // but do not drop older series from another endpoint.
+            merged.set(key, {
+                ...(merged.get(key) || {}),
+                ...series
+            });
+        });
+
+        return Array.from(merged.values());
+    }
+
     const btnCreateSeries = document.getElementById("btn-create-series");
     if (btnCreateSeries) {
         btnCreateSeries.addEventListener("click", async (e) => {
@@ -49,22 +102,59 @@ document.addEventListener("DOMContentLoaded", () => {
             const genreInput = document.getElementById("series-genre"); // Bắt ID của Genre
             const targetInput = document.getElementById("series-target");
             const statusInput = document.getElementById("series-status");
+            const scriptInput = document.getElementById("series-script");
 
             const title = titleInput?.value.trim();
             const desc = descInput?.value.trim();
             const genre = genreInput?.value;
             const targetAudience = targetInput?.value;
             const status = statusInput?.value;
+            const seriesScript = scriptInput?.value.trim() || "";
+            const coverFile = document.getElementById("cover-file-input")?.files?.[0] || null;
+            const coverLocalDataUrl = await fileToDataUrl(coverFile);
             
             if (!title) { alert("⛔ Vui lòng nhập Tên tác phẩm!"); titleInput.focus(); return; }
             if (!desc) { alert("⛔ Vui lòng nhập Tóm tắt nội dung!"); descInput.focus(); return; }
 
+            let coverImageUrl = "";
+            if (coverFile && window.MangaApi.uploadResource) {
+                try {
+                    const uploaded = await window.MangaApi.uploadResource(coverFile, "COVER_IMAGE");
+                    coverImageUrl = window.MangaApi.extractUploadedUrl?.(uploaded) || "";
+                } catch (coverError) {
+                    console.warn("Cover upload as COVER_IMAGE failed, trying PAGE_IMAGE fallback:", coverError);
+                    try {
+                        const uploaded = await window.MangaApi.uploadResource(coverFile, "PAGE_IMAGE");
+                        coverImageUrl = window.MangaApi.extractUploadedUrl?.(uploaded) || "";
+                    } catch (fallbackError) {
+                        console.warn("Cover upload failed. The series will still be created without a server cover URL.", fallbackError);
+                    }
+                }
+            }
+
+            const coverDisplayUrl = window.MangaApi.resolveMediaUrl?.(coverImageUrl) || coverImageUrl || coverLocalDataUrl;
+
             // Backend /manga-series expects JSON: title, genre, summary.
+            // Extra cover/description fields are included for backend builds that support them.
             const payload = {
                 title,
                 genre: genre || "",
-                summary: [desc, targetAudience ? `Target: ${targetAudience}` : "", status ? `Status: ${status}` : ""].filter(Boolean).join("\n")
-            }; 
+                description: desc,
+                summary: [desc, seriesScript ? `--- Series Script / Story Bible ---\n${seriesScript}` : "", targetAudience ? `Target: ${targetAudience}` : "", status ? `Status: ${status}` : ""].filter(Boolean).join("\n"),
+                coverImageUrl,
+                coverUrl: coverImageUrl,
+                imageUrl: coverImageUrl,
+                thumbnailUrl: coverImageUrl
+            };
+
+            savePendingSeriesMeta(title, {
+                description: desc,
+                summary: payload.summary,
+                coverImageUrl: coverDisplayUrl,
+                coverUrl: coverDisplayUrl,
+                genre,
+                title
+            });
 
             const originalText = btnCreateSeries.innerHTML;
             btnCreateSeries.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tải lên Server...`;
@@ -72,11 +162,24 @@ document.addEventListener("DOMContentLoaded", () => {
             btnCreateSeries.style.opacity = "0.7";
 
             try {
-                await window.MangaApi.apiFetch("/manga-series", {
+                const createdSeries = await window.MangaApi.apiFetch("/manga-series", {
                     method: "POST",
                     body: payload
                 });
-                
+
+                const createdSeriesId = createdSeries?.id || createdSeries?.seriesId;
+                if (createdSeriesId) {
+                    if (seriesScript) window.MangaApi.saveSeriesScript?.(createdSeriesId, seriesScript);
+                    window.MangaApi.saveSeriesMeta?.(createdSeriesId, {
+                        description: desc,
+                        summary: payload.summary,
+                        coverImageUrl: coverDisplayUrl,
+                        coverUrl: coverDisplayUrl,
+                        genre,
+                        title
+                    });
+                }
+
                 alert("✅ Tạo Series thành công! Nhấn OK để về danh sách.");
                 window.location.href = "series.html"; 
             } catch (error) {
@@ -88,6 +191,63 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
+    function cleanSeriesDescription(raw = "") {
+        const text = String(raw || "").trim();
+        if (!text) return "";
+
+        return text
+            .split("\n")
+            .filter(line => !line.startsWith("--- Series Script"))
+            .filter(line => !line.startsWith("Target:"))
+            .filter(line => !line.startsWith("Status:"))
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function seriesMetaOf(series) {
+        const byId = window.MangaApi.getSeriesMeta?.(series.id || series.seriesId) || {};
+        const byTitle = getPendingSeriesMeta(series.title || series.name || "");
+        return { ...byTitle, ...byId };
+    }
+
+    function seriesDescriptionOf(series) {
+        const meta = seriesMetaOf(series);
+        return cleanSeriesDescription(
+            series.description ||
+            series.summary ||
+            series.synopsis ||
+            meta.description ||
+            meta.summary ||
+            ""
+        ) || "Chưa có mô tả chi tiết...";
+    }
+
+    function seriesCoverOf(series) {
+        const meta = seriesMetaOf(series);
+        const raw = series.coverImageUrl ||
+            series.coverUrl ||
+            series.imageUrl ||
+            series.thumbnailUrl ||
+            series.cover ||
+            meta.coverImageUrl ||
+            meta.coverUrl ||
+            "";
+        return window.MangaApi.resolveMediaUrl?.(raw) || raw;
+    }
+
+    function seriesPlaceholder(title = "") {
+        const initials = String(title || "SF")
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map(word => word[0]?.toUpperCase())
+            .join("") || "SF";
+        return `<div class="series-cover-placeholder"><span>${initials}</span><small>No cover image</small></div>`;
+    }
+
+
     /* =======================================================
        2. TÍNH NĂNG LIST SERIES (Trang series.html)
        ======================================================= */
@@ -96,21 +256,31 @@ document.addEventListener("DOMContentLoaded", () => {
         async function fetchAndRenderSeries() {
             try {
                 const unwrap = window.MangaApi.unwrapPage || ((value) => Array.isArray(value) ? value : (value?.content || []));
-                let seriesList = [];
+                let mySeriesList = [];
+                let allSeriesList = [];
+
                 try {
-                    seriesList = window.MangaApi.mySeries
+                    mySeriesList = window.MangaApi.mySeries
                         ? await window.MangaApi.mySeries()
                         : unwrap(await window.MangaApi.apiFetch("/manga-series/my-series"));
                 } catch (error) {
                     console.warn("Could not load /manga-series/my-series", error);
-                    seriesList = [];
+                    mySeriesList = [];
                 }
 
-                if (!seriesList.length) {
-                    seriesList = window.MangaApi.allSeries
+                try {
+                    allSeriesList = window.MangaApi.allSeries
                         ? await window.MangaApi.allSeries()
                         : unwrap(await window.MangaApi.apiFetch("/manga-series"));
+                } catch (error) {
+                    console.warn("Could not load /manga-series", error);
+                    allSeriesList = [];
                 }
+
+                // Important: do not replace the list with only /my-series.
+                // Some backend builds return only the newly created Mangaka-owned series from /my-series,
+                // while older/imported series are returned by /manga-series.
+                const seriesList = mergeSeriesLists(allSeriesList, mySeriesList);
 
                 if (!seriesList || seriesList.length === 0) {
                     seriesGrid.innerHTML = `
@@ -125,33 +295,48 @@ document.addEventListener("DOMContentLoaded", () => {
                 seriesGrid.innerHTML = ""; 
                 
                 seriesList.forEach(series => {
-                    const cover = series.coverImageUrl || "cover.png"; 
+                    const seriesId = series.id || series.seriesId;
+                    const pendingMeta = getPendingSeriesMeta(series.title || series.name || "");
+                    if (seriesId && Object.keys(pendingMeta).length) {
+                        window.MangaApi.saveSeriesMeta?.(seriesId, pendingMeta);
+                    }
+                    const cover = seriesCoverOf(series);
+                    const description = seriesDescriptionOf(series);
                     const card = document.createElement("div");
-                    card.style = "background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s;";
+                    card.className = "series-card-real";
                     card.onmouseover = () => { card.style.transform = "translateY(-4px)"; card.style.boxShadow = "0 10px 15px rgba(0,0,0,0.1)"; };
                     card.onmouseout = () => { card.style.transform = "translateY(0)"; card.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)"; };
-                    
-                    // Hiện Genre thẳng lên thẻ truyện nếu Backend có trả về
-                    const genreBadge = series.genre ? `<span style="margin-left: 5px; background: #e0e7ff; color: #4f46e5; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${series.genre}</span>` : "";
+
+                    const meta = seriesMetaOf(series);
+                    const genre = series.genre || meta.genre || "";
+                    const genreBadge = genre ? `<span class="series-genre-badge">${genre}</span>` : "";
+                    const coverHtml = cover
+                        ? `<img src="${cover}" alt="${series.title || "Series cover"}" class="series-cover-img" onerror="this.closest('.series-cover-box').innerHTML=this.dataset.fallback;" data-fallback="${seriesPlaceholder(series.title).replace(/"/g, '&quot;')}">`
+                        : seriesPlaceholder(series.title);
 
                     card.innerHTML = `
-                        <div style="height: 200px; background: #e2e8f0; position: relative;">
-                            <img src="${cover}" style="width: 100%; height: 100%; object-fit: cover;">
-                            <div style="position: absolute; top: 12px; right: 12px; background: rgba(15, 23, 42, 0.75); color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; backdrop-filter: blur(4px);">
-                                <i class="fa-solid fa-circle" style="color: #4ade80; font-size: 8px; margin-right: 4px;"></i> ${series.status || "Ongoing"}
+                        <div class="series-cover-box">
+                            ${coverHtml}
+                            <div class="series-status-pill">
+                                <i class="fa-solid fa-circle"></i> ${series.status || "Ongoing"}
                             </div>
                         </div>
-                        <div style="padding: 20px;">
-                            <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #1e293b; font-weight: 700;">${series.title} ${genreBadge}</h3>
-                            <p style="margin: 0; font-size: 13px; color: #64748b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;">
-                                ${series.description || "Chưa có mô tả chi tiết..."}
-                            </p>
+                        <div class="series-card-body">
+                            <h3>${series.title || "Untitled"} ${genreBadge}</h3>
+                            <p>${description}</p>
                         </div>
                     `;
-                    
-                    card.addEventListener("click", () => {
+
+card.addEventListener("click", () => {
                         localStorage.setItem("currentSeriesId", series.id); localStorage.setItem("activeSeriesId", series.id);
                         localStorage.setItem("currentSeriesTitle", series.title); localStorage.setItem("activeSeriesTitle", series.title);
+                        const meta = seriesMetaOf(series);
+                        window.MangaApi.saveSeriesMeta?.(series.id || series.seriesId, {
+                            title: series.title,
+                            description: seriesDescriptionOf(series),
+                            coverImageUrl: seriesCoverOf(series),
+                            genre: series.genre || meta.genre || ""
+                        });
                         window.location.href = "manuscripts.html"; 
                     });
                     

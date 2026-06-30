@@ -172,11 +172,100 @@ function setActivePageId(id) {
   }
 }
 
+
+// MANGAKA LOCAL SCRIPT STORAGE
+// Backend currently exposes series summaries and chapter/page data,
+// but not a guaranteed chapter-script endpoint in every build.
+// Keep scripts locally keyed by backend IDs so the UI can attach notes
+// to newly created series/chapters without breaking older backend DTOs.
+function getLocalScriptStore(type) {
+  try {
+    return JSON.parse(localStorage.getItem(`mangaka${type}Scripts`) || "{}");
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveLocalScript(type, id, scriptText) {
+  if (!id) return;
+  const store = getLocalScriptStore(type);
+  store[String(id)] = String(scriptText || "");
+  localStorage.setItem(`mangaka${type}Scripts`, JSON.stringify(store));
+}
+
+function getLocalScript(type, id) {
+  if (!id) return "";
+  return getLocalScriptStore(type)[String(id)] || "";
+}
+
+
+// MANGAKA LOCAL SERIES METADATA
+// Used when the current backend DTO does not persist cover images/descriptions yet.
+function getLocalSeriesMetaStore() {
+  try {
+    return JSON.parse(localStorage.getItem("mangakaSeriesMeta") || "{}");
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveLocalSeriesMeta(seriesId, meta = {}) {
+  if (!seriesId) return;
+  const store = getLocalSeriesMetaStore();
+  store[String(seriesId)] = { ...(store[String(seriesId)] || {}), ...meta };
+  localStorage.setItem("mangakaSeriesMeta", JSON.stringify(store));
+}
+
+function getLocalSeriesMeta(seriesId) {
+  if (!seriesId) return {};
+  return getLocalSeriesMetaStore()[String(seriesId)] || {};
+}
+
+function extractUploadedUrl(payload) {
+  if (!payload) return "";
+  if (typeof payload === "string") return payload;
+  return payload.url ||
+    payload.imageUrl ||
+    payload.fileUrl ||
+    payload.resourceUrl ||
+    payload.secureUrl ||
+    payload.downloadUrl ||
+    payload.path ||
+    payload.data?.url ||
+    payload.data?.imageUrl ||
+    payload.data?.fileUrl ||
+    payload.data?.resourceUrl ||
+    "";
+}
+
+
+function resolveMediaUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  if (/^(data:|blob:|https?:\/\/)/i.test(raw)) return raw;
+
+  try {
+    const apiUrl = new URL(API_BASE_URL, window.location.origin);
+    if (raw.startsWith("/")) return `${apiUrl.origin}${raw}`;
+    return `${apiUrl.origin}/${raw.replace(/^\/+/, "")}`;
+  } catch (_) {
+    return raw;
+  }
+}
+
 const MangaApi = {
   API_BASE_URL,
   WS_BASE_URL,
   apiFetch,
   apiForm,
+  saveChapterScript: (chapterId, scriptText) => saveLocalScript("Chapter", chapterId, scriptText),
+  getChapterScript: (chapterId) => getLocalScript("Chapter", chapterId),
+  saveSeriesScript: (seriesId, scriptText) => saveLocalScript("Series", seriesId, scriptText),
+  getSeriesScript: (seriesId) => getLocalScript("Series", seriesId),
+  saveSeriesMeta: saveLocalSeriesMeta,
+  getSeriesMeta: getLocalSeriesMeta,
+  extractUploadedUrl,
+  resolveMediaUrl,
   objectToQuery,
   unwrapPage,
   normalizeTaskStatus,
