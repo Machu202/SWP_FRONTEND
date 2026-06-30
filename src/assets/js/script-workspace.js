@@ -323,10 +323,42 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatBox = document.getElementById('chat-box');
     const assistantImgWrapper = document.getElementById('assistant-img-wrapper');
     const chatCountBadge = document.getElementById('chat-count-badge');
-    
+
+    const isMangakaReviewPage = /\/pages\/mangaka\/review\.html$/i.test(location.pathname) || /review\.html$/i.test(location.pathname);
+    const activeReviewModeForChat =
+        new URLSearchParams(location.search).get('mode') ||
+        (location.hash === '#tantou-feedback' ? 'tantou' : 'assistant');
+    const isTantouFeedbackReadOnly = isMangakaReviewPage && activeReviewModeForChat === 'tantou';
+
+    function setTantouFeedbackReadOnlyUI() {
+        if (!isTantouFeedbackReadOnly) return;
+
+        const chatInputArea = chatInput?.closest('.chat-input-area');
+        if (chatInputArea) {
+            chatInputArea.style.display = 'none';
+            chatInputArea.setAttribute('aria-hidden', 'true');
+        }
+
+        if (chatInput) {
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatInput.placeholder = 'Tantou feedback is read-only for Mangaka.';
+        }
+
+        if (btnSendChat) {
+            btnSendChat.disabled = true;
+            btnSendChat.style.display = 'none';
+        }
+
+        // Remove accidental local annotation dots created by the old generic review click handler.
+        assistantImgWrapper?.querySelectorAll('.annotation-dot').forEach(dot => dot.remove());
+    }
+
+    setTantouFeedbackReadOnlyUI();
+
     let annotationCounter = 1;
 
-    if (assistantImgWrapper) {
+    if (assistantImgWrapper && !isTantouFeedbackReadOnly) {
         assistantImgWrapper.addEventListener('click', function(e) {
             if (e.target.classList.contains('annotation-dot')) return;
             const rect = assistantImgWrapper.getBoundingClientRect();
@@ -350,6 +382,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function sendChatMsg() {
+        if (isTantouFeedbackReadOnly) return;
         if (!chatInput || !chatInput.value.trim() || !chatBox) return;
         let annotationTagHtml = '';
         let cleanText = chatInput.value;
@@ -845,27 +878,152 @@ document.addEventListener("DOMContentLoaded", () => {
             return Number.parseFloat(f?.height ?? f?.h ?? f?.heightPercent ?? 5) || 5;
         }
 
-        async function loadMangakaSeriesForFeedback() {
-            let series = [];
-            try {
-                series = getArr(await window.MangaApi.mySeries());
-            } catch (error) {
-                series = [];
-            }
+        function feedbackSeriesKey(series) {
+            return String(series?.id ?? series?.seriesId ?? series?.title ?? series?.name ?? '').trim().toLowerCase();
+        }
 
-            if (!series.length) {
+        function mergeFeedbackSeries(...lists) {
+            const merged = new Map();
+
+            lists.flat().filter(Boolean).forEach(series => {
+                const key = feedbackSeriesKey(series);
+                if (!key) return;
+                merged.set(key, {
+                    ...(merged.get(key) || {}),
+                    ...series
+                });
+            });
+
+            return Array.from(merged.values());
+        }
+
+        function pageImageOf(page, canvas = null) {
+            return canvas?.imageUrl ||
+                page?.imageUrl ||
+                page?.pageImageUrl ||
+                page?.url ||
+                page?.fileUrl ||
+                page?.resourceUrl ||
+                '';
+        }
+
+        async function loadMangakaSeriesForFeedback() {
+            const lists = [];
+
+            // Same fix as Assistant Review: do not rely on /my-series only.
+            // Newly created Mangaka series can make /my-series non-empty,
+            // while older/imported series may only appear in /manga-series.
+            if (window.MangaApi.mySeries) {
                 try {
-                    series = getArr(await window.MangaApi.allSeries());
+                    lists.push(getArr(await window.MangaApi.mySeries()));
                 } catch (error) {
-                    series = [];
+                    console.warn('Could not load /manga-series/my-series for Tantou feedback:', error.message);
                 }
             }
 
-            return series;
+            if (window.MangaApi.allSeries) {
+                try {
+                    lists.push(getArr(await window.MangaApi.allSeries()));
+                } catch (error) {
+                    console.warn('Could not load /manga-series for Tantou feedback:', error.message);
+                }
+            }
+
+            return mergeFeedbackSeries(...lists);
+        }
+
+        async function loadTantouContext(series) {
+            const seriesId = series?.id ?? series?.seriesId;
+            if (!seriesId) return null;
+
+            const chapters = getArr(await window.MangaApi.chapters(seriesId).catch(() => []));
+            if (!chapters.length) return {
+                series,
+                seriesId,
+                chapters,
+                chapter: null,
+                chapterId: '',
+                pages: [],
+                page: null,
+                pageId: '',
+                feedbacks: [],
+                canvas: null,
+                score: 0
+            };
+
+            const activeChapterId = window.MangaApi.getActiveChapterId?.();
+            const chapterCandidates = [
+                ...chapters.filter(c => String(c.id ?? c.chapterId) === String(activeChapterId)),
+                ...chapters.filter(c => String(c.id ?? c.chapterId) !== String(activeChapterId))
+            ];
+
+            let best = null;
+
+            for (const chapter of chapterCandidates) {
+                const chapterId = chapter?.id ?? chapter?.chapterId;
+                const pages = chapterId ? getArr(await window.MangaApi.pages(chapterId).catch(() => [])) : [];
+                if (!pages.length) {
+                    if (!best) {
+                        best = { series, seriesId, chapters, chapter, chapterId, pages, page: null, pageId: '', feedbacks: [], canvas: null, score: 1 };
+                    }
+                    continue;
+                }
+
+                const activePageId = window.MangaApi.getActivePageId?.();
+                const pageCandidates = [
+                    ...pages.filter(p => String(p.id ?? p.pageId) === String(activePageId)),
+                    ...pages.filter(p => String(p.id ?? p.pageId) !== String(activePageId))
+                ];
+
+                for (const page of pageCandidates) {
+                    const pageId = page?.id ?? page?.pageId;
+                    const feedbacks = pageId ? getArr(await window.MangaApi.feedbacks(pageId).catch(() => [])) : [];
+                    let canvas = null;
+
+                    if (pageId) {
+                        canvas = await window.MangaApi.canvasInit(pageId).catch(() => ({
+                            imageUrl: page?.imageUrl || page?.pageImageUrl || ''
+                        }));
+                    }
+
+                    const hasImage = Boolean(pageImageOf(page, canvas));
+                    const score = (feedbacks.length ? 100 : 0) + (hasImage ? 10 : 0) + 2;
+
+                    if (!best || score > best.score) {
+                        best = { series, seriesId, chapters, chapter, chapterId, pages, page, pageId, feedbacks, canvas, score };
+                    }
+
+                    // Best possible practical case: page has both feedback and image.
+                    if (feedbacks.length && hasImage) return best;
+                }
+            }
+
+            return best;
+        }
+
+        async function loadBestTantouFeedbackContext(seriesList) {
+            const activeSeriesId = window.MangaApi.getActiveSeriesId?.();
+            const candidates = [
+                ...seriesList.filter(s => String(s.id ?? s.seriesId) === String(activeSeriesId)),
+                ...seriesList.filter(s => String(s.id ?? s.seriesId) !== String(activeSeriesId))
+            ];
+
+            let best = null;
+
+            for (const series of candidates) {
+                const context = await loadTantouContext(series);
+                if (!context) continue;
+
+                if (!best || context.score > best.score) best = context;
+                if (context.feedbacks?.length && pageImageOf(context.page, context.canvas)) break;
+            }
+
+            return best;
         }
 
         async function renderMangakaTantouFeedbackView() {
             renderModeTabs('tantou');
+            setTantouFeedbackReadOnlyUI();
 
             if (reviewHeading) reviewHeading.textContent = 'Tantou Editor Feedback';
             reviewPageTitle.textContent = 'Review pinned Tantou feedback by page.';
@@ -897,34 +1055,37 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                const activeSeriesId = window.MangaApi.getActiveSeriesId?.();
-                const selectedSeries = series.find(s => String(s.id) === String(activeSeriesId)) || series[0];
-                const seriesId = selectedSeries?.id;
-                if (seriesId) window.MangaApi.setActiveSeriesId(seriesId);
+                const context = await loadBestTantouFeedbackContext(series);
 
-                let chapters = seriesId ? getArr(await window.MangaApi.chapters(seriesId).catch(() => [])) : [];
-                const activeChapterId = window.MangaApi.getActiveChapterId?.();
-                const selectedChapter = chapters.find(c => String(c.id ?? c.chapterId) === String(activeChapterId)) || chapters[0];
-                const chapterId = selectedChapter?.id ?? selectedChapter?.chapterId;
-                if (chapterId) window.MangaApi.setActiveChapterId(chapterId);
-
-                let pages = chapterId ? getArr(await window.MangaApi.pages(chapterId).catch(() => [])) : [];
-                const activePageId = window.MangaApi.getActivePageId?.();
-                const selectedPage = pages.find(p => String(p.id ?? p.pageId) === String(activePageId)) || pages[0];
-                const pageId = selectedPage?.id ?? selectedPage?.pageId;
-                if (pageId) window.MangaApi.setActivePageId(pageId);
-
-                let feedbacks = pageId ? getArr(await window.MangaApi.feedbacks(pageId).catch(() => [])) : [];
-                let canvas = null;
-                if (pageId) {
-                    canvas = await window.MangaApi.canvasInit(pageId).catch(() => ({
-                        imageUrl: selectedPage?.imageUrl || selectedPage?.pageImageUrl || ''
-                    }));
+                if (!context) {
+                    submissionPicker.insertAdjacentHTML('beforeend', `<div class="empty-state-box">No chapter/page data found for visible series.</div>`);
+                    showReviewEmpty('No chapter/page data found.');
+                    return;
                 }
+
+                const {
+                    series: selectedSeries,
+                    seriesId,
+                    chapters,
+                    chapter: selectedChapter,
+                    chapterId,
+                    pages,
+                    page: selectedPage,
+                    pageId,
+                    feedbacks,
+                    canvas
+                } = context;
+
+                if (seriesId) window.MangaApi.setActiveSeriesId(seriesId);
+                if (chapterId) window.MangaApi.setActiveChapterId(chapterId);
+                if (pageId) window.MangaApi.setActivePageId(pageId);
 
                 submissionPicker.innerHTML += `
                     <div class="mangaka-tantou-controls">
-                        <select id="mangaka-feedback-series">${series.map(s => `<option value="${escReview(s.id)}" ${String(s.id) === String(seriesId) ? 'selected' : ''}>${escReview(s.title || s.name || `Series #${s.id}`)}</option>`).join('')}</select>
+                        <select id="mangaka-feedback-series">${series.map(s => {
+                            const id = s.id ?? s.seriesId;
+                            return `<option value="${escReview(id)}" ${String(id) === String(seriesId) ? 'selected' : ''}>${escReview(s.title || s.name || `Series #${id}`)}</option>`;
+                        }).join('')}</select>
                         <select id="mangaka-feedback-chapter">${chapters.map(c => {
                             const id = c.id ?? c.chapterId;
                             return `<option value="${escReview(id)}" ${String(id) === String(chapterId) ? 'selected' : ''}>Ch. ${escReview(c.chapterNumber ?? c.number ?? '?')} — ${escReview(c.title || 'Untitled')}</option>`;
@@ -939,13 +1100,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('mangaka-feedback-series')?.addEventListener('change', (event) => {
                     window.MangaApi.setActiveSeriesId(event.target.value);
                     localStorage.removeItem('activeChapterId');
+                    localStorage.removeItem('currentChapterId');
                     localStorage.removeItem('activePageId');
+                    localStorage.removeItem('currentPageId');
                     renderMangakaTantouFeedbackView();
                 });
 
                 document.getElementById('mangaka-feedback-chapter')?.addEventListener('change', (event) => {
                     window.MangaApi.setActiveChapterId(event.target.value);
                     localStorage.removeItem('activePageId');
+                    localStorage.removeItem('currentPageId');
                     renderMangakaTantouFeedbackView();
                 });
 
@@ -954,7 +1118,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     renderMangakaTantouFeedbackView();
                 });
 
-                const imageUrl = canvas?.imageUrl || selectedPage?.imageUrl || selectedPage?.pageImageUrl || '';
+                const imageUrl = pageImageOf(selectedPage, canvas);
 
                 draftImgContainer.innerHTML = imageUrl
                     ? `<div class="mangaka-tantou-image-wrap">
@@ -971,12 +1135,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="mangaka-tantou-summary">
                         <h3>${feedbacks.length} Tantou feedback item${feedbacks.length === 1 ? '' : 's'}</h3>
                         <p>Red boxes are open feedback. Green boxes are resolved.</p>
+                        <p class="mangaka-tantou-readonly-note"><i class="fa-solid fa-lock"></i> Read-only: only Tantou Editor can create or edit these feedback pins.</p>
                         <div class="mangaka-tantou-counts">
                             <span><b>${feedbacks.filter(f => !f.isResolved).length}</b> Open</span>
                             <span><b>${feedbacks.filter(f => f.isResolved).length}</b> Resolved</span>
                         </div>
                     </div>
                 `;
+                submissionImgWrapper.querySelectorAll('.annotation-dot').forEach(dot => dot.remove());
 
                 const chatBox = document.getElementById('chat-box');
                 const chatCountBadge = document.getElementById('chat-count-badge');
@@ -996,7 +1162,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <div class="mangaka-feedback-meta">X ${feedbackX(f).toFixed(1)}% · Y ${feedbackY(f).toFixed(1)}% · W ${feedbackW(f).toFixed(1)}% · H ${feedbackH(f).toFixed(1)}%</div>
                             </div>
                         </div>
-                    `).join('') : `<div class="empty-state-box">No Tantou feedback found for this page.</div>`;
+                    `).join('') : `<div class="empty-state-box">No Tantou feedback found for this page. Try a different page from the selectors above.</div>`;
                 }
 
                 document.querySelectorAll('.mangaka-tantou-pin').forEach(pin => {

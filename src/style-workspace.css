@@ -4482,3 +4482,22 @@ textarea.form-control {
   text-align: center;
   color: #64748b;
 }
+
+
+/* ========================================= */
+/* --- MANGAKA TANTOU FEEDBACK READ-ONLY FIX --- */
+/* ========================================= */
+.mangaka-tantou-readonly-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569 !important;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mangaka-tantou-readonly-note i {
+  margin-right: 6px;
+}
