@@ -38,6 +38,7 @@
       inlinePanel.innerHTML = "";
       dashboardPanel.hidden = false;
       setActive("dashboard");
+      renderDashboardSeries();
     }
 
     async function showPanel(panelName) {
@@ -71,8 +72,9 @@
     });
 
     if (location.hash === "#chapters") showPanel("chapters");
-    if (location.hash === "#canvas") showPanel("canvas");
-    if (location.hash === "#kanban") showPanel("kanban");
+    else if (location.hash === "#canvas") showPanel("canvas");
+    else if (location.hash === "#kanban") showPanel("kanban");
+    else renderDashboardSeries();
 
     function loading(message = "Loading...") {
       return `<div class="api-loading">${message}</div>`;
@@ -133,6 +135,146 @@
       // /my-series can return only the newly created Mangaka-owned series,
       // while /manga-series can return older/imported visible series.
       return mergeSeriesLists(allSeries, mySeries);
+    }
+
+    function cleanSeriesDescription(raw = "") {
+      const text = String(raw || "").trim();
+      if (!text) return "";
+
+      return text
+        .split("\n")
+        .filter(line => !line.startsWith("--- Series Script"))
+        .filter(line => !line.startsWith("Target:"))
+        .filter(line => !line.startsWith("Status:"))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function getPendingSeriesMeta(title) {
+      try {
+        const store = JSON.parse(localStorage.getItem("mangakaPendingSeriesMetaByTitle") || "{}");
+        return store[String(title || "").trim().toLowerCase()] || {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function seriesMetaOf(series) {
+      const id = series?.id ?? series?.seriesId;
+      const byId = Api.getSeriesMeta?.(id) || {};
+      const byTitle = getPendingSeriesMeta(series?.title || series?.name || "");
+      return { ...byTitle, ...byId };
+    }
+
+    function seriesDescriptionOf(series) {
+      const meta = seriesMetaOf(series);
+      return cleanSeriesDescription(
+        series?.description ||
+        series?.summary ||
+        series?.synopsis ||
+        meta.description ||
+        meta.summary ||
+        ""
+      ) || "Chưa có mô tả chi tiết...";
+    }
+
+    function seriesCoverOf(series) {
+      const meta = seriesMetaOf(series);
+      const raw = series?.coverImageUrl ||
+        series?.coverUrl ||
+        series?.imageUrl ||
+        series?.thumbnailUrl ||
+        series?.cover ||
+        meta.coverImageUrl ||
+        meta.coverUrl ||
+        "";
+      return Api.resolveMediaUrl?.(raw) || raw;
+    }
+
+    function seriesPlaceholder(title = "") {
+      const initials = String(title || "SF")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(word => word[0]?.toUpperCase())
+        .join("") || "SF";
+      return `<div class="series-cover-placeholder"><span>${initials}</span><small>No cover image</small></div>`;
+    }
+
+    function dashboardSeriesCard(series) {
+      const id = series?.id ?? series?.seriesId;
+      const title = series?.title || series?.name || `Series #${id || "—"}`;
+      const meta = seriesMetaOf(series);
+      const genre = series?.genre || meta.genre || "";
+      const status = series?.status || "Ongoing";
+      const cover = seriesCoverOf(series);
+      const description = seriesDescriptionOf(series);
+      const coverHtml = cover
+        ? `<img src="${esc(cover)}" alt="${esc(title)}" class="series-cover-img" onerror="this.closest('.series-cover-box').innerHTML=this.dataset.fallback;" data-fallback="${esc(seriesPlaceholder(title))}">`
+        : seriesPlaceholder(title);
+
+      return `
+        <button type="button" class="dashboard-series-card series-card-real" data-series-id="${esc(id)}">
+          <div class="series-cover-box">
+            ${coverHtml}
+            <div class="series-status-pill"><i class="fa-solid fa-circle"></i> ${esc(status)}</div>
+          </div>
+          <div class="series-card-body">
+            <h3>${esc(title)} ${genre ? `<span class="series-genre-badge">${esc(genre)}</span>` : ""}</h3>
+            <p>${esc(description)}</p>
+          </div>
+        </button>
+      `;
+    }
+
+    async function renderDashboardSeries() {
+      const container = document.getElementById("active-series-container");
+      if (!container) return;
+
+      container.innerHTML = `<div class="api-loading" style="grid-column: 1 / -1;">Loading active series...</div>`;
+
+      try {
+        const series = await loadMangakaSeriesList();
+
+        if (!series.length) {
+          container.innerHTML = `
+            <div class="empty-state-box" style="grid-column: 1 / -1;">
+              <i class="fa-solid fa-book-open"></i>
+              <p>Không có series nào đang hoạt động. Vui lòng tạo mới!</p>
+            </div>`;
+          return;
+        }
+
+        container.innerHTML = series.map(dashboardSeriesCard).join("");
+
+        container.querySelectorAll("[data-series-id]").forEach(card => {
+          card.addEventListener("click", () => {
+            const selected = series.find(item => String(item.id ?? item.seriesId) === String(card.dataset.seriesId));
+            if (!selected) return;
+
+            const id = selected.id ?? selected.seriesId;
+            const title = selected.title || selected.name || `Series #${id}`;
+
+            Api.setActiveSeriesId?.(id);
+            localStorage.setItem("currentSeriesId", String(id));
+            localStorage.setItem("activeSeriesId", String(id));
+            localStorage.setItem("currentSeriesTitle", title);
+            localStorage.setItem("activeSeriesTitle", title);
+
+            Api.saveSeriesMeta?.(id, {
+              title,
+              description: seriesDescriptionOf(selected),
+              coverImageUrl: seriesCoverOf(selected),
+              genre: selected.genre || seriesMetaOf(selected).genre || ""
+            });
+
+            window.location.href = "manuscripts.html";
+          });
+        });
+      } catch (error) {
+        container.innerHTML = errorBox(error);
+      }
     }
 
     async function enrichChaptersWithPages(chapters = []) {
