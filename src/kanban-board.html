@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Board - MangaSystem</title>
+  <link rel="stylesheet" href="style-workspace.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="feature-screen">
+  <aside class="sidebar">
+    <div class="workspace-title">
+      <div class="ws-logo">MF</div>
+      <div class="ws-name">Core Flow</div>
+    </div>
+    <a href="dashboard.html" id="core-back-link" class="btn-sidebar-action"><i class="fa-solid fa-arrow-left"></i> Back Dashboard</a>
+    <nav class="nav-group">
+      <a href="chapter-manager.html" class="nav-item "><i class="fa-solid fa-layer-group"></i> Chapters & Pages</a>
+<a href="workspace.html" class="nav-item "><i class="fa-solid fa-vector-square"></i> Canvas Workspace</a>
+<a href="kanban-board.html" class="nav-item active"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a>
+<a href="editor-review.html" class="nav-item "><i class="fa-solid fa-comment-dots"></i> Tantou Review</a>
+<a href="voting-center.html" class="nav-item "><i class="fa-solid fa-scale-balanced"></i> Voting Center</a>
+    </nav>
+    <div class="sidebar-divider"></div>
+    <nav class="nav-group" style="flex-grow:0;margin-top:auto;padding-bottom:20px;">
+      <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+      <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <strong>Kanban Board</strong>
+        <span class="muted-topbar">Task workflow management</span>
+      </div>
+      <div class="topbar-right">
+        <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color:#9ca3af;"></i><input id="global-search" type="text" placeholder="Search..."></div>
+      </div>
+    </header>
+
+    <section class="content-padding core-feature-page">
+      
+<div class="feature-header">
+  <div>
+    <h1>Kanban Task Board</h1>
+    <p>Drag tasks through backend states: TODO → DOING → REVIEWING → APPROVED.</p>
+  </div>
+  <button id="refresh-kanban" class="btn-publish"><i class="fa-solid fa-rotate"></i> Refresh</button>
+</div>
+
+<div class="kanban-grid backend-kanban">
+  <div class="kanban-column" data-status="TODO"><h3>Todo <span id="count-TODO">0</span></h3><div class="kanban-drop" id="col-TODO"></div></div>
+  <div class="kanban-column" data-status="DOING"><h3>Doing <span id="count-DOING">0</span></h3><div class="kanban-drop" id="col-DOING"></div></div>
+  <div class="kanban-column" data-status="REVIEWING"><h3>Reviewing <span id="count-REVIEWING">0</span></h3><div class="kanban-drop" id="col-REVIEWING"></div></div>
+  <div class="kanban-column" data-status="APPROVED"><h3>Approved <span id="count-APPROVED">0</span></h3><div class="kanban-drop" id="col-APPROVED"></div></div>
+</div>
+
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="feature-flow.js"></script>
+  <script src="kanban.js"></script>
+</body>
+</html>

@@ -44,23 +44,46 @@ document.addEventListener("DOMContentLoaded", () => {
                     card.draggable = true;
                     card.dataset.id = task.id;
 
+                    const isSubmittedLocked = status === "REVIEWING" || status === "APPROVED";
+                    card.classList.toggle("submitted-locked-card", isSubmittedLocked);
+                    card.draggable = !isSubmittedLocked;
+
                     card.innerHTML = `
                         <div class="tag">${taskAssigneeOf(task)}</div>
                         <div class="task-title">${taskTitleOf(task)}</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="assistant-card-actions">
                             <span style="font-size: 11px; color: #6b7280;"><i class="fa-regular fa-clock"></i> ASAP</span>
-                            <i class="fa-solid fa-grip-lines" style="color: #d1d5db;"></i>
+                            ${isSubmittedLocked
+                                ? `<span class="assistant-submitted-lock"><i class="fa-solid fa-lock"></i> ${status === "APPROVED" ? "Approved - Locked" : "Submitted - Waiting Review"}</span>`
+                                : `<button type="button" class="assistant-upload-card-btn" data-task-id="${task.id}">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i> Open Upload
+                                  </button>`}
                         </div>
                     `;
 
-                    card.addEventListener("click", () => {
+                    function openAssistantUpload() {
                         if (!String(task.id).startsWith("task-")) {
                             localStorage.setItem("currentTaskId", task.id);
                             if (location.pathname.includes("/assistant/")) location.href = "task-detail.html";
                         }
-                    });
+                    }
+
+                    card.addEventListener("click", openAssistantUpload);
+
+                    const uploadCardBtn = card.querySelector(".assistant-upload-card-btn");
+                    if (uploadCardBtn) {
+                        uploadCardBtn.addEventListener("click", (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            openAssistantUpload();
+                        });
+                    }
 
                     card.addEventListener("dragstart", (e) => {
+                        if (isSubmittedLocked) {
+                            e.preventDefault();
+                            return;
+                        }
                         e.dataTransfer.setData("text/plain", task.id);
                         card.classList.add("dragging");
                         setTimeout(() => card.style.opacity = "0.5", 0);
@@ -150,11 +173,36 @@ document.addEventListener("DOMContentLoaded", () => {
         hiddenInput.style.display = 'none';
         document.body.appendChild(hiddenInput);
 
+        const chooseWorkFileButton = document.getElementById('btn-choose-work-file');
+        const selectedWorkFile = document.getElementById('selected-work-file');
+        const topSubmitButton = document.getElementById('btn-submit-work');
+
+        if (chooseWorkFileButton) {
+            chooseWorkFileButton.addEventListener('click', () => hiddenInput.click());
+        }
+
+        if (topSubmitButton) {
+            topSubmitButton.addEventListener('click', () => {
+                const submitBox = document.getElementById('submit-work-box') || fileDropzone;
+                submitBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                fileDropzone.classList.add('assistant-upload-pulse');
+                setTimeout(() => fileDropzone.classList.remove('assistant-upload-pulse'), 1200);
+            });
+        }
+
         function setFile(file) {
             selectedSubmitFile = file || null;
             if (selectedSubmitFile) {
-                fileDropzone.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color: #10b981;"></i><p style="color: #10b981;">${selectedSubmitFile.name}</p><span>Ready to upload</span>`;
+                fileDropzone.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color: #10b981;"></i><p style="color: #10b981;"><b>${selectedSubmitFile.name}</b></p><span>File selected. Tick the confirmation box, then submit to Mangaka.</span>`;
                 fileDropzone.style.borderColor = '#10b981';
+                fileDropzone.style.background = '#ecfdf5';
+                if (selectedWorkFile) {
+                    selectedWorkFile.innerHTML = `<i class="fa-solid fa-file-circle-check"></i> Selected: <strong>${selectedSubmitFile.name}</strong>`;
+                    selectedWorkFile.classList.add('has-file');
+                }
+            } else if (selectedWorkFile) {
+                selectedWorkFile.innerHTML = `<i class="fa-regular fa-file"></i> No file selected yet`;
+                selectedWorkFile.classList.remove('has-file');
             }
             checkReadyState();
         }
@@ -170,9 +218,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const ready = !!selectedSubmitFile && (!checkFinalReview || checkFinalReview.checked);
             if (!btnUploadSubmit) return;
             btnUploadSubmit.disabled = !ready;
+            btnUploadSubmit.classList.toggle('is-ready', ready);
             btnUploadSubmit.style.background = ready ? '#111827' : '#e5e7eb';
             btnUploadSubmit.style.color = ready ? 'white' : '#9ca3af';
             btnUploadSubmit.style.cursor = ready ? 'pointer' : 'not-allowed';
+            if (ready) {
+                btnUploadSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit to Mangaka Now';
+            } else if (!selectedSubmitFile) {
+                btnUploadSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Choose a file first';
+            } else {
+                btnUploadSubmit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Tick confirmation to submit';
+            }
         }
 
         if (btnUploadSubmit) {
@@ -180,9 +236,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (btnUploadSubmit.disabled || !selectedSubmitFile) return;
                 const taskId = localStorage.getItem('currentTaskId') || new URLSearchParams(location.search).get('taskId');
                 if (!taskId) return alert('No task selected. Open this page from Assignments first.');
-                const oldText = btnUploadSubmit.textContent;
+                const oldText = btnUploadSubmit.innerHTML;
                 btnUploadSubmit.disabled = true;
-                btnUploadSubmit.textContent = 'Uploading...';
+                btnUploadSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading and notifying Mangaka...';
                 try {
                     let imageUrl = '';
                     if (window.MangaApi?.uploadResource) {
@@ -197,7 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     alert('Upload failed: ' + error.message);
                 } finally {
                     btnUploadSubmit.disabled = false;
-                    btnUploadSubmit.textContent = oldText;
+                    btnUploadSubmit.innerHTML = oldText;
                     checkReadyState();
                 }
             });
@@ -690,4 +746,565 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // ========================================================
+    // 5. MANGAKA SUBMISSION REVIEW PAGE - CHOOSE SUBMISSION TO REVIEW
+    // ========================================================
+    const reviewPageTitle = document.getElementById('review-chapter-title');
+    const draftImgContainer = document.getElementById('draft-img-container');
+    const submissionImgWrapper = document.getElementById('assistant-img-wrapper');
+    const submissionStatusTag = document.getElementById('submission-status');
+
+    if (reviewPageTitle && draftImgContainer && submissionImgWrapper && window.MangaApi) {
+        let selectedReviewTaskId =
+            new URLSearchParams(location.search).get('taskId') ||
+            localStorage.getItem('currentReviewTaskId') ||
+            localStorage.getItem('currentTaskId') ||
+            '';
+
+        const getArr = (value) => Array.isArray(value) ? value : (value?.content || []);
+        const escReview = (value = '') => String(value ?? '').replace(/[&<>'"]/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[c]));
+
+        const reviewGrid = document.querySelector('.review-grid-3');
+        let submissionPicker = document.getElementById('submission-picker-panel');
+
+        if (!submissionPicker && reviewGrid) {
+            submissionPicker = document.createElement('div');
+            submissionPicker.id = 'submission-picker-panel';
+            submissionPicker.className = 'submission-picker-panel';
+            reviewGrid.parentNode.insertBefore(submissionPicker, reviewGrid);
+        }
+
+        const reviewMode =
+            new URLSearchParams(location.search).get('mode') ||
+            (location.hash === '#tantou-feedback' ? 'tantou' : 'assistant');
+
+        const reviewHeading = document.querySelector('.review-title h2');
+        const submitFeedbackBtn = document.getElementById('btn-submit-feedback');
+
+        function setReviewUrlMode(nextMode) {
+            const url = new URL(window.location.href);
+            if (nextMode === 'tantou') {
+                url.searchParams.set('mode', 'tantou');
+                url.hash = '';
+            } else {
+                url.searchParams.delete('mode');
+                url.hash = '';
+            }
+            window.location.href = url.toString();
+        }
+
+        function reviewTabsMarkup(activeMode) {
+            return `
+                <div class="mangaka-review-tabs">
+                    <button type="button" class="mangaka-review-tab ${activeMode === 'assistant' ? 'active' : ''}" data-review-mode="assistant">
+                        <i class="fa-solid fa-image"></i>
+                        Assistant Submissions
+                    </button>
+                    <button type="button" class="mangaka-review-tab ${activeMode === 'tantou' ? 'active' : ''}" data-review-mode="tantou">
+                        <i class="fa-solid fa-location-dot"></i>
+                        Tantou Feedback
+                    </button>
+                </div>
+            `;
+        }
+
+        function bindReviewModeTabs(activeMode) {
+            document.querySelectorAll('[data-review-mode]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const nextMode = tab.dataset.reviewMode;
+                    if (nextMode !== activeMode) setReviewUrlMode(nextMode);
+                });
+            });
+
+            document.querySelectorAll('[data-mode-link]').forEach(link => {
+                link.classList.toggle('active', link.dataset.modeLink === activeMode);
+            });
+        }
+
+        function renderModeTabs(activeMode) {
+            if (submissionPicker) submissionPicker.innerHTML = reviewTabsMarkup(activeMode);
+            bindReviewModeTabs(activeMode);
+        }
+
+        function feedbackX(f) {
+            return Number.parseFloat(f?.xCoord ?? f?.x ?? f?.xPercent ?? 0) || 0;
+        }
+
+        function feedbackY(f) {
+            return Number.parseFloat(f?.yCoord ?? f?.y ?? f?.yPercent ?? 0) || 0;
+        }
+
+        function feedbackW(f) {
+            return Number.parseFloat(f?.width ?? f?.w ?? f?.widthPercent ?? 6) || 6;
+        }
+
+        function feedbackH(f) {
+            return Number.parseFloat(f?.height ?? f?.h ?? f?.heightPercent ?? 5) || 5;
+        }
+
+        async function loadMangakaSeriesForFeedback() {
+            let series = [];
+            try {
+                series = getArr(await window.MangaApi.mySeries());
+            } catch (error) {
+                series = [];
+            }
+
+            if (!series.length) {
+                try {
+                    series = getArr(await window.MangaApi.allSeries());
+                } catch (error) {
+                    series = [];
+                }
+            }
+
+            return series;
+        }
+
+        async function renderMangakaTantouFeedbackView() {
+            renderModeTabs('tantou');
+
+            if (reviewHeading) reviewHeading.textContent = 'Tantou Editor Feedback';
+            reviewPageTitle.textContent = 'Review pinned Tantou feedback by page.';
+
+            if (btnApprove) btnApprove.style.display = 'none';
+            if (btnRequestRev) btnRequestRev.style.display = 'none';
+
+            if (submitFeedbackBtn) {
+                submitFeedbackBtn.style.display = 'inline-flex';
+                submitFeedbackBtn.textContent = 'Refresh Tantou Feedback';
+                submitFeedbackBtn.disabled = false;
+                submitFeedbackBtn.onclick = () => renderMangakaTantouFeedbackView();
+            }
+
+            const submissionHeader = document.querySelector('.review-grid-3 .review-col:nth-child(2) .review-col-header span');
+            if (submissionHeader) submissionHeader.textContent = 'Feedback Map';
+            if (submissionStatusTag) {
+                submissionStatusTag.textContent = 'TANTOU';
+                submissionStatusTag.style.background = '#eef2ff';
+                submissionStatusTag.style.color = '#4f46e5';
+            }
+
+            try {
+                const series = await loadMangakaSeriesForFeedback();
+
+                if (!series.length) {
+                    submissionPicker.insertAdjacentHTML('beforeend', `<div class="empty-state-box">No series found for Mangaka.</div>`);
+                    showReviewEmpty('No series found.');
+                    return;
+                }
+
+                const activeSeriesId = window.MangaApi.getActiveSeriesId?.();
+                const selectedSeries = series.find(s => String(s.id) === String(activeSeriesId)) || series[0];
+                const seriesId = selectedSeries?.id;
+                if (seriesId) window.MangaApi.setActiveSeriesId(seriesId);
+
+                let chapters = seriesId ? getArr(await window.MangaApi.chapters(seriesId).catch(() => [])) : [];
+                const activeChapterId = window.MangaApi.getActiveChapterId?.();
+                const selectedChapter = chapters.find(c => String(c.id ?? c.chapterId) === String(activeChapterId)) || chapters[0];
+                const chapterId = selectedChapter?.id ?? selectedChapter?.chapterId;
+                if (chapterId) window.MangaApi.setActiveChapterId(chapterId);
+
+                let pages = chapterId ? getArr(await window.MangaApi.pages(chapterId).catch(() => [])) : [];
+                const activePageId = window.MangaApi.getActivePageId?.();
+                const selectedPage = pages.find(p => String(p.id ?? p.pageId) === String(activePageId)) || pages[0];
+                const pageId = selectedPage?.id ?? selectedPage?.pageId;
+                if (pageId) window.MangaApi.setActivePageId(pageId);
+
+                let feedbacks = pageId ? getArr(await window.MangaApi.feedbacks(pageId).catch(() => [])) : [];
+                let canvas = null;
+                if (pageId) {
+                    canvas = await window.MangaApi.canvasInit(pageId).catch(() => ({
+                        imageUrl: selectedPage?.imageUrl || selectedPage?.pageImageUrl || ''
+                    }));
+                }
+
+                submissionPicker.innerHTML += `
+                    <div class="mangaka-tantou-controls">
+                        <select id="mangaka-feedback-series">${series.map(s => `<option value="${escReview(s.id)}" ${String(s.id) === String(seriesId) ? 'selected' : ''}>${escReview(s.title || s.name || `Series #${s.id}`)}</option>`).join('')}</select>
+                        <select id="mangaka-feedback-chapter">${chapters.map(c => {
+                            const id = c.id ?? c.chapterId;
+                            return `<option value="${escReview(id)}" ${String(id) === String(chapterId) ? 'selected' : ''}>Ch. ${escReview(c.chapterNumber ?? c.number ?? '?')} — ${escReview(c.title || 'Untitled')}</option>`;
+                        }).join('') || '<option value="">No chapters</option>'}</select>
+                        <select id="mangaka-feedback-page">${pages.map(p => {
+                            const id = p.id ?? p.pageId;
+                            return `<option value="${escReview(id)}" ${String(id) === String(pageId) ? 'selected' : ''}>Page ${escReview(p.pageNumber ?? p.number ?? id)}</option>`;
+                        }).join('') || '<option value="">No pages</option>'}</select>
+                    </div>
+                `;
+
+                document.getElementById('mangaka-feedback-series')?.addEventListener('change', (event) => {
+                    window.MangaApi.setActiveSeriesId(event.target.value);
+                    localStorage.removeItem('activeChapterId');
+                    localStorage.removeItem('activePageId');
+                    renderMangakaTantouFeedbackView();
+                });
+
+                document.getElementById('mangaka-feedback-chapter')?.addEventListener('change', (event) => {
+                    window.MangaApi.setActiveChapterId(event.target.value);
+                    localStorage.removeItem('activePageId');
+                    renderMangakaTantouFeedbackView();
+                });
+
+                document.getElementById('mangaka-feedback-page')?.addEventListener('change', (event) => {
+                    window.MangaApi.setActivePageId(event.target.value);
+                    renderMangakaTantouFeedbackView();
+                });
+
+                const imageUrl = canvas?.imageUrl || selectedPage?.imageUrl || selectedPage?.pageImageUrl || '';
+
+                draftImgContainer.innerHTML = imageUrl
+                    ? `<div class="mangaka-tantou-image-wrap">
+                        <img src="${escReview(imageUrl)}" class="review-main-img" alt="Tantou feedback reference page">
+                        ${feedbacks.map((f, i) => `
+                            <button type="button" class="mangaka-tantou-pin ${f.isResolved ? 'resolved' : ''}" data-feedback-id="${escReview(f.id || i)}" style="left:${feedbackX(f)}%;top:${feedbackY(f)}%;width:${feedbackW(f)}%;height:${feedbackH(f)}%;">
+                                <span>${i + 1}</span>
+                            </button>
+                        `).join('')}
+                      </div>`
+                    : `<div class="empty-state-box">No page image found for this page.</div>`;
+
+                submissionImgWrapper.innerHTML = `
+                    <div class="mangaka-tantou-summary">
+                        <h3>${feedbacks.length} Tantou feedback item${feedbacks.length === 1 ? '' : 's'}</h3>
+                        <p>Red boxes are open feedback. Green boxes are resolved.</p>
+                        <div class="mangaka-tantou-counts">
+                            <span><b>${feedbacks.filter(f => !f.isResolved).length}</b> Open</span>
+                            <span><b>${feedbacks.filter(f => f.isResolved).length}</b> Resolved</span>
+                        </div>
+                    </div>
+                `;
+
+                const chatBox = document.getElementById('chat-box');
+                const chatCountBadge = document.getElementById('chat-count-badge');
+
+                if (chatCountBadge) chatCountBadge.textContent = String(feedbacks.length);
+
+                if (chatBox) {
+                    chatBox.innerHTML = feedbacks.length ? feedbacks.map((f, i) => `
+                        <div class="chat-msg mangaka-tantou-feedback-msg" data-feedback-id="${escReview(f.id || i)}">
+                            <div class="chat-avatar">TE</div>
+                            <div class="chat-msg-body">
+                                <div class="chat-name">
+                                    <span>Tantou Editor #${i + 1}</span>
+                                    <span class="chat-time">${f.isResolved ? 'Resolved' : 'Open'}</span>
+                                </div>
+                                <div class="chat-bubble">${escReview(f.content || 'No feedback text.')}</div>
+                                <div class="mangaka-feedback-meta">X ${feedbackX(f).toFixed(1)}% · Y ${feedbackY(f).toFixed(1)}% · W ${feedbackW(f).toFixed(1)}% · H ${feedbackH(f).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    `).join('') : `<div class="empty-state-box">No Tantou feedback found for this page.</div>`;
+                }
+
+                document.querySelectorAll('.mangaka-tantou-pin').forEach(pin => {
+                    pin.addEventListener('click', () => {
+                        const card = document.querySelector(`.mangaka-tantou-feedback-msg[data-feedback-id="${pin.dataset.feedbackId}"]`);
+                        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        card?.classList.add('highlight');
+                        setTimeout(() => card?.classList.remove('highlight'), 1200);
+                    });
+                });
+            } catch (error) {
+                reviewPageTitle.textContent = 'Could not load Tantou feedback.';
+                showReviewEmpty(error.message);
+            }
+        }
+
+        if (reviewMode === 'tantou') {
+            bindReviewModeTabs('tantou');
+            renderMangakaTantouFeedbackView();
+            return;
+        }
+
+        bindReviewModeTabs('assistant');
+        renderModeTabs('assistant');
+
+        function normalizeReviewStatus(task) {
+            return window.MangaApi?.normalizeTaskStatus
+                ? window.MangaApi.normalizeTaskStatus(task?.status || 'REVIEWING')
+                : String(task?.status || 'REVIEWING').toUpperCase();
+        }
+
+        function referenceImageOf(task) {
+            return task?.referenceImageUrl ||
+                task?.pageImageUrl ||
+                task?.hitbox?.page?.imageUrl ||
+                task?.hitbox?.pageImageUrl ||
+                '';
+        }
+
+        function submittedImageOf(task) {
+            return task?.submittedImageUrl ||
+                task?.submissionUrl ||
+                task?.submittedUrl ||
+                task?.imageUrl ||
+                '';
+        }
+
+        function taskIdOf(task) {
+            return task?.id ?? task?.taskId;
+        }
+
+        function taskTitleOfReview(task) {
+            return task?.title || task?.description || `Task #${taskIdOf(task)}`;
+        }
+
+        function isReviewableTask(task) {
+            const status = normalizeReviewStatus(task);
+            return status === 'REVIEWING';
+        }
+
+        async function resolveReferenceImageForReview(task) {
+            let imageUrl = referenceImageOf(task);
+            const pageId = task?.pageId || task?.hitbox?.pageId || task?.hitbox?.page?.id;
+
+            if (!imageUrl && pageId && window.MangaApi?.canvasInit) {
+                try {
+                    const canvas = await window.MangaApi.canvasInit(pageId);
+                    imageUrl = canvas?.imageUrl || '';
+                } catch (error) {
+                    console.warn('Could not load reference image:', error.message);
+                }
+            }
+
+            return imageUrl;
+        }
+
+        function showReviewEmpty(message) {
+            draftImgContainer.innerHTML = `<div class="empty-state-box">${escReview(message)}</div>`;
+            submissionImgWrapper.innerHTML = `<div class="empty-state-box">${escReview(message)}</div>`;
+
+            if (submissionStatusTag) {
+                submissionStatusTag.textContent = 'Waiting';
+                submissionStatusTag.style.background = '#f3f4f6';
+                submissionStatusTag.style.color = '#4b5563';
+            }
+
+            if (btnApprove) btnApprove.style.display = 'none';
+            if (btnRequestRev) btnRequestRev.style.display = 'none';
+        }
+
+        function setSelectedTask(taskId) {
+            selectedReviewTaskId = taskId ? String(taskId) : '';
+            if (selectedReviewTaskId) {
+                localStorage.setItem('currentReviewTaskId', selectedReviewTaskId);
+                localStorage.setItem('currentTaskId', selectedReviewTaskId);
+                const url = new URL(window.location.href);
+                url.searchParams.set('taskId', selectedReviewTaskId);
+                window.history.replaceState(null, '', url.toString());
+            } else {
+                localStorage.removeItem('currentReviewTaskId');
+                const url = new URL(window.location.href);
+                url.searchParams.delete('taskId');
+                window.history.replaceState(null, '', url.toString());
+            }
+        }
+
+        function renderSubmissionPicker(reviewableTasks) {
+            if (!submissionPicker) return;
+
+            if (!reviewableTasks.length) {
+                submissionPicker.innerHTML = reviewTabsMarkup('assistant') + `
+                    <div class="submission-picker-header">
+                        <div>
+                            <span class="eyebrow">Choose a submission</span>
+                            <h3>No submitted tasks waiting for review</h3>
+                        </div>
+                        <a class="btn-outline" href="dashboard.html#kanban"><i class="fa-solid fa-table-columns"></i> Back to Kanban</a>
+                    </div>
+                    <div class="empty-state-box">Assistant submissions will appear here after they upload work and the task moves to REVIEWING.</div>
+                `;
+                return;
+            }
+
+            submissionPicker.innerHTML = reviewTabsMarkup('assistant') + `
+                <div class="submission-picker-header">
+                    <div>
+                        <span class="eyebrow">Choose a submission to review</span>
+                        <h3>${reviewableTasks.length} submission${reviewableTasks.length > 1 ? 's' : ''} available</h3>
+                    </div>
+                    <a class="btn-outline" href="dashboard.html#kanban"><i class="fa-solid fa-table-columns"></i> Back to Kanban</a>
+                </div>
+                <div class="submission-picker-list">
+                    ${reviewableTasks.map(task => {
+                        const id = taskIdOf(task);
+                        const status = normalizeReviewStatus(task);
+                        const thumb = submittedImageOf(task);
+                        const active = String(id) === String(selectedReviewTaskId);
+                        return `
+                            <button type="button" class="submission-picker-card ${active ? 'active' : ''}" data-task-id="${escReview(id)}">
+                                <div class="submission-thumb">
+                                    ${thumb ? `<img src="${escReview(thumb)}" alt="Submission thumbnail">` : `<i class="fa-solid fa-image"></i>`}
+                                </div>
+                                <div class="submission-info">
+                                    <strong>${escReview(taskTitleOfReview(task))}</strong>
+                                    <span>${escReview(task.seriesTitle || 'Manga Series')} · ${escReview(task.chapterNumber ? `Chapter ${task.chapterNumber}` : 'Task Review')}</span>
+                                    <small>Task #${escReview(id)} · ${escReview(task.assistantName || 'Assistant')} · ${escReview(status)}</small>
+                                </div>
+                                <span class="submission-select-label">${active ? 'Selected' : 'Review'}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            submissionPicker.querySelectorAll('.submission-picker-card').forEach(card => {
+                card.addEventListener('click', async () => {
+                    setSelectedTask(card.dataset.taskId);
+                    await loadReviewTask();
+                });
+            });
+
+            bindReviewModeTabs('assistant');
+        }
+
+        async function loadAllReviewTasks() {
+            const tasks = getArr(await window.MangaApi.tasks());
+            return tasks.filter(isReviewableTask);
+        }
+
+        async function loadReviewTask() {
+            try {
+                const reviewableTasks = await loadAllReviewTasks();
+
+                if (!selectedReviewTaskId && reviewableTasks.length === 1) {
+                    setSelectedTask(taskIdOf(reviewableTasks[0]));
+                }
+
+                renderSubmissionPicker(reviewableTasks);
+
+                if (!selectedReviewTaskId) {
+                    reviewPageTitle.textContent = 'Select a submission to review...';
+                    showReviewEmpty('Choose one of the submitted tasks above.');
+                    loadedReviewTask = null;
+                    return null;
+                }
+
+                const task = reviewableTasks.find(t => String(taskIdOf(t)) === String(selectedReviewTaskId));
+
+                if (!task) {
+                    reviewPageTitle.textContent = `Task #${selectedReviewTaskId} is no longer in REVIEWING status.`;
+                    showReviewEmpty('Choose another submitted task above, or return to Kanban.');
+                    loadedReviewTask = null;
+                    return null;
+                }
+
+                const status = normalizeReviewStatus(task);
+                const referenceUrl = await resolveReferenceImageForReview(task);
+                const submittedUrl = submittedImageOf(task);
+
+                reviewPageTitle.innerHTML = `${escReview(task.seriesTitle || 'Assistant Submission')} &rsaquo; ${escReview(task.chapterNumber ? `Chapter ${task.chapterNumber}` : 'Task Review')} &rsaquo; Task #${escReview(taskIdOf(task))}`;
+
+                if (submissionStatusTag) {
+                    submissionStatusTag.textContent = status;
+                    submissionStatusTag.style.background = status === 'APPROVED' ? '#dcfce7' : '#fef3c7';
+                    submissionStatusTag.style.color = status === 'APPROVED' ? '#166534' : '#92400e';
+                }
+
+                draftImgContainer.innerHTML = referenceUrl
+                    ? `<img src="${escReview(referenceUrl)}" class="review-main-img" alt="Original draft">`
+                    : `<div class="empty-state-box">No original draft image found.</div>`;
+
+                submissionImgWrapper.innerHTML = submittedUrl
+                    ? `<img src="${escReview(submittedUrl)}" class="review-main-img" alt="Assistant submitted image">`
+                    : `<div class="empty-state-box">No submitted image found for this task.</div>`;
+
+                const chatBox = document.getElementById('chat-box');
+                const chatCountBadge = document.getElementById('chat-count-badge');
+                if (chatBox) {
+                    chatBox.dataset.loadedTaskNote = String(taskIdOf(task));
+                    chatBox.innerHTML = `
+                        <div class="chat-msg" style="margin-top: 10px;">
+                            <div class="chat-avatar">MG</div>
+                            <div class="chat-msg-body">
+                                <div class="chat-name"><span>Task Request</span><span class="chat-time">Loaded</span></div>
+                                <div class="chat-bubble">${escReview(task.description || 'No task description.')}</div>
+                            </div>
+                        </div>
+                    `;
+                    if (chatCountBadge) chatCountBadge.textContent = '1';
+                }
+
+                if (btnApprove) {
+                    btnApprove.style.display = status === 'APPROVED' ? 'none' : 'inline-flex';
+                    btnApprove.disabled = false;
+                    btnApprove.innerHTML = '<i class="fa-solid fa-check"></i> Approve';
+                }
+
+                if (btnRequestRev) {
+                    btnRequestRev.style.display = status === 'APPROVED' ? 'none' : 'inline-flex';
+                    btnRequestRev.disabled = false;
+                    btnRequestRev.innerHTML = '<i class="fa-solid fa-xmark"></i> Request Revision';
+                }
+
+                const submitFeedbackBtn = document.getElementById('btn-submit-feedback');
+                if (submitFeedbackBtn) {
+                    submitFeedbackBtn.style.display = 'none';
+                    submitFeedbackBtn.disabled = true;
+                }
+
+                loadedReviewTask = task;
+                return task;
+            } catch (error) {
+                reviewPageTitle.textContent = 'Could not load submissions.';
+                showReviewEmpty(error.message);
+                loadedReviewTask = null;
+                return null;
+            }
+        }
+
+        let loadedReviewTask = null;
+        loadReviewTask();
+
+        async function afterDecision(message, isRevision = false) {
+            showToast(message, isRevision);
+            setSelectedTask('');
+            await loadReviewTask();
+        }
+
+        if (btnApprove) {
+            btnApprove.addEventListener('click', async (event) => {
+                if (!loadedReviewTask) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const taskId = taskIdOf(loadedReviewTask);
+                try {
+                    btnApprove.disabled = true;
+                    btnApprove.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Approving...';
+                    await window.MangaApi.updateTaskStatus(taskId, 'APPROVED');
+                    await afterDecision('Submission approved. Choose another submission to review.', false);
+                } catch (error) {
+                    btnApprove.disabled = false;
+                    btnApprove.innerHTML = '<i class="fa-solid fa-check"></i> Approve';
+                    alert('Approve failed: ' + error.message);
+                }
+            }, true);
+        }
+
+        if (btnRequestRev) {
+            btnRequestRev.addEventListener('click', async (event) => {
+                if (!loadedReviewTask) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const taskId = taskIdOf(loadedReviewTask);
+                try {
+                    btnRequestRev.disabled = true;
+                    btnRequestRev.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+                    await window.MangaApi.updateTaskStatus(taskId, 'DOING');
+                    await afterDecision('Revision requested. Choose another submission to review.', true);
+                } catch (error) {
+                    btnRequestRev.disabled = false;
+                    btnRequestRev.innerHTML = '<i class="fa-solid fa-xmark"></i> Request Revision';
+                    alert('Request revision failed: ' + error.message);
+                }
+            }, true);
+        }
+    }
+
+
 });

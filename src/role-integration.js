@@ -32,6 +32,22 @@
   const badge = (text) => `<span class="status-tag ${statusClass(text)}">${esc(text || "—")}</span>`;
   const toast = (message, type = "info") => window.showToast ? window.showToast(message, type) : alert(message);
 
+  function clampPercent(value, min = 0, max = 100) {
+    const n = Number.parseFloat(value);
+    if (Number.isNaN(n)) return min;
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function pctValue(source = {}, keys = [], fallback = 12) {
+    for (const key of keys) {
+      if (source[key] !== undefined && source[key] !== null && source[key] !== "") {
+        return clampPercent(source[key], 0, 100);
+      }
+    }
+    return fallback;
+  }
+
+
   function shell(title, subtitle, actionHtml = "") {
     const content = $(".content-padding");
     if (!content) return null;
@@ -111,11 +127,116 @@
     });
   }
 
+
+  function taskIdOf(task) {
+    return task?.id ?? task?.taskId;
+  }
+
+  function taskTitleOf(task) {
+    return task?.title || task?.description || `Task #${taskIdOf(task) || "—"}`;
+  }
+
+  function normalizeTaskStatus(status) {
+    return Api.normalizeTaskStatus ? Api.normalizeTaskStatus(status) : String(status || "TODO").toUpperCase();
+  }
+
+  function renderTantouKanban(root, tasks = []) {
+    const statuses = ["TODO", "DOING", "REVIEWING", "APPROVED"];
+
+    root.innerHTML = `
+      <div class="tantou-dashboard-tabs">
+        <a href="tantou-dashboard.html" class="btn-outline"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>
+        <button class="btn-publish" id="refresh-tantou-kanban"><i class="fa-solid fa-rotate"></i> Refresh Kanban</button>
+      </div>
+      <div class="backend-kanban tantou-dashboard-kanban">
+        ${statuses.map(status => {
+          const items = tasks.filter(task => normalizeTaskStatus(task.status) === status);
+          return `
+            <div class="kanban-column" data-status="${status}">
+              <h3>${status === "TODO" ? "Todo" : status === "DOING" ? "Doing" : status === "REVIEWING" ? "Reviewing" : "Approved"} <span id="tantou-count-${status}">${items.length}</span></h3>
+              <div class="kanban-drop" id="tantou-col-${status}">
+                ${items.map(task => {
+                  const id = taskIdOf(task);
+                  const title = taskTitleOf(task);
+                  const submitted = task.submittedImageUrl || task.submissionUrl || "";
+                  return `<div class="kanban-card backend-task-card" draggable="true" data-id="${esc(id)}">
+                    <strong>${esc(title)}</strong>
+                    <p>${esc(task.description || "")}</p>
+                    <small>${esc(task.assigneeName || task.assistantName || "Unassigned")} · ${esc(normalizeTaskStatus(task.status))}</small>
+                    ${submitted ? `<a class="btn-outline mini-btn tantou-open-submission" href="${esc(submitted)}" target="_blank" rel="noopener"><i class="fa-solid fa-image"></i> Open submission</a>` : ""}
+                  </div>`;
+                }).join("") || `<div class="empty-column">Drop tasks here</div>`}
+              </div>
+            </div>`;
+        }).join("")}
+      </div>`;
+
+    $("#refresh-tantou-kanban")?.addEventListener("click", () => {
+      location.hash = "kanban";
+      tantouDashboard();
+    });
+
+    $$(".backend-task-card").forEach(card => {
+      card.addEventListener("dragstart", event => {
+        event.dataTransfer.setData("text/plain", card.dataset.id);
+      });
+    });
+
+    $$(".kanban-column").forEach(column => {
+      const drop = column.querySelector(".kanban-drop");
+      const status = column.dataset.status;
+
+      drop.addEventListener("dragover", event => {
+        event.preventDefault();
+        drop.classList.add("drag-over");
+      });
+
+      drop.addEventListener("dragleave", () => drop.classList.remove("drag-over"));
+
+      drop.addEventListener("drop", async event => {
+        event.preventDefault();
+        drop.classList.remove("drag-over");
+
+        const taskId = event.dataTransfer.getData("text/plain");
+        if (!taskId) return;
+
+        try {
+          await Api.updateTaskStatus(taskId, status);
+          toast("Task status updated.", "success");
+          location.hash = "kanban";
+          await tantouDashboard();
+        } catch (err) {
+          toast(err.message, "error");
+        }
+      });
+    });
+  }
+
   async function tantouDashboard() {
-    const root = shell("Tantou Dashboard", "Live review queue, assigned tasks, and feedback metrics from Backend 2.", `<a class="btn-publish" href="tantou-review.html">Open Review</a>`);
+    const isKanban = location.hash === "#kanban";
+    const root = shell(
+      isKanban ? "Tantou Kanban Tasks" : "Tantou Dashboard",
+      isKanban ? "Manage review tasks directly inside the Tantou dashboard." : "Live review queue, assigned tasks, and feedback metrics from Backend 2.",
+      isKanban
+        ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>`
+        : `<a class="btn-publish" href="tantou-review.html">Open Chapter Review</a><a class="btn-outline" href="tantou-dashboard.html#kanban" style="margin-left:10px;"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a>`
+    );
+
     try {
       await hydrateSeriesContext();
       state.tasks = await Api.tasks().catch(() => []);
+
+      const dashboardNav = $$(".tantou-nav .nav-item");
+      dashboardNav.forEach(link => {
+        const href = link.getAttribute("href") || "";
+        link.classList.toggle("active", isKanban ? href.includes("#kanban") : href === "tantou-dashboard.html");
+      });
+
+      if (isKanban) {
+        renderTantouKanban(root, state.tasks);
+        return;
+      }
+
       const pageFeedbacks = await Promise.all((state.pages || []).slice(0, 8).map(p => Api.feedbacks(p.id).catch(() => [])));
       const openFeedbacks = pageFeedbacks.flat().filter(f => !f.isResolved);
       const reviewing = state.series.filter(s => /review/i.test(s.status || "")).length;
@@ -128,6 +249,15 @@
           <div class="stat-card"><div class="stat-value">${reviewing}</div><div class="stat-label">Board Queue</div></div>
           <div class="stat-card"><div class="stat-value">${ready}</div><div class="stat-label">Ready / Approved</div></div>
         </div>
+
+        <div class="card-box tantou-dashboard-action-card">
+          <div>
+            <h2>Kanban Tasks</h2>
+            <p class="muted-note">Review task statuses without leaving the main dashboard.</p>
+          </div>
+          <a class="btn-publish" href="tantou-dashboard.html#kanban"><i class="fa-solid fa-table-columns"></i> Open Kanban Tasks</a>
+        </div>
+
         <div class="card-box">
           ${state.series.map(s => `<div class="list-card"><div class="list-card-content"><h2 class="list-card-title">${esc(s.title)}</h2><p class="list-card-meta">${esc(s.genre || "No genre")} • ${badge(s.status)} • Mangaka: ${esc(s.mangakaName || "—")}</p></div><button class="btn-icon-only set-series" data-id="${s.id}"><i class="fa-solid fa-arrow-right"></i></button></div>`).join("") || `<div class="empty-state-box">No manga series returned by backend.</div>`}
         </div>`;
@@ -137,22 +267,127 @@
   }
 
   async function tantouFeedback() {
-    const root = shell("Feedback Tracking", "Create, view, and resolve Tantou feedback stored at /api/v1/tantou-feedbacks.");
+    const root = shell("Annotation & Feedback", "View pinned feedback visually, resolve notes, or open the pinned review workspace.");
     try {
       await hydrateSeriesContext();
       const pageId = Api.getActivePageId() || state.pages[0]?.id;
+      let canvas = null;
+
+      if (pageId) {
+        canvas = await Api.canvasInit(pageId).catch(async () => {
+          const p = state.pages.find(item => String(item.id) === String(pageId));
+          return p ? { pageId: p.id, imageUrl: p.imageUrl, originalWidth: p.width || 1000, originalHeight: p.height || 1400 } : null;
+        });
+      }
+
       state.feedbacks = pageId ? await Api.feedbacks(pageId).catch(() => []) : [];
+
+      const openFeedbacks = state.feedbacks.filter(f => !f.isResolved);
+      const resolvedFeedbacks = state.feedbacks.filter(f => f.isResolved);
+
+      const pinnedPreview = canvas?.imageUrl ? `
+        <div class="annotation-preview-stage">
+          <div class="annotation-preview-image-wrap">
+            <img src="${esc(canvas.imageUrl)}" alt="Selected manga page">
+            ${state.feedbacks.map((f, i) => {
+              const x = pctValue(f, ["xCoord", "x", "xPercent"], 10);
+              const y = pctValue(f, ["yCoord", "y", "yPercent"], 10);
+              const w = pctValue(f, ["width", "w", "widthPercent"], 12);
+              const h = pctValue(f, ["height", "h", "heightPercent"], 8);
+              const resolved = f.isResolved ? "resolved" : "open";
+              return `
+                <button type="button"
+                  class="annotation-preview-region ${resolved}"
+                  data-feedback-id="${esc(f.id)}"
+                  style="left:${x}%;top:${y}%;width:${w}%;height:${h}%;"
+                  title="${esc(f.content)}">
+                  <span>${i + 1}</span>
+                </button>`;
+            }).join("")}
+          </div>
+        </div>` : `<div class="empty-state-box">No page image selected. Choose a series, chapter, and page above.</div>`;
+
+      const feedbackCards = state.feedbacks.map((f, i) => {
+        const x = pctValue(f, ["xCoord", "x", "xPercent"], 0);
+        const y = pctValue(f, ["yCoord", "y", "yPercent"], 0);
+        const w = pctValue(f, ["width", "w", "widthPercent"], 0);
+        const h = pctValue(f, ["height", "h", "heightPercent"], 0);
+        return `
+          <div class="annotation-feedback-card" data-feedback-id="${esc(f.id)}">
+            <div class="annotation-feedback-index">${i + 1}</div>
+            <div class="annotation-feedback-body">
+              <div class="annotation-feedback-top">
+                <strong>#${esc(f.id || i + 1)} ${f.isResolved ? badge("Resolved") : badge("Open")}</strong>
+                <span>X ${x.toFixed(1)}% · Y ${y.toFixed(1)}% · W ${w.toFixed(1)}% · H ${h.toFixed(1)}%</span>
+              </div>
+              <p>${esc(f.content || "No feedback text.")}</p>
+              <div class="annotation-feedback-actions">
+                ${f.isResolved ? `<span class="muted-note">Already resolved</span>` : `<button class="btn-outline resolve-feedback" data-id="${f.id}">Resolve</button>`}
+              </div>
+            </div>
+          </div>`;
+      }).join("") || `<div class="empty-state-box">No pinned feedback found for this page. Use Chapter Review to add one.</div>`;
+
       root.innerHTML = `
-        <div class="toolbar-row">${seriesPicker()}${chapterPicker()}${pagePicker()}<a class="btn-publish" href="tantou-review.html">Add Feedback</a></div>
-        <div class="card-box">
-          <table class="data-table"><thead><tr><th>ID</th><th>Coordinates</th><th>Feedback</th><th>Status</th><th>Action</th></tr></thead><tbody>
-            ${state.feedbacks.map(f => `<tr><td>#${f.id}</td><td>x:${esc(f.xCoord)} y:${esc(f.yCoord)} w:${esc(f.width)} h:${esc(f.height)}</td><td>${esc(f.content)}</td><td>${badge(f.isResolved ? "Resolved" : "Open")}</td><td>${f.isResolved ? "—" : `<button class="btn-outline resolve-feedback" data-id="${f.id}">Resolve</button>`}</td></tr>`).join("") || `<tr><td colspan="5">No feedback found for selected page.</td></tr>`}
-          </tbody></table>
+        <div class="toolbar-row">
+          ${seriesPicker()}${chapterPicker()}${pagePicker()}
+          <a class="btn-publish" href="tantou-review.html"><i class="fa-solid fa-plus"></i> Add Feedback in Chapter Review</a>
+        </div>
+
+        <div class="annotation-summary-row">
+          <div class="annotation-summary-card"><strong>${state.feedbacks.length}</strong><span>Total pinned notes</span></div>
+          <div class="annotation-summary-card warning"><strong>${openFeedbacks.length}</strong><span>Open</span></div>
+          <div class="annotation-summary-card success"><strong>${resolvedFeedbacks.length}</strong><span>Resolved</span></div>
+        </div>
+
+        <div class="annotation-feedback-layout">
+          <div class="card-box annotation-preview-card">
+            <div class="section-title-row">
+              <h3>Pinned Review Preview</h3>
+              ${badge(pageId ? `Page #${pageId}` : "No page")}
+            </div>
+            ${pinnedPreview}
+            <small class="muted-note">Pinned areas from Tantou feedback are shown on the manga page. Red = open, green = resolved.</small>
+          </div>
+
+          <div class="card-box annotation-list-card">
+            <div class="section-title-row">
+              <h3>Feedback Thread</h3>
+              <span class="status-tag progress">${state.feedbacks.length}</span>
+            </div>
+            <div class="annotation-feedback-list">${feedbackCards}</div>
+          </div>
         </div>`;
+
       bindCommonPickers(tantouFeedback);
+
+      $$(".annotation-preview-region").forEach(region => {
+        region.addEventListener("click", () => {
+          const card = $(`.annotation-feedback-card[data-feedback-id="${region.dataset.feedbackId}"]`);
+          if (!card) return;
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          card.classList.add("highlight");
+          setTimeout(() => card.classList.remove("highlight"), 1200);
+        });
+      });
+
+      $$(".annotation-feedback-card").forEach(card => {
+        card.addEventListener("mouseenter", () => {
+          const region = $(`.annotation-preview-region[data-feedback-id="${card.dataset.feedbackId}"]`);
+          region?.classList.add("focus");
+        });
+        card.addEventListener("mouseleave", () => {
+          const region = $(`.annotation-preview-region[data-feedback-id="${card.dataset.feedbackId}"]`);
+          region?.classList.remove("focus");
+        });
+      });
+
       $$(".resolve-feedback").forEach(btn => btn.addEventListener("click", async () => {
-        try { await Api.resolveFeedback(btn.dataset.id); toast("Feedback resolved.", "success"); tantouFeedback(); }
-        catch (err) { toast(err.message, "error"); }
+        try {
+          await Api.resolveFeedback(btn.dataset.id);
+          toast("Feedback resolved.", "success");
+          tantouFeedback();
+        } catch (err) { toast(err.message, "error"); }
       }));
     } catch (err) { errorBox(root, err); }
   }
@@ -168,16 +403,38 @@
         return p ? { pageId: p.id, imageUrl: p.imageUrl, originalWidth: p.width || 1000, originalHeight: p.height || 1400, hitboxes: [] } : null;
       });
       state.feedbacks = pageId ? await Api.feedbacks(pageId).catch(() => []) : [];
+
+      const firstFeedback = state.feedbacks[0] || {};
+      const initialX = pctValue(firstFeedback, ["xCoord", "x", "xPercent"], 12);
+      const initialY = pctValue(firstFeedback, ["yCoord", "y", "yPercent"], 12);
+      const initialW = pctValue(firstFeedback, ["width", "w", "widthPercent"], 20);
+      const initialH = pctValue(firstFeedback, ["height", "h", "heightPercent"], 12);
+      const draftLabel = state.feedbacks.length ? state.feedbacks.length + 1 : 1;
+
+      const previewHtml = canvas?.imageUrl ? `
+              <div id="tantou-stage" class="tantou-canvas-stage">
+                <img src="${esc(canvas.imageUrl)}" alt="Manga page">
+                ${state.feedbacks.map((f, i) => {
+                  const x = Math.min(100, Math.max(0, pctValue(f, ["xCoord", "x", "xPercent"], 10)));
+                  const y = Math.min(100, Math.max(0, pctValue(f, ["yCoord", "y", "yPercent"], 10)));
+                  const w = pctValue(f, ["width", "w", "widthPercent"], 20);
+                  const h = pctValue(f, ["height", "h", "heightPercent"], 12);
+                  return `
+                    <div class="tantou-feedback-region saved-feedback-region" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%;" title="${esc(f.content)}"></div>
+                    <button type="button" class="annotation-dot saved-annotation-dot" data-x="${x}" data-y="${y}" data-w="${w}" data-h="${h}" data-content="${esc(f.content)}" style="left:${x}%;top:${y}%;" title="${esc(f.content)}">${i + 1}</button>
+                  `;
+                }).join("")}
+                <div id="draft-feedback-region" class="tantou-feedback-region active-feedback-region" style="left:${initialX}%;top:${initialY}%;width:${initialW}%;height:${initialH}%;" title="Current feedback area"></div>
+                <button type="button" id="draft-feedback-dot" class="annotation-dot active-annotation-dot" style="left:${initialX}%;top:${initialY}%;" title="Current feedback cursor">${draftLabel}</button>
+              </div>` : `<div class="empty-state-box">Upload pages through Mangaka Batch Upload before review.</div>`;
+
       root.innerHTML = `
         <div class="toolbar-row">${seriesPicker()}${chapterPicker()}${pagePicker()}</div>
         <div class="review-container integration-review-grid">
           <div class="review-col">
             <div class="review-col-header"><span>Backend Page Preview</span>${badge(pageId ? `Page #${pageId}` : "No page")}</div>
-            <div id="tantou-preview" class="preview-panel api-canvas-preview" data-x="12" data-y="12">
-              ${canvas?.imageUrl ? `<img src="${esc(canvas.imageUrl)}" alt="Manga page">` : `<div class="empty-state-box">Upload pages through Mangaka Batch Upload before review.</div>`}
-              ${state.feedbacks.map((f, i) => `<button class="annotation-dot" style="left:${Math.min(95, Math.max(3, f.xCoord || 10))}%;top:${Math.min(95, Math.max(3, f.yCoord || 10))}%;" title="${esc(f.content)}">${i+1}</button>`).join("")}
-            </div>
-            <small class="muted-note">Click the preview to set x/y percentage for new feedback.</small>
+            <div id="tantou-preview" class="preview-panel api-canvas-preview">${previewHtml}</div>
+            <small class="muted-note">Click the manga image, drag the numbered cursor, or edit X/Y fields to move the feedback marker.</small>
           </div>
           <div class="review-col">
             <div class="review-col-header"><span>Feedback Thread</span><span id="chat-count-badge" class="status-tag progress">${state.feedbacks.length}</span></div>
@@ -185,8 +442,8 @@
               ${state.feedbacks.map(f => `<div class="chat-msg"><div class="chat-avatar">TE</div><div class="chat-msg-body"><div class="chat-name">Tantou Editor <span class="chat-time">${fmtDate(f.createdAt)}</span></div><div class="chat-bubble">${esc(f.content)}</div></div></div>`).join("") || `<div class="empty-state-box">No feedback yet.</div>`}
             </div>
             <form id="feedback-form" class="feedback-form">
-              <div class="form-row"><div class="form-group"><label>X %</label><input class="form-control" id="fb-x" value="12"></div><div class="form-group"><label>Y %</label><input class="form-control" id="fb-y" value="12"></div></div>
-              <div class="form-row"><div class="form-group"><label>W %</label><input class="form-control" id="fb-w" value="20"></div><div class="form-group"><label>H %</label><input class="form-control" id="fb-h" value="12"></div></div>
+              <div class="form-row"><div class="form-group"><label>X %</label><input class="form-control" id="fb-x" type="number" min="0" max="100" step="0.01" value="${initialX}"></div><div class="form-group"><label>Y %</label><input class="form-control" id="fb-y" type="number" min="0" max="100" step="0.01" value="${initialY}"></div></div>
+              <div class="form-row"><div class="form-group"><label>W %</label><input class="form-control" id="fb-w" type="number" min="1" max="100" step="0.01" value="${initialW}"></div><div class="form-group"><label>H %</label><input class="form-control" id="fb-h" type="number" min="1" max="100" step="0.01" value="${initialH}"></div></div>
               <div class="form-group"><label>Feedback</label><textarea class="form-control" id="fb-content" placeholder="Write feedback for Mangaka..." required></textarea></div>
               <button class="btn-publish" type="submit">Send Feedback</button>
               <button id="send-revision" type="button" class="btn-outline">Mark Series Reviewing</button>
@@ -194,17 +451,116 @@
           </div>
         </div>`;
       bindCommonPickers(tantouReview);
-      $("#tantou-preview")?.addEventListener("click", (e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = (((e.clientX - rect.left) / rect.width) * 100).toFixed(2);
-        const y = (((e.clientY - rect.top) / rect.height) * 100).toFixed(2);
-        $("#fb-x").value = x; $("#fb-y").value = y;
+
+      const stage = $("#tantou-stage");
+      const draftDot = $("#draft-feedback-dot");
+      const draftRegion = $("#draft-feedback-region");
+      const xInput = $("#fb-x");
+      const yInput = $("#fb-y");
+      const wInput = $("#fb-w");
+      const hInput = $("#fb-h");
+      const contentInput = $("#fb-content");
+
+      function getBoxValues() {
+        const safeNumber = (value, fallback) => {
+          const n = Number.parseFloat(value);
+          return Number.isFinite(n) ? n : fallback;
+        };
+
+        const x = clampPercent(safeNumber(xInput?.value, 0), 0, 100);
+        const y = clampPercent(safeNumber(yInput?.value, 0), 0, 100);
+        const rawWidth = Math.max(1, safeNumber(wInput?.value, 1));
+        const rawHeight = Math.max(1, safeNumber(hInput?.value, 1));
+        const width = Math.max(1, Math.min(100 - x, rawWidth));
+        const height = Math.max(1, Math.min(100 - y, rawHeight));
+
+        return { x, y, width, height };
+      }
+
+      function updateFeedbackArea(updateInputs = false) {
+        const box = getBoxValues();
+
+        if (draftDot) {
+          draftDot.style.left = `${box.x}%`;
+          draftDot.style.top = `${box.y}%`;
+        }
+
+        if (draftRegion) {
+          draftRegion.style.left = `${box.x}%`;
+          draftRegion.style.top = `${box.y}%`;
+          draftRegion.style.width = `${box.width}%`;
+          draftRegion.style.height = `${box.height}%`;
+        }
+
+        if (updateInputs) {
+          xInput.value = box.x.toFixed(2);
+          yInput.value = box.y.toFixed(2);
+          wInput.value = box.width.toFixed(2);
+          hInput.value = box.height.toFixed(2);
+        }
+      }
+
+      function moveDraftDot(x, y, updateInputs = true) {
+        const nextX = clampPercent(x, 0, 100);
+        const nextY = clampPercent(y, 0, 100);
+        if (updateInputs) {
+          xInput.value = nextX.toFixed(2);
+          yInput.value = nextY.toFixed(2);
+        }
+        updateFeedbackArea(false);
+      }
+
+      function setDraftFromPointer(event) {
+        if (!stage) return;
+        const rect = stage.getBoundingClientRect();
+        const x = (((event.clientX - rect.left) / rect.width) * 100);
+        const y = (((event.clientY - rect.top) / rect.height) * 100);
+        moveDraftDot(x, y, true);
+      }
+
+      stage?.addEventListener("click", (e) => {
+        const savedDot = e.target.closest(".saved-annotation-dot");
+        if (savedDot) {
+          moveDraftDot(savedDot.dataset.x, savedDot.dataset.y, true);
+          if (wInput) wInput.value = savedDot.dataset.w || wInput.value;
+          if (hInput) hInput.value = savedDot.dataset.h || hInput.value;
+          updateFeedbackArea(false);
+          if (contentInput && savedDot.dataset.content) contentInput.value = savedDot.dataset.content;
+          return;
+        }
+        setDraftFromPointer(e);
       });
+
+      let draggingMarker = false;
+      draftDot?.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        draggingMarker = true;
+        draftDot.setPointerCapture?.(e.pointerId);
+      });
+      draftDot?.addEventListener("pointermove", (e) => {
+        if (!draggingMarker) return;
+        setDraftFromPointer(e);
+      });
+      draftDot?.addEventListener("pointerup", () => { draggingMarker = false; });
+      draftDot?.addEventListener("lostpointercapture", () => { draggingMarker = false; });
+
+      [xInput, yInput, wInput, hInput].forEach(input => input?.addEventListener("input", () => {
+        updateFeedbackArea(false);
+      }));
+
+      [xInput, yInput, wInput, hInput].forEach(input => input?.addEventListener("change", () => {
+        updateFeedbackArea(true);
+      }));
+
+      updateFeedbackArea(true);
+
       $("#feedback-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!pageId) return toast("No page selected.", "error");
         try {
-          await Api.createFeedback(pageId, { x: $("#fb-x").value, y: $("#fb-y").value, width: $("#fb-w").value, height: $("#fb-h").value, content: $("#fb-content").value });
+          const box = getBoxValues();
+          await Api.createFeedback(pageId, { x: box.x, y: box.y, width: box.width, height: box.height, content: $("#fb-content").value });
           toast("Feedback saved to backend.", "success");
           tantouReview();
         } catch (err) { toast(err.message, "error"); }

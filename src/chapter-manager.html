@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter Manager - MangaSystem</title>
+  <link rel="stylesheet" href="style-workspace.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="feature-screen">
+  <aside class="sidebar">
+    <div class="workspace-title">
+      <div class="ws-logo">MF</div>
+      <div class="ws-name">Core Flow</div>
+    </div>
+    <a href="dashboard.html" id="core-back-link" class="btn-sidebar-action"><i class="fa-solid fa-arrow-left"></i> Back Dashboard</a>
+    <nav class="nav-group">
+      <a href="chapter-manager.html" class="nav-item active"><i class="fa-solid fa-layer-group"></i> Chapters & Pages</a>
+<a href="workspace.html" class="nav-item "><i class="fa-solid fa-vector-square"></i> Canvas Workspace</a>
+<a href="kanban-board.html" class="nav-item "><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a>
+<a href="editor-review.html" class="nav-item "><i class="fa-solid fa-comment-dots"></i> Tantou Review</a>
+<a href="voting-center.html" class="nav-item "><i class="fa-solid fa-scale-balanced"></i> Voting Center</a>
+    </nav>
+    <div class="sidebar-divider"></div>
+    <nav class="nav-group" style="flex-grow:0;margin-top:auto;padding-bottom:20px;">
+      <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+      <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <strong>Chapter Manager</strong>
+        <span class="muted-topbar">Chapters and page image upload</span>
+      </div>
+      <div class="topbar-right">
+        <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color:#9ca3af;"></i><input id="global-search" type="text" placeholder="Search..."></div>
+      </div>
+    </header>
+
+    <section class="content-padding core-feature-page">
+      
+<div class="feature-header">
+  <div>
+    <h1>Chapter Manager & Page Upload</h1>
+    <p>Create chapters and upload manga pages through the backend page API.</p>
+  </div>
+  <button class="btn-publish" id="btn-refresh-chapters"><i class="fa-solid fa-rotate"></i> Refresh</button>
+</div>
+
+<div class="feature-grid two-cols">
+  <div class="card-box">
+    <h3>Select Series</h3>
+    <div class="form-group">
+      <label>Manga Series</label>
+      <select id="series-select" class="form-control"></select>
+    </div>
+
+    <form id="chapter-form" class="feature-form">
+      <h3>Create New Chapter</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Chapter Number</label><input id="chapter-number" class="form-control" type="number" min="1" required></div>
+        <div class="form-group"><label>Chapter Title</label><input id="chapter-title" class="form-control" placeholder="Chapter title"></div>
+      </div>
+      <button class="btn-publish" type="submit"><i class="fa-solid fa-plus"></i> Create Chapter</button>
+    </form>
+  </div>
+
+  <div class="card-box">
+    <h3>Upload Pages</h3>
+    <form id="page-upload-form" class="feature-form">
+      <div class="form-group">
+        <label>Chapter</label>
+        <select id="chapter-select" class="form-control"></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Start Page Number</label><input id="start-page-number" class="form-control" type="number" min="1" value="1"></div>
+        <div class="form-group"><label>Image Files</label><input id="page-files" class="form-control" type="file" accept="image/*" multiple></div>
+      </div>
+      <button class="btn-publish" type="submit"><i class="fa-solid fa-upload"></i> Upload Selected Pages</button>
+    </form>
+    <div id="upload-log" class="upload-log"></div>
+  </div>
+</div>
+
+<div class="card-box">
+  <div class="section-title-row"><h3>Chapters</h3><span id="chapter-count" class="status-tag progress">0</span></div>
+  <div id="chapters-table"></div>
+</div>
+
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="feature-flow.js"></script>
+  <script src="chapter.js"></script>
+</body>
+</html>

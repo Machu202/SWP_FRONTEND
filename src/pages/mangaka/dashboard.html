@@ -14,9 +14,12 @@
         <a href="create-series.html" class="btn-sidebar-action"><i class="fa-solid fa-plus" style="margin-right: 5px;"></i> New Series</a>
         
         <nav class="nav-group">
-            <a href="dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="#dashboard" class="nav-item active" data-dashboard-panel="dashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
             <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="#chapters" class="nav-item" data-dashboard-panel="chapters"><i class="fa-solid fa-layer-group"></i> Chapters & Pages</a>
+            <a href="#canvas" class="nav-item" data-dashboard-panel="canvas"><i class="fa-solid fa-vector-square"></i> Canvas Workspace</a>
+            <a href="#kanban" class="nav-item" data-dashboard-panel="kanban"><i class="fa-solid fa-table-columns"></i> Kanban Board</a>
             <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
             <a href="review.html" class="nav-item"><i class="fa-solid fa-message"></i> Review</a>
             <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
@@ -91,6 +94,18 @@
                                 <i class="fa-solid fa-square-plus" style="color: #6366f1;"></i>
                                 <span style="margin-top: 5px;">+ New Series</span>
                             </a>
+                            <a href="#chapters" class="action-btn" data-dashboard-panel="chapters">
+                                <i class="fa-solid fa-layer-group" style="color: #6366f1;"></i>
+                                <span style="margin-top: 5px;">Chapters</span>
+                            </a>
+                            <a href="#canvas" class="action-btn" data-dashboard-panel="canvas">
+                                <i class="fa-solid fa-vector-square" style="color: #6366f1;"></i>
+                                <span style="margin-top: 5px;">Canvas</span>
+                            </a>
+                            <a href="#kanban" class="action-btn" data-dashboard-panel="kanban">
+                                <i class="fa-solid fa-table-columns" style="color: #6366f1;"></i>
+                                <span style="margin-top: 5px;">Kanban</span>
+                            </a>
                         </div>
                     </div>
 
@@ -108,5 +123,6 @@
     </main>
     <script src="../../assets/js/api.js"></script>
     <script src="../../assets/js/script-workspace.js"></script>
+    <script src="../../assets/js/mangaka-dashboard-flow.js"></script>
 </body>
 </html>

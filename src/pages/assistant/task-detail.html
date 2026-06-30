@@ -16,6 +16,7 @@
         <nav class="nav-group">
             <a href="assistant-dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="assistant-assignments.html" class="nav-item active"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="assistant-dashboard.html#kanban" class="nav-item"><i class="fa-solid fa-table-columns"></i> Kanban Board</a>
             <a href="resource-library.html" class="nav-item"><i class="fa-solid fa-box-open"></i> Resource Library</a>
         </nav>
     </aside>
@@ -28,7 +29,7 @@
             </div>
             
             <div class="topbar-right" style="position: relative; display: flex; align-items: center; gap: 20px;">
-                <button class="btn-publish" id="btn-submit-work" style="display: none;">Upload</button>
+                <button class="btn-publish assistant-top-submit-btn" id="btn-submit-work" type="button"><i class="fa-solid fa-cloud-arrow-up"></i> Submit Work</button>
 
                 <!-- NÚT CHUÔNG API ĐỒNG BỘ -->
                 <div style="position: relative;">
@@ -103,17 +104,46 @@
                         </div>
                     </div>
 
-                    <div class="task-box">
-                        <div class="task-box-title">Submit Finished Work</div>
-                        <div class="upload-dropzone" id="file-dropzone">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <p>Click to browse or drag file here</p>
-                            <span>Supports .clip, .psd, .png</span>
+                    <div class="task-box assistant-submit-box" id="submit-work-box">
+                        <div class="task-box-title assistant-submit-title">
+                            <span><i class="fa-solid fa-cloud-arrow-up"></i> Submit Finished Work to Mangaka</span>
+                            <span class="assistant-submit-step">Final step</span>
                         </div>
-                        <label style="font-size: 11px; display: flex; align-items: center; gap: 8px; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="check-final-review"> Mark as ready for Final Review
+
+                        <div class="assistant-submit-help">
+                            <strong>Upload your finished drawing here.</strong>
+                            <span>After upload, the task will move to <b>In Review</b> so Mangaka can check it.</span>
+                        </div>
+
+                        <button class="assistant-file-button" id="btn-choose-work-file" type="button">
+                            <i class="fa-solid fa-folder-open"></i>
+                            Choose Finished File
+                        </button>
+
+                        <div class="upload-dropzone assistant-upload-dropzone" id="file-dropzone">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <p><b>Drop finished file here</b> or click this box</p>
+                            <span>Supports .clip, .psd, .png, .jpg, .webp</span>
+                        </div>
+
+                        <div id="selected-work-file" class="selected-work-file">
+                            <i class="fa-regular fa-file"></i>
+                            No file selected yet
+                        </div>
+
+                        <label class="assistant-review-check">
+                            <input type="checkbox" id="check-final-review">
+                            <span>I confirm this file is ready for Mangaka review</span>
                         </label>
-                        <button class="btn-publish" style="width: 100%; padding: 12px; background: #e5e7eb; color: #9ca3af; cursor: not-allowed;" id="btn-upload-submit" disabled>Upload & Notify Mangaka</button>
+
+                        <button class="btn-publish assistant-final-submit-btn" id="btn-upload-submit" disabled>
+                            <i class="fa-solid fa-paper-plane"></i>
+                            Submit to Mangaka
+                        </button>
+
+                        <div class="assistant-submit-note">
+                            The backend will upload the file, attach it to this task, and change the task status to <b>REVIEWING</b>.
+                        </div>
                     </div>
                 </div>
             </div>

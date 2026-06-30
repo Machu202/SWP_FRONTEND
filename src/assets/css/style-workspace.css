@@ -1739,3 +1739,1943 @@ body {
   height: 16px;
   border-radius: 50%;
 }
+/* ========================================= */
+/* --- CORE FLOW FEATURE PAGES --- */
+/* ========================================= */
+.core-feature-page {
+  overflow: auto;
+  height: calc(100vh - 64px);
+}
+
+.muted-topbar {
+  color: #6b7280;
+  font-size: 13px;
+  margin-left: 12px;
+}
+
+.feature-header,
+.section-title-row,
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.feature-header h1 {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.feature-header p {
+  color: #6b7280;
+}
+
+.feature-grid {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.feature-grid.two-cols {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.feature-form {
+  margin-top: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4b5563;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.form-control {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #d8ddea;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #fff;
+}
+
+textarea.form-control {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.mini-btn {
+  padding: 6px 10px !important;
+  text-decoration: none;
+}
+
+.upload-log {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.log-ok {
+  color: #059669;
+  padding: 4px 0;
+}
+
+.log-error {
+  color: #dc2626;
+  padding: 4px 0;
+}
+
+.workspace-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(340px, .8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.hitbox-stage {
+  min-height: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f2f4d;
+  border-radius: 10px;
+  overflow: auto;
+  padding: 24px;
+}
+
+.hitbox-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  cursor: crosshair;
+}
+
+.hitbox-image-wrap img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.3);
+}
+
+#hitbox-layer,
+#review-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.drawn-hitbox,
+.saved-hitbox {
+  position: absolute;
+  border: 2px solid #e11d48;
+  background: rgba(225, 29, 72, .12);
+  z-index: 5;
+}
+
+.saved-hitbox {
+  border-color: #4f46e5;
+  background: rgba(79, 70, 229, .12);
+}
+
+.feedback-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.feedback-item {
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.annotation-dot {
+  position: absolute;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  min-width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 2px solid #e11d48;
+  background: #e11d48;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.saved-annotation-dot {
+  background: rgba(225,29,72,.35);
+}
+
+.active-annotation-dot {
+  box-shadow: 0 0 0 4px rgba(225,29,72,.18);
+}
+
+.backend-kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.kanban-column {
+  background: #fff;
+  border: 1px solid #d8ddea;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 480px;
+}
+
+.kanban-column h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.kanban-drop {
+  min-height: 390px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.kanban-drop.drag-over {
+  background: #eef2ff;
+  border-color: #4f46e5;
+}
+
+.backend-task-card {
+  background: #fff;
+  border: 1px solid #d8ddea;
+  border-left: 4px solid #4f46e5;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  cursor: grab;
+}
+
+.backend-task-card p {
+  color: #64748b;
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.empty-column {
+  color: #94a3b8;
+  text-align: center;
+  padding: 30px 0;
+}
+
+.series-decision-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #d8ddea;
+  background: #fff;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.series-decision-card:hover {
+  border-color: #4f46e5;
+  background: #f8f7ff;
+}
+
+.series-decision-card span,
+.series-decision-card small {
+  display: block;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.selected-series-box {
+  border: 1px solid #d8ddea;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+  margin-bottom: 14px;
+}
+
+.vote-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.vote-summary div {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.vote-summary strong {
+  display: block;
+  font-size: 24px;
+  color: #4f46e5;
+}
+
+.danger-outline {
+  border-color: #fecdd3 !important;
+  color: #e11d48 !important;
+}
+
+@media (max-width: 1100px) {
+  .feature-grid.two-cols,
+  .workspace-split,
+  .backend-kanban {
+    grid-template-columns: 1fr;
+  }
+}
+/* ========================================= */
+/* --- MAIN FLOW INTEGRATION LINKS --- */
+/* ========================================= */
+.main-flow-shortcuts {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.main-flow-shortcuts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid #d8ddea;
+  border-radius: 10px;
+  background: #fff;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(24, 32, 56, .04);
+}
+
+.main-flow-shortcuts a:hover {
+  border-color: #4f46e5;
+  background: #f8f7ff;
+}
+
+/* Make shared core pages visually follow the actor that opened them. */
+.feature-screen.tantou-screen .sidebar,
+.feature-screen.board-screen .sidebar,
+.feature-screen.admin-screen .sidebar {
+  width: 182px;
+  background: linear-gradient(180deg, #24314a 0%, #223047 100%);
+  border-right: none;
+}
+
+.feature-screen.tantou-screen .workspace-title,
+.feature-screen.board-screen .workspace-title,
+.feature-screen.admin-screen .workspace-title {
+  padding: 20px 16px 12px;
+}
+
+.feature-screen.tantou-screen .ws-logo,
+.feature-screen.board-screen .ws-logo,
+.feature-screen.admin-screen .ws-logo {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.feature-screen.tantou-screen .ws-name,
+.feature-screen.board-screen .ws-name,
+.feature-screen.admin-screen .ws-name {
+  color: #fff;
+}
+
+.feature-screen.tantou-screen .btn-sidebar-action {
+  background: linear-gradient(90deg, #d90445 0%, #ca0b53 100%);
+  border: none;
+}
+
+.feature-screen.board-screen .btn-sidebar-action,
+.feature-screen.admin-screen .btn-sidebar-action {
+  background: #4f46e5;
+  border: none;
+}
+
+.feature-screen.tantou-screen .nav-item.active,
+.feature-screen.board-screen .nav-item.active,
+.feature-screen.admin-screen .nav-item.active {
+  background: rgba(255,255,255,.10);
+  color: #fff;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA DASHBOARD INLINE FLOW --- */
+/* ========================================= */
+.studio-inline-panel {
+  width: 100%;
+}
+
+.inline-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.inline-panel-header h1 {
+  font-size: 26px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.inline-panel-header p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.inline-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline-feature-grid {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.inline-feature-grid.two-cols {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.inline-workspace-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(340px, .8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.feature-form {
+  margin-top: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4b5563;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.form-control {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #d8ddea;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #fff;
+}
+
+textarea.form-control {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.mini-btn {
+  padding: 6px 10px !important;
+  text-decoration: none;
+}
+
+.upload-log {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.log-ok {
+  color: #059669;
+  padding: 4px 0;
+}
+
+.log-error {
+  color: #dc2626;
+  padding: 4px 0;
+}
+
+.hitbox-stage {
+  min-height: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f2f4d;
+  border-radius: 10px;
+  overflow: auto;
+  padding: 24px;
+}
+
+.hitbox-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  cursor: crosshair;
+}
+
+.hitbox-image-wrap img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.3);
+}
+
+#inline-hitbox-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.drawn-hitbox,
+.saved-hitbox {
+  position: absolute;
+  border: 2px solid #e11d48;
+  background: rgba(225, 29, 72, .12);
+  z-index: 5;
+}
+
+.saved-hitbox {
+  border-color: #4f46e5;
+  background: rgba(79, 70, 229, .12);
+}
+
+.backend-kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.kanban-column {
+  background: #fff;
+  border: 1px solid #d8ddea;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 480px;
+}
+
+.kanban-column h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.kanban-drop {
+  min-height: 390px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.kanban-drop.drag-over {
+  background: #eef2ff;
+  border-color: #4f46e5;
+}
+
+.backend-task-card {
+  background: #fff;
+  border: 1px solid #d8ddea;
+  border-left: 4px solid #4f46e5;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  cursor: grab;
+}
+
+.backend-task-card p {
+  color: #64748b;
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.empty-column {
+  color: #94a3b8;
+  text-align: center;
+  padding: 30px 0;
+}
+
+@media (max-width: 1100px) {
+  .inline-feature-grid.two-cols,
+  .inline-workspace-split,
+  .backend-kanban {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================================= */
+/* --- ASSISTANT DASHBOARD INLINE KANBAN --- */
+/* ========================================= */
+.assistant-inline-panel {
+  width: 100%;
+}
+
+.assistant-kanban-grid .kanban-column {
+  min-height: 520px;
+}
+
+.assistant-kanban-grid .backend-task-card {
+  border-left-color: #111827;
+}
+
+
+/* ========================================= */
+/* --- ASSISTANT CLEAR UPLOAD CTA --- */
+/* ========================================= */
+.assistant-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.assistant-upload-card-btn,
+.assistant-inline-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 7px 10px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.assistant-upload-card-btn:hover {
+  background: #4f46e5;
+}
+
+.assistant-inline-upload-label {
+  margin-left: 10px;
+}
+
+.assistant-top-submit-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  background: #4f46e5 !important;
+}
+
+.assistant-submit-box {
+  border: 2px solid #c7d2fe !important;
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.10);
+}
+
+.assistant-submit-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assistant-submit-title span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assistant-submit-step {
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.assistant-submit-help {
+  display: grid;
+  gap: 3px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 12px 0;
+  color: #3730a3;
+  font-size: 12px;
+}
+
+.assistant-file-button {
+  width: 100%;
+  border: none;
+  background: #4f46e5;
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.assistant-file-button:hover {
+  background: #4338ca;
+}
+
+.assistant-upload-dropzone {
+  border: 2px dashed #4f46e5 !important;
+  background: #f8f7ff !important;
+  padding: 24px !important;
+  border-radius: 12px !important;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.assistant-upload-dropzone:hover,
+.assistant-upload-pulse {
+  background: #eef2ff !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+  transform: translateY(-1px);
+}
+
+.selected-work-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 12px 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.selected-work-file.has-file {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #047857;
+}
+
+.assistant-review-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.assistant-final-submit-btn {
+  width: 100%;
+  padding: 13px !important;
+  font-size: 14px !important;
+}
+
+.assistant-final-submit-btn.is-ready {
+  background: #16a34a !important;
+  box-shadow: 0 10px 24px rgba(22, 163, 74, 0.20);
+}
+
+.assistant-submit-note {
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+
+/* ========================================= */
+/* --- ASSISTANT TASK REFERENCE IMAGE FIX --- */
+/* ========================================= */
+.ref-img {
+  display: block;
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #111827;
+}
+
+.assistant-ref-missing {
+  display: grid;
+  gap: 8px;
+  place-items: center;
+  text-align: center;
+  min-height: 260px;
+  padding: 30px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px dashed #f59e0b;
+  border-radius: 10px;
+}
+
+.assistant-ref-missing i {
+  font-size: 28px;
+}
+
+.assistant-ref-missing code {
+  background: rgba(146, 64, 14, 0.10);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+
+/* ========================================= */
+/* --- ASSISTANT HITBOX / FIX DETAIL OVERLAY --- */
+/* ========================================= */
+.assistant-reference-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  line-height: 0;
+  background: #111827;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.assistant-reference-wrap .ref-img {
+  display: block;
+  width: 100%;
+  max-height: 720px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.assistant-reference-hitbox {
+  position: absolute;
+  z-index: 5;
+  border: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.16);
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.18),
+    0 0 0 4px rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.assistant-reference-hitbox span {
+  position: absolute;
+  left: 0;
+  top: -34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  line-height: 1;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.28);
+}
+
+.assistant-fix-callout {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  z-index: 6;
+  display: grid;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  border: 1px solid rgba(229, 231, 235, 0.95);
+  border-left: 5px solid #ef4444;
+  border-radius: 10px;
+  padding: 12px 14px;
+  line-height: 1.45;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.20);
+}
+
+.assistant-fix-callout strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.assistant-fix-callout p {
+  font-size: 13px;
+  margin: 0;
+  color: #374151;
+}
+
+.assistant-fix-callout small {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.assistant-reference-wrap.no-hitbox .assistant-fix-callout {
+  border-left-color: #f59e0b;
+}
+
+.assistant-fix-detail-card {
+  display: grid;
+  gap: 8px;
+}
+
+.assistant-fix-detail-card strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+}
+
+.assistant-fix-detail-card blockquote {
+  margin: 0;
+}
+
+.assistant-hitbox-coords {
+  display: inline-flex;
+  width: fit-content;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.assistant-hitbox-coords.missing {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+
+/* ========================================= */
+/* --- SUBMISSION LOCK + MANGAKA REVIEW --- */
+/* ========================================= */
+.submitted-locked-card {
+  border-left-color: #16a34a !important;
+  background: #f8fffb !important;
+  cursor: default !important;
+}
+
+.assistant-submitted-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  width: fit-content;
+}
+
+.assistant-submit-box.is-submitted-locked {
+  border-color: #86efac !important;
+  background: #f8fffb;
+}
+
+.assistant-upload-dropzone.is-locked {
+  border-color: #86efac !important;
+  background: #ecfdf5 !important;
+  color: #166534;
+  cursor: not-allowed;
+}
+
+.assistant-upload-dropzone.is-locked i {
+  color: #16a34a;
+}
+
+.assistant-submitted-preview {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+}
+
+.assistant-submitted-preview strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #166534;
+}
+
+.assistant-submitted-preview img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #111827;
+}
+
+.mangaka-review-card {
+  border-left-color: #e11d48 !important;
+  background: #fff7f8 !important;
+}
+
+.mangaka-review-submission-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 12px;
+  border: none;
+  background: #e11d48;
+  color: #fff;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mangaka-review-submission-btn:hover {
+  background: #be123c;
+}
+
+.mangaka-submission-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.mangaka-submission-dialog {
+  width: min(1180px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.35);
+  padding: 20px;
+}
+
+.mangaka-submission-header,
+.mangaka-submission-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mangaka-submission-header h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.mangaka-submission-header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.modal-x {
+  border: none;
+  background: #f3f4f6;
+  color: #111827;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.mangaka-submission-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.submission-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.submission-panel strong {
+  color: #111827;
+}
+
+.submission-panel img {
+  width: 100%;
+  max-height: 620px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #111827;
+}
+
+.mangaka-submission-note {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #fee2e2;
+  border-left: 5px solid #e11d48;
+  background: #fff7f8;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.mangaka-submission-note p {
+  margin: 0;
+  color: #374151;
+}
+
+.mangaka-submission-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .mangaka-submission-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================================= */
+/* --- MANGAKA REVIEW PAGE REAL SUBMISSION --- */
+/* ========================================= */
+.review-main-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  background: #111827;
+  border-radius: 0;
+}
+
+.review-img-wrapper {
+  min-height: 480px;
+}
+
+.review-actions .btn-outline,
+.review-actions .btn-approve {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-actions .btn-approve {
+  background: #111827;
+  color: #fff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA REVIEW SUBMISSION CHOOSER --- */
+/* ========================================= */
+.submission-picker-panel {
+  background: #fff;
+  border: 1px solid #d8ddea;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.submission-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.submission-picker-header .eyebrow {
+  display: block;
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.submission-picker-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #111827;
+}
+
+.submission-picker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.submission-picker-card {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.submission-picker-card:hover {
+  border-color: #111827;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+}
+
+.submission-picker-card.active {
+  border-color: #e11d48;
+  background: #fff7f8;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, .10);
+}
+
+.submission-thumb {
+  width: 72px;
+  height: 54px;
+  border-radius: 8px;
+  background: #111827;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+}
+
+.submission-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.submission-info {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.submission-info strong,
+.submission-info span,
+.submission-info small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submission-info strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.submission-info span {
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.submission-info small {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.submission-select-label {
+  background: #111827;
+  color: #fff;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.submission-picker-card.active .submission-select-label {
+  background: #e11d48;
+}
+
+@media (max-width: 900px) {
+  .submission-picker-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .submission-picker-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .submission-select-label {
+    grid-column: 1 / -1;
+    width: fit-content;
+  }
+}
+
+
+/* ========================================= */
+/* --- REVISION UNLOCK STATE --- */
+/* ========================================= */
+.assistant-revision-open-note {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 11px 12px;
+  border: 1px solid #fed7aa;
+  border-left: 5px solid #f97316;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+}
+
+.assistant-revision-open-note strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #7c2d12;
+}
+
+
+/* ========================================= */
+/* --- TANTOU W/H FEEDBACK AREA FIX --- */
+/* ========================================= */
+.tantou-screen .tantou-feedback-region {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid rgba(225, 29, 72, 0.72);
+  background: rgba(225, 29, 72, 0.12);
+  border-radius: 4px;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.02);
+}
+
+.tantou-screen .saved-feedback-region {
+  opacity: 0.45;
+  border-style: dashed;
+  background: rgba(225, 29, 72, 0.07);
+}
+
+.tantou-screen .active-feedback-region {
+  z-index: 4;
+  opacity: 1;
+  border: 2px solid #e11d48;
+  background: rgba(225, 29, 72, 0.16);
+  box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.14);
+}
+
+.tantou-screen .tantou-canvas-stage .active-annotation-dot {
+  z-index: 7;
+}
+
+.tantou-screen .feedback-form input[type="number"] {
+  appearance: textfield;
+}
+
+.tantou-screen .feedback-form input[type="number"]::-webkit-outer-spin-button,
+.tantou-screen .feedback-form input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+}
+
+
+/* ========================================= */
+/* --- KANBAN FIT SCREEN FIX --- */
+/* ========================================= */
+/* Fix old .kanban-column { width: 33.333% } leaking into the new 4-column board. */
+.backend-kanban,
+.assistant-kanban-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(220px, 1fr)) !important;
+  gap: 18px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  align-items: stretch !important;
+}
+
+.studio-inline-panel .backend-kanban,
+.assistant-inline-panel .backend-kanban,
+.core-feature-page .backend-kanban {
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.backend-kanban .kanban-column,
+.assistant-kanban-grid .kanban-column {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 520px;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.backend-kanban .kanban-drop,
+.assistant-kanban-grid .kanban-drop {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto;
+}
+
+.backend-kanban .backend-task-card,
+.assistant-kanban-grid .backend-task-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.backend-kanban .backend-task-card strong,
+.assistant-kanban-grid .backend-task-card strong,
+.backend-kanban .backend-task-card p,
+.assistant-kanban-grid .backend-task-card p,
+.backend-kanban .backend-task-card small,
+.assistant-kanban-grid .backend-task-card small {
+  display: block;
+  max-width: 100%;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.backend-kanban .backend-task-card small,
+.assistant-kanban-grid .backend-task-card small {
+  margin-top: 8px;
+  color: #64748b;
+}
+
+.backend-kanban .mangaka-review-submission-btn,
+.backend-kanban .assistant-upload-card-btn,
+.assistant-kanban-grid .assistant-upload-card-btn {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+/* Use a 2-column board on medium screens and a 1-column board on narrow screens. */
+@media (max-width: 1250px) {
+  .backend-kanban,
+  .assistant-kanban-grid {
+    grid-template-columns: repeat(2, minmax(260px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .backend-kanban,
+  .assistant-kanban-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* ========================================= */
+/* --- TANTOU ANNOTATION PINNED PREVIEW --- */
+/* ========================================= */
+.tantou-screen .annotation-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.tantou-screen .annotation-summary-card {
+  background: #fff;
+  border: 1px solid #d8ddea;
+  border-radius: 10px;
+  padding: 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.tantou-screen .annotation-summary-card strong {
+  font-size: 24px;
+  color: #4f46e5;
+}
+
+.tantou-screen .annotation-summary-card span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tantou-screen .annotation-summary-card.warning strong {
+  color: #e11d48;
+}
+
+.tantou-screen .annotation-summary-card.success strong {
+  color: #16a34a;
+}
+
+.tantou-screen .annotation-feedback-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, .8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.tantou-screen .annotation-preview-stage {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  max-height: 640px;
+  overflow: auto;
+  background: #1f2f4d;
+  border-radius: 10px;
+  text-align: center;
+  padding: 18px;
+}
+
+.tantou-screen .annotation-preview-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 600px;
+  object-fit: contain;
+  margin: 0 auto;
+  border-radius: 4px;
+  box-shadow: 0 12px 34px rgba(0,0,0,.25);
+}
+
+.tantou-screen .annotation-preview-region {
+  position: absolute;
+  z-index: 4;
+  border: 2px solid #e11d48;
+  background: rgba(225, 29, 72, .16);
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, .14);
+}
+
+.tantou-screen .annotation-preview-region span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #e11d48;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.tantou-screen .annotation-preview-region.resolved {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, .12);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, .12);
+}
+
+.tantou-screen .annotation-preview-region.resolved span {
+  background: #16a34a;
+}
+
+.tantou-screen .annotation-preview-region.focus,
+.tantou-screen .annotation-preview-region:hover {
+  z-index: 8;
+  transform: scale(1.03);
+  box-shadow: 0 0 0 5px rgba(225, 29, 72, .20), 0 14px 36px rgba(15, 23, 42, .20);
+}
+
+.tantou-screen .annotation-feedback-list {
+  display: grid;
+  gap: 12px;
+  max-height: 650px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.tantou-screen .annotation-feedback-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #e11d48;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  transition: .18s ease;
+}
+
+.tantou-screen .annotation-feedback-card.highlight,
+.tantou-screen .annotation-feedback-card:hover {
+  border-color: #e11d48;
+  background: #fff7f8;
+  box-shadow: 0 12px 28px rgba(225, 29, 72, .10);
+}
+
+.tantou-screen .annotation-feedback-index {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #e11d48;
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.tantou-screen .annotation-feedback-body {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.tantou-screen .annotation-feedback-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.tantou-screen .annotation-feedback-top span {
+  color: #64748b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tantou-screen .annotation-feedback-body p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.tantou-screen .annotation-feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1100px) {
+  .tantou-screen .annotation-feedback-layout,
+  .tantou-screen .annotation-summary-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================================= */
+/* --- TANTOU DASHBOARD INLINE KANBAN --- */
+/* ========================================= */
+.tantou-screen .tantou-dashboard-tabs,
+.tantou-screen .tantou-dashboard-action-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tantou-screen .tantou-dashboard-action-card {
+  padding: 18px;
+}
+
+.tantou-screen .tantou-dashboard-action-card h2 {
+  margin: 0 0 4px;
+}
+
+.tantou-screen .tantou-dashboard-kanban {
+  width: 100%;
+}
+
+.tantou-screen .tantou-dashboard-kanban .kanban-column {
+  min-height: 520px;
+}
+
+.tantou-screen .tantou-open-submission {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 10px;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA CHAPTER PAGE COUNT FIX --- */
+/* ========================================= */
+.tree-chapter-header .chapter-page-count,
+.data-table .chapter-page-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+
+/* ========================================= */
+/* --- FINAL REPAIR: TANTOU COORDINATES + MANGAKA DATA --- */
+/* ========================================= */
+/* Annotation & Feedback pins must be positioned relative to the image, not the dark preview stage. */
+.tantou-screen .annotation-preview-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  vertical-align: top;
+}
+
+.tantou-screen .annotation-preview-image-wrap img {
+  display: block !important;
+  margin: 0 !important;
+}
+
+.tantou-screen .annotation-preview-image-wrap .annotation-preview-region {
+  position: absolute;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA REVIEW MODE: TANTOU FEEDBACK --- */
+/* ========================================= */
+.mangaka-review-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mangaka-review-tab {
+  border: 1px solid #d8ddea;
+  background: #fff;
+  color: #475569;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mangaka-review-tab.active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.mangaka-tantou-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 180px;
+  gap: 10px;
+}
+
+.mangaka-tantou-controls select {
+  border: 1px solid #d8ddea;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.mangaka-tantou-image-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  line-height: 0;
+  background: #111827;
+}
+
+.mangaka-tantou-image-wrap .review-main-img {
+  display: block;
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+}
+
+.mangaka-tantou-pin {
+  position: absolute;
+  border: 2px solid #e11d48;
+  background: rgba(225, 29, 72, 0.16);
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.16);
+  cursor: pointer;
+}
+
+.mangaka-tantou-pin span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #e11d48;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.mangaka-tantou-pin.resolved {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.13);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.13);
+}
+
+.mangaka-tantou-pin.resolved span {
+  background: #16a34a;
+}
+
+.mangaka-tantou-summary {
+  padding: 28px;
+  color: #111827;
+}
+
+.mangaka-tantou-summary h3 {
+  margin: 0 0 8px;
+}
+
+.mangaka-tantou-summary p {
+  color: #64748b;
+}
+
+.mangaka-tantou-counts {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mangaka-tantou-counts span {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.mangaka-tantou-feedback-msg.highlight {
+  background: #fff7f8;
+  outline: 2px solid #e11d48;
+  border-radius: 10px;
+}
+
+.mangaka-feedback-meta {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .mangaka-tantou-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .mangaka-review-tabs {
+    flex-direction: column;
+  }
+}
+
+
+/* ========================================= */
+/* --- MANGAKA REVIEW TAB CONFLICT FIX --- */
+/* ========================================= */
+.mangaka-review-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.mangaka-review-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid #d8ddea;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.mangaka-review-mode-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: #475569;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.mangaka-review-mode-link.active {
+  background: #111827;
+  color: #fff;
+}
+
+.mangaka-review-tabs {
+  margin-bottom: 12px;
+}
+
+#btn-submit-feedback[style*="display:none"] {
+  display: none !important;
+}
+
+@media (max-width: 950px) {
+  .mangaka-review-mode-switch {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .mangaka-review-mode-link {
+    flex: 1;
+    justify-content: center;
+  }
+}

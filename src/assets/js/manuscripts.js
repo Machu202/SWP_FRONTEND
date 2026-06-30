@@ -5,8 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (!window.MangaApi) return;
     
-    const seriesId = localStorage.getItem("currentSeriesId");
-    const seriesTitle = localStorage.getItem("currentSeriesTitle");
+    const seriesId = window.MangaApi.getActiveSeriesId ? window.MangaApi.getActiveSeriesId() : (localStorage.getItem("currentSeriesId") || localStorage.getItem("activeSeriesId"));
+    const seriesTitle = localStorage.getItem("currentSeriesTitle") || localStorage.getItem("activeSeriesTitle") || "Selected Series";
 
     const headerTitle = document.getElementById("header-series-title");
     const chaptersList = document.getElementById("chapters-list");
@@ -50,8 +50,28 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!chaptersList) return;
         
         try {
-            // BACKEND CẦN API: Trả về danh sách Chapters, trong mỗi Chapter có mảng con chứa các Pages
-            const chapters = await window.MangaApi.apiFetch(`/chapters/series/${seriesId}`);
+            // Backend may return only chapter rows. Fetch pages per chapter separately so page counts are correct.
+            const unwrap = window.MangaApi.unwrapPage || ((value) => Array.isArray(value) ? value : (value?.content || []));
+            let chapters = window.MangaApi.chapters
+                ? await window.MangaApi.chapters(seriesId)
+                : unwrap(await window.MangaApi.apiFetch(`/chapters/series/${seriesId}`));
+            chapters = unwrap(chapters);
+
+            chapters = await Promise.all(chapters.map(async (chapter) => {
+                const chapterId = chapter.id ?? chapter.chapterId;
+                let pages = chapter.pages || chapter.pageList || chapter.mangaPages || [];
+                if (!Array.isArray(pages) || pages.length === 0) {
+                    try {
+                        pages = window.MangaApi.pages
+                            ? await window.MangaApi.pages(chapterId)
+                            : unwrap(await window.MangaApi.apiFetch(`/pages/chapter/${chapterId}`));
+                    } catch (error) {
+                        console.warn("Could not load pages for chapter", chapterId, error);
+                        pages = [];
+                    }
+                }
+                return { ...chapter, pages: unwrap(pages) };
+            }));
 
             if (!chapters || chapters.length === 0) {
                 chaptersList.innerHTML = `
@@ -108,8 +128,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         // CLICK VÀO TRANG -> MỞ EDITOR (Vá lỗ hổng 2)
                         pageItem.addEventListener("click", () => {
                             localStorage.setItem("currentChapterId", chapter.id); localStorage.setItem("activeChapterId", chapter.id);
-                            localStorage.setItem("currentPageId", page.id);
-                            window.location.href = "page-editor.html";
+                            localStorage.setItem("currentPageId", page.id); localStorage.setItem("activePageId", page.id);
+                            window.location.href = "dashboard.html#canvas";
                         });
 
                         pagesContainer.appendChild(pageItem);

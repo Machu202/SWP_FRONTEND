@@ -14,6 +14,9 @@
             <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="series.html" class="nav-item"><i class="fa-solid fa-book"></i> Series</a>
             <a href="manuscripts.html" class="nav-item"><i class="fa-solid fa-file-pen"></i> Manuscripts</a>
+            <a href="dashboard.html#chapters" class="nav-item"><i class="fa-solid fa-layer-group"></i> Chapters & Pages</a>
+            <a href="dashboard.html#canvas" class="nav-item"><i class="fa-solid fa-vector-square"></i> Canvas Workspace</a>
+            <a href="dashboard.html#kanban" class="nav-item"><i class="fa-solid fa-table-columns"></i> Kanban Board</a>
             <a href="assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
             <a href="review.html" class="nav-item active"><i class="fa-solid fa-message"></i> Review</a>
             <a href="analytics.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
@@ -26,7 +29,7 @@
                 <strong style="color: black; margin-right: 15px;">Studio Flow</strong>
             </div>
             <div class="topbar-right">
-                <button class="btn-publish" id="btn-submit-feedback">Submit Feedback</button>
+                <button class="btn-publish" id="btn-submit-feedback" style="display:none;">Refresh</button>
             </div>
         </header>
 
@@ -36,7 +39,15 @@
                     <p id="review-chapter-title">Select a submission to review...</p>
                     <h2>Assistant Submission Review</h2>
                 </div>
-                <div class="review-actions">
+                <div class="review-actions mangaka-review-header-actions">
+                    <div class="mangaka-review-mode-switch" id="mangaka-review-mode-switch">
+                        <a href="review.html" class="mangaka-review-mode-link" data-mode-link="assistant">
+                            <i class="fa-solid fa-image"></i> Assistant Submissions
+                        </a>
+                        <a href="review.html?mode=tantou" class="mangaka-review-mode-link" data-mode-link="tantou">
+                            <i class="fa-solid fa-location-dot"></i> Tantou Feedback
+                        </a>
+                    </div>
                     <button class="btn-outline" id="btn-request-rev" style="display: none;"><i class="fa-solid fa-xmark"></i> Request Revision</button>
                     <button class="btn-approve" id="btn-approve" style="display: none;"><i class="fa-solid fa-check"></i> Approve</button>
                 </div>

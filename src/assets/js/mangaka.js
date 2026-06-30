@@ -95,7 +95,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (seriesGrid) {
         async function fetchAndRenderSeries() {
             try {
-                const seriesList = await window.MangaApi.apiFetch("/manga-series/my-series");
+                const unwrap = window.MangaApi.unwrapPage || ((value) => Array.isArray(value) ? value : (value?.content || []));
+                let seriesList = [];
+                try {
+                    seriesList = window.MangaApi.mySeries
+                        ? await window.MangaApi.mySeries()
+                        : unwrap(await window.MangaApi.apiFetch("/manga-series/my-series"));
+                } catch (error) {
+                    console.warn("Could not load /manga-series/my-series", error);
+                    seriesList = [];
+                }
+
+                if (!seriesList.length) {
+                    seriesList = window.MangaApi.allSeries
+                        ? await window.MangaApi.allSeries()
+                        : unwrap(await window.MangaApi.apiFetch("/manga-series"));
+                }
 
                 if (!seriesList || seriesList.length === 0) {
                     seriesGrid.innerHTML = `
@@ -136,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     card.addEventListener("click", () => {
                         localStorage.setItem("currentSeriesId", series.id); localStorage.setItem("activeSeriesId", series.id);
-                        localStorage.setItem("currentSeriesTitle", series.title);
+                        localStorage.setItem("currentSeriesTitle", series.title); localStorage.setItem("activeSeriesTitle", series.title);
                         window.location.href = "manuscripts.html"; 
                     });
                     

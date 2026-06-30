@@ -65,14 +65,19 @@ function objectToQuery(params = {}) {
 }
 
 function unwrapPage(payload) {
+  if (Array.isArray(payload)) return payload;
   if (payload && Array.isArray(payload.content)) return payload.content;
-  return payload || [];
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (payload && payload.data && Array.isArray(payload.data.content)) return payload.data.content;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  if (payload && Array.isArray(payload.results)) return payload.results;
+  return payload ? [] : [];
 }
 
 function normalizeTaskStatus(status = "") {
-  const s = String(status || "").toUpperCase().replace(/[\s-]+/g, "_");
+  const s = String(status || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
   if (s === "IN_PROGRESS" || s === "PROGRESS" || s === "DOING") return "DOING";
-  if (s === "REVIEW" || s === "DONE" || s === "REVIEWING") return "REVIEWING";
+  if (s === "REVIEW" || s === "DONE" || s === "REVIEWING" || s === "IN_REVIEW" || s === "INREVIEW" || s === "PENDING_REVIEW" || s === "WAITING_REVIEW") return "REVIEWING";
   if (s === "APPROVED" || s === "COMPLETE" || s === "COMPLETED") return "APPROVED";
   return "TODO";
 }
@@ -131,22 +136,40 @@ async function apiForm(path, formData, options = {}) {
 }
 
 function getActiveSeriesId() {
-  return localStorage.getItem("activeSeriesId") || new URLSearchParams(location.search).get("seriesId") || "1";
+  return localStorage.getItem("activeSeriesId") ||
+    localStorage.getItem("currentSeriesId") ||
+    new URLSearchParams(location.search).get("seriesId") ||
+    "";
 }
 function setActiveSeriesId(id) {
-  if (id) localStorage.setItem("activeSeriesId", String(id));
+  if (id) {
+    localStorage.setItem("activeSeriesId", String(id));
+    localStorage.setItem("currentSeriesId", String(id));
+  }
 }
 function getActiveChapterId() {
-  return localStorage.getItem("activeChapterId") || new URLSearchParams(location.search).get("chapterId") || "";
+  return localStorage.getItem("activeChapterId") ||
+    localStorage.getItem("currentChapterId") ||
+    new URLSearchParams(location.search).get("chapterId") ||
+    "";
 }
 function setActiveChapterId(id) {
-  if (id) localStorage.setItem("activeChapterId", String(id));
+  if (id) {
+    localStorage.setItem("activeChapterId", String(id));
+    localStorage.setItem("currentChapterId", String(id));
+  }
 }
 function getActivePageId() {
-  return localStorage.getItem("activePageId") || new URLSearchParams(location.search).get("pageId") || "";
+  return localStorage.getItem("activePageId") ||
+    localStorage.getItem("currentPageId") ||
+    new URLSearchParams(location.search).get("pageId") ||
+    "";
 }
 function setActivePageId(id) {
-  if (id) localStorage.setItem("activePageId", String(id));
+  if (id) {
+    localStorage.setItem("activePageId", String(id));
+    localStorage.setItem("currentPageId", String(id));
+  }
 }
 
 const MangaApi = {
@@ -195,11 +218,23 @@ const MangaApi = {
     method: "POST",
     body: JSON.stringify(payload),
   }),
+  requestOtp: (email) => apiFetch("/auth/otp/request", { method: "POST", body: { email } }),
+  verifyOtp: (email, otp) => apiFetch("/auth/otp/verify", { method: "POST", body: { email, otp } }),
+  googleLoginUrl: () => `${API_BASE_URL}/auth/google`,
+
 
   profile: () => apiFetch("/users/profile"),
   updateProfile: (payload) => apiFetch("/users/profile", { method: "PUT", body: payload }),
   users: () => apiFetch("/users/all"),
   usersByRole: (role) => apiFetch(`/users${objectToQuery({ role })}`),
+  getRoles: () => Promise.resolve([
+    "Mangaka",
+    "Assistant",
+    "Tantou Editor",
+    "Editorial Board",
+    "Admin"
+  ]),
+  assistants: () => apiFetch(`/users${objectToQuery({ role: "Assistant" })}`),
   lockUser: (id, isActive) => apiFetch(`/users/${id}/lock${objectToQuery({ isActive })}`, { method: "PATCH" }),
   assignRole: (id, roleName) => apiFetch(`/users/${id}/role${objectToQuery({ roleName })}`, { method: "PATCH" }),
 
@@ -209,15 +244,16 @@ const MangaApi = {
   deleteParameter: (key) => apiFetch(`/system-parameters/${encodeURIComponent(key)}`, { method: "DELETE" }),
 
   allSeries: async (params = {}) => unwrapPage(await apiFetch(`/manga-series${objectToQuery(params)}`)),
-  mySeries: () => apiFetch("/manga-series/my-series"),
+  mySeries: async () => unwrapPage(await apiFetch("/manga-series/my-series")),
   series: (id) => apiFetch(`/manga-series/${id}`),
   updateSeriesStatus: (id, newStatus) => apiFetch(`/manga-series/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
   adminDecision: (id, isApproved, tantouId) => apiFetch(`/manga-series/${id}/admin-decision${objectToQuery({ isApproved, tantouId })}`, { method: "PATCH" }),
 
-  chapters: (seriesId) => apiFetch(`/chapters/series/${seriesId}`),
+  chapters: async (seriesId) => unwrapPage(await apiFetch(`/chapters/series/${seriesId}`)),
   chapter: (id) => apiFetch(`/chapters/${id}`),
   updateChapterStatus: (id, newStatus) => apiFetch(`/chapters/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
-  pages: (chapterId) => apiFetch(`/pages/chapter/${chapterId}`),
+  createChapter: (payload) => apiFetch("/chapters", { method: "POST", body: payload }),
+  pages: async (chapterId) => unwrapPage(await apiFetch(`/pages/chapter/${chapterId}`)),
   createPage: (chapterId, pageNumber, file) => {
     const fd = new FormData();
     fd.append("pageNumber", pageNumber);
@@ -233,7 +269,7 @@ const MangaApi = {
   createHitbox: (pageId, box) => apiFetch(`/workspace/pages/${pageId}/hitboxes${objectToQuery({ x: box.x, y: box.y, width: box.width, height: box.height })}`, { method: "POST" }),
   assignTaskToHitbox: (hitboxId, description) => apiFetch(`/workspace/hitboxes/${hitboxId}/task`, { method: "POST", body: { description } }),
 
-  tasks: () => apiFetch("/tasks/my-tasks"),
+  tasks: async () => unwrapPage(await apiFetch("/tasks/my-tasks")),
   tasksBySeries: (seriesId) => apiFetch(`/tasks/series/${seriesId}`),
   taskById: async (taskId) => {
     const tasks = await apiFetch("/tasks/my-tasks");

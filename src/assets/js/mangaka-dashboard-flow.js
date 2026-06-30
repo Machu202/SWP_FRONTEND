@@ -1,0 +1,645 @@
+
+(function () {
+  document.addEventListener("DOMContentLoaded", () => {
+    const Api = window.MangaApi;
+    const content = document.querySelector(".content-padding");
+    if (!content || !Api) return;
+
+    const dashboardPanel = document.createElement("div");
+    dashboardPanel.id = "studio-dashboard-panel";
+    while (content.firstChild) dashboardPanel.appendChild(content.firstChild);
+    content.appendChild(dashboardPanel);
+
+    const inlinePanel = document.createElement("div");
+    inlinePanel.id = "studio-inline-panel";
+    inlinePanel.className = "studio-inline-panel";
+    inlinePanel.hidden = true;
+    content.appendChild(inlinePanel);
+
+    const $ = (selector, root = inlinePanel) => root.querySelector(selector);
+    const $$ = (selector, root = inlinePanel) => Array.from(root.querySelectorAll(selector));
+
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[ch]));
+
+    const getArray = (value) => Array.isArray(value) ? value : (value?.content || []);
+    const pct = (value) => Math.max(0, Math.min(100, Number(value) || 0));
+
+    function setActive(panelName) {
+      document.querySelectorAll("[data-dashboard-panel]").forEach((link) => {
+        const isActive = link.dataset.dashboardPanel === panelName;
+        if (link.classList.contains("nav-item")) link.classList.toggle("active", isActive);
+      });
+    }
+
+    function showDashboard() {
+      inlinePanel.hidden = true;
+      inlinePanel.innerHTML = "";
+      dashboardPanel.hidden = false;
+      setActive("dashboard");
+    }
+
+    async function showPanel(panelName) {
+      dashboardPanel.hidden = panelName !== "dashboard";
+      inlinePanel.hidden = panelName === "dashboard";
+      setActive(panelName);
+
+      if (panelName === "chapters") {
+        if (location.hash !== "#chapters") history.replaceState(null, "", "#chapters");
+        return renderChapters();
+      }
+      if (panelName === "canvas") {
+        if (location.hash !== "#canvas") history.replaceState(null, "", "#canvas");
+        return renderCanvas();
+      }
+      if (panelName === "kanban") {
+        if (location.hash !== "#kanban") history.replaceState(null, "", "#kanban");
+        return renderKanban();
+      }
+
+      if (location.hash) history.replaceState(null, "", location.pathname);
+      return showDashboard();
+    }
+
+    document.querySelectorAll("[data-dashboard-panel]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const panelName = link.dataset.dashboardPanel || "dashboard";
+        showPanel(panelName);
+      });
+    });
+
+    if (location.hash === "#chapters") showPanel("chapters");
+    if (location.hash === "#canvas") showPanel("canvas");
+    if (location.hash === "#kanban") showPanel("kanban");
+
+    function loading(message = "Loading...") {
+      return `<div class="api-loading">${message}</div>`;
+    }
+
+    function errorBox(error) {
+      return `<div class="api-error">${esc(error?.message || error || "Something went wrong")}</div>`;
+    }
+
+    function panelHeader(title, subtitle, actions = "") {
+      return `<div class="inline-panel-header">
+        <div>
+          <h1>${esc(title)}</h1>
+          <p>${esc(subtitle)}</p>
+        </div>
+        <div class="inline-panel-actions">${actions}</div>
+      </div>`;
+    }
+
+    async function loadMangakaSeriesList() {
+      let items = [];
+
+      try {
+        items = getArray(await Api.mySeries());
+      } catch (error) {
+        console.warn("Could not load /manga-series/my-series", error);
+        items = [];
+      }
+
+      // Some backend builds return an empty array for /my-series depending on role/user seed data.
+      // Fall back to the general series endpoint so Mangaka can still manage chapters/pages.
+      if (!items.length) {
+        try {
+          items = getArray(await Api.allSeries());
+        } catch (fallbackError) {
+          console.warn("Could not load fallback /manga-series", fallbackError);
+          items = [];
+        }
+      }
+
+      return items;
+    }
+
+    async function enrichChaptersWithPages(chapters = []) {
+      return Promise.all(getArray(chapters).map(async (chapter) => {
+        const chapterId = chapter.id ?? chapter.chapterId;
+        let pages = chapter.pages || chapter.pageList || chapter.mangaPages || [];
+        if (!Array.isArray(pages) || pages.length === 0) {
+          try {
+            pages = getArray(await Api.pages(chapterId));
+          } catch (error) {
+            console.warn("Could not load pages for chapter", chapterId, error);
+            pages = [];
+          }
+        }
+        return { ...chapter, pages };
+      }));
+    }
+
+    async function renderChapters() {
+      inlinePanel.innerHTML = `
+        ${panelHeader("Chapters & Pages", "Create chapters and upload manga page images without leaving the Mangaka dashboard.", `<button class="btn-publish" id="inline-refresh-chapters"><i class="fa-solid fa-rotate"></i> Refresh</button>`)}
+        <div class="inline-feature-grid two-cols">
+          <div class="card-box">
+            <h3>Select Series</h3>
+            <div class="form-group"><label>Manga Series</label><select id="inline-series-select" class="form-control"></select></div>
+            <form id="inline-chapter-form" class="feature-form">
+              <h3>Create New Chapter</h3>
+              <div class="form-row">
+                <div class="form-group"><label>Chapter Number</label><input id="inline-chapter-number" class="form-control" type="number" min="1" required></div>
+                <div class="form-group"><label>Chapter Title</label><input id="inline-chapter-title" class="form-control" placeholder="Chapter title"></div>
+              </div>
+              <button class="btn-publish" type="submit"><i class="fa-solid fa-plus"></i> Create Chapter</button>
+            </form>
+          </div>
+          <div class="card-box">
+            <h3>Upload Pages</h3>
+            <form id="inline-page-upload-form" class="feature-form">
+              <div class="form-group"><label>Chapter</label><select id="inline-chapter-select" class="form-control"></select></div>
+              <div class="form-row">
+                <div class="form-group"><label>Start Page Number</label><input id="inline-start-page-number" class="form-control" type="number" min="1" value="1"></div>
+                <div class="form-group"><label>Image Files</label><input id="inline-page-files" class="form-control" type="file" accept="image/*" multiple></div>
+              </div>
+              <button class="btn-publish" type="submit"><i class="fa-solid fa-upload"></i> Upload Pages</button>
+            </form>
+            <div id="inline-upload-log" class="upload-log"></div>
+          </div>
+        </div>
+        <div class="card-box">
+          <div class="section-title-row"><h3>Chapters</h3><span id="inline-chapter-count" class="status-tag progress">0</span></div>
+          <div id="inline-chapters-table">${loading("Loading chapters...")}</div>
+        </div>`;
+
+      const seriesSelect = $("#inline-series-select");
+      const chapterSelect = $("#inline-chapter-select");
+      const chaptersTable = $("#inline-chapters-table");
+      const chapterCount = $("#inline-chapter-count");
+      const uploadLog = $("#inline-upload-log");
+
+      async function loadSeries() {
+        seriesSelect.innerHTML = `<option>Loading...</option>`;
+        try {
+          const items = await loadMangakaSeriesList();
+          if (!items.length) {
+            seriesSelect.innerHTML = `<option value="">No series found</option>`;
+            chapterSelect.innerHTML = `<option value="">Create a series first</option>`;
+            chaptersTable.innerHTML = `<div class="empty-state-box">No series found. Create a series first.</div>`;
+            return;
+          }
+          seriesSelect.innerHTML = items.map((s) => `<option value="${s.id}">${esc(s.title || s.name || `Series #${s.id}`)}</option>`).join("");
+          const activeSeriesId = Api.getActiveSeriesId();
+          if (activeSeriesId && items.some((s) => String(s.id) === String(activeSeriesId))) {
+            seriesSelect.value = activeSeriesId;
+          } else {
+            seriesSelect.value = String(items[0].id);
+          }
+          Api.setActiveSeriesId(seriesSelect.value);
+          const selectedSeries = items.find((s) => String(s.id) === String(seriesSelect.value));
+          if (selectedSeries?.title) localStorage.setItem("currentSeriesTitle", selectedSeries.title);
+          await loadChapters();
+        } catch (error) {
+          chaptersTable.innerHTML = errorBox(error);
+        }
+      }
+
+      async function loadChapters() {
+        const seriesId = seriesSelect.value || Api.getActiveSeriesId();
+        if (!seriesId) return;
+        Api.setActiveSeriesId(seriesId);
+        chaptersTable.innerHTML = loading("Loading chapters...");
+        chapterSelect.innerHTML = `<option>Loading...</option>`;
+        try {
+          const items = await enrichChaptersWithPages(await Api.chapters(seriesId));
+          chapterCount.textContent = items.length;
+          chapterSelect.innerHTML = items.length
+            ? items.map((c) => `<option value="${c.id ?? c.chapterId}">Ch. ${c.chapterNumber ?? c.number ?? "?"} — ${esc(c.title || "Untitled")}</option>`).join("")
+            : `<option value="">No chapters yet</option>`;
+          chaptersTable.innerHTML = items.length
+            ? `<table class="data-table"><thead><tr><th>Chapter</th><th>Title</th><th>Pages</th><th>Status</th><th>Action</th></tr></thead><tbody>${items.map((c) => {
+                const id = c.id ?? c.chapterId;
+                const pageCount = getArray(c.pages).length;
+                return `<tr><td><strong>Ch. ${c.chapterNumber ?? c.number ?? "?"}</strong></td><td>${esc(c.title || "Untitled")}</td><td><span class="status-tag progress">${pageCount} page${pageCount === 1 ? "" : "s"}</span></td><td><span class="status-tag progress">${esc(c.status || "DRAFT")}</span></td><td><button class="btn-outline mini-btn" data-open-canvas="${id}">Open Canvas</button></td></tr>`;
+              }).join("")}</tbody></table>`
+            : `<div class="empty-state-box">No chapters yet. Create the first chapter above.</div>`;
+          if (chapterSelect.value) Api.setActiveChapterId(chapterSelect.value);
+
+          $$("[data-open-canvas]").forEach((btn) => btn.addEventListener("click", () => {
+            const chapterId = btn.dataset.openCanvas;
+            const chapter = items.find((c) => String(c.id ?? c.chapterId) === String(chapterId));
+            Api.setActiveChapterId(chapterId);
+            const firstPage = getArray(chapter?.pages)[0];
+            if (firstPage?.id) Api.setActivePageId(firstPage.id);
+            showPanel("canvas");
+          }));
+        } catch (error) {
+          chaptersTable.innerHTML = errorBox(error);
+        }
+      }
+
+      seriesSelect.addEventListener("change", loadChapters);
+      chapterSelect.addEventListener("change", () => Api.setActiveChapterId(chapterSelect.value));
+      $("#inline-refresh-chapters").addEventListener("click", loadChapters);
+
+      $("#inline-chapter-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const seriesId = seriesSelect.value;
+        if (!seriesId) return alert("Select a series first.");
+        try {
+          await Api.createChapter({
+            seriesId: Number(seriesId),
+            chapterNumber: Number($("#inline-chapter-number").value),
+            title: $("#inline-chapter-title").value.trim()
+          });
+          event.target.reset();
+          await loadChapters();
+        } catch (error) {
+          alert("Create chapter failed: " + error.message);
+        }
+      });
+
+      $("#inline-page-upload-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const chapterId = chapterSelect.value;
+        const files = Array.from($("#inline-page-files").files || []);
+        let pageNumber = Number($("#inline-start-page-number").value || 1);
+        if (!chapterId) return alert("Select a chapter first.");
+        if (!files.length) return alert("Choose image files first.");
+
+        uploadLog.innerHTML = "";
+        for (const file of files) {
+          try {
+            uploadLog.innerHTML += `<div>Uploading page ${pageNumber}: ${esc(file.name)}...</div>`;
+            await Api.createPage(chapterId, pageNumber, file);
+            uploadLog.innerHTML += `<div class="log-ok">✓ Uploaded page ${pageNumber}</div>`;
+          } catch (error) {
+            uploadLog.innerHTML += `<div class="log-error">✕ Page ${pageNumber}: ${esc(error.message)}</div>`;
+          }
+          pageNumber += 1;
+        }
+        await loadChapters();
+      });
+
+      loadSeries();
+    }
+
+    async function renderCanvas() {
+      inlinePanel.innerHTML = `
+        ${panelHeader("Canvas Workspace", "Draw hitboxes and assign Assistant tasks directly inside the dashboard.", `<button class="btn-outline" data-dashboard-panel="chapters"><i class="fa-solid fa-layer-group"></i> Manage Chapters</button>`)}
+        <div class="toolbar-row">
+          <select id="inline-canvas-series" class="form-control"></select>
+          <select id="inline-canvas-chapter" class="form-control"></select>
+          <select id="inline-canvas-page" class="form-control"></select>
+          <button id="inline-load-page" class="btn-publish">Load Page</button>
+        </div>
+        <div class="inline-workspace-split">
+          <div class="card-box">
+            <div class="section-title-row"><h3>Canvas</h3><span class="muted-note">Drag on the image to draw a hitbox</span></div>
+            <div id="inline-canvas-stage" class="hitbox-stage"><div class="empty-state-box">Select a page to start.</div></div>
+          </div>
+          <div class="card-box">
+            <h3>Create Task From Hitbox</h3>
+            <form id="inline-hitbox-task-form" class="feature-form">
+              <div class="form-row">
+                <div class="form-group"><label>X %</label><input id="inline-box-x" class="form-control" type="number" step="0.01" readonly></div>
+                <div class="form-group"><label>Y %</label><input id="inline-box-y" class="form-control" type="number" step="0.01" readonly></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>W %</label><input id="inline-box-w" class="form-control" type="number" step="0.01" readonly></div>
+                <div class="form-group"><label>H %</label><input id="inline-box-h" class="form-control" type="number" step="0.01" readonly></div>
+              </div>
+              <div class="form-group"><label>Assistant</label><select id="inline-assistant-select" class="form-control"></select></div>
+              <div class="form-group"><label>Task Description</label><textarea id="inline-task-desc" class="form-control" required placeholder="Describe the work..."></textarea></div>
+              <button class="btn-publish" type="submit">Create Hitbox Task</button>
+            </form>
+            <div id="inline-workspace-log" class="upload-log"></div>
+          </div>
+        </div>`;
+
+      $("[data-dashboard-panel='chapters']")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        showPanel("chapters");
+      });
+
+      const state = { series: [], chapters: [], pages: [], lastBox: null };
+
+      async function loadSeries() {
+        state.series = await loadMangakaSeriesList();
+        $("#inline-canvas-series").innerHTML = state.series.map((s) => `<option value="${s.id}">${esc(s.title || s.name || `Series #${s.id}`)}</option>`).join("") || `<option value="">No series</option>`;
+        const activeSeriesId = Api.getActiveSeriesId();
+        if (activeSeriesId && state.series.some((s) => String(s.id) === String(activeSeriesId))) {
+          $("#inline-canvas-series").value = activeSeriesId;
+        } else if (state.series[0]) {
+          $("#inline-canvas-series").value = String(state.series[0].id);
+          Api.setActiveSeriesId(state.series[0].id);
+        }
+        await loadChapters();
+      }
+
+      async function loadChapters() {
+        const seriesId = $("#inline-canvas-series").value;
+        Api.setActiveSeriesId(seriesId);
+        state.chapters = seriesId ? await enrichChaptersWithPages(await Api.chapters(seriesId).catch(() => [])) : [];
+        $("#inline-canvas-chapter").innerHTML = state.chapters.map((c) => `<option value="${c.id}">Ch. ${c.chapterNumber ?? "?"} — ${esc(c.title || "Untitled")}</option>`).join("") || `<option value="">No chapters</option>`;
+        if (Api.getActiveChapterId()) $("#inline-canvas-chapter").value = Api.getActiveChapterId();
+        await loadPages();
+      }
+
+      async function loadPages() {
+        const chapterId = $("#inline-canvas-chapter").value;
+        Api.setActiveChapterId(chapterId);
+        state.pages = chapterId ? getArray(await Api.pages(chapterId).catch(() => [])) : [];
+        $("#inline-canvas-page").innerHTML = state.pages.map((p) => `<option value="${p.id}">Page ${p.pageNumber ?? p.id}</option>`).join("") || `<option value="">No pages</option>`;
+        if (Api.getActivePageId()) $("#inline-canvas-page").value = Api.getActivePageId();
+        await renderPage();
+      }
+
+      async function loadAssistants() {
+        const assistants = getArray(await Api.assistants().catch(() => []));
+        $("#inline-assistant-select").innerHTML = assistants.map((u) => `<option value="${u.id}">${esc(u.fullName || u.username || u.email || `Assistant #${u.id}`)}</option>`).join("") || `<option value="">No assistants found</option>`;
+      }
+
+      function drawBox(box, className = "drawn-hitbox") {
+        const el = document.createElement("div");
+        el.className = className;
+        el.style.left = `${box.x}%`;
+        el.style.top = `${box.y}%`;
+        el.style.width = `${box.width}%`;
+        el.style.height = `${box.height}%`;
+        return el;
+      }
+
+      function setBox(box) {
+        state.lastBox = box;
+        $("#inline-box-x").value = box.x.toFixed(2);
+        $("#inline-box-y").value = box.y.toFixed(2);
+        $("#inline-box-w").value = box.width.toFixed(2);
+        $("#inline-box-h").value = box.height.toFixed(2);
+      }
+
+      async function renderPage() {
+        const pageId = $("#inline-canvas-page").value;
+        const stage = $("#inline-canvas-stage");
+        Api.setActivePageId(pageId);
+        state.lastBox = null;
+
+        if (!pageId) {
+          stage.innerHTML = `<div class="empty-state-box">No pages uploaded for this chapter.</div>`;
+          return;
+        }
+
+        const canvas = await Api.canvasInit(pageId).catch(() => {
+          const p = state.pages.find((item) => String(item.id) === String(pageId));
+          return p ? { imageUrl: p.imageUrl || p.fileUrl || p.url, hitboxes: [] } : null;
+        });
+
+        if (!canvas?.imageUrl) {
+          stage.innerHTML = `<div class="empty-state-box">This page has no image URL.</div>`;
+          return;
+        }
+
+        stage.innerHTML = `<div class="hitbox-image-wrap" id="inline-hitbox-wrap"><img src="${esc(canvas.imageUrl)}" alt="Manga page"><div id="inline-hitbox-layer"></div></div>`;
+        const layer = $("#inline-hitbox-layer");
+
+        getArray(canvas.hitboxes).forEach((h) => layer.appendChild(drawBox({
+          x: pct(h.x ?? h.xCoord),
+          y: pct(h.y ?? h.yCoord),
+          width: pct(h.width ?? 10),
+          height: pct(h.height ?? 10),
+        }, "saved-hitbox")));
+
+        let start = null;
+        const wrap = $("#inline-hitbox-wrap");
+        wrap.addEventListener("pointerdown", (event) => {
+          const rect = wrap.getBoundingClientRect();
+          start = { x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100 };
+          layer.querySelector(".drawn-hitbox")?.remove();
+          wrap.setPointerCapture?.(event.pointerId);
+        });
+        wrap.addEventListener("pointermove", (event) => {
+          if (!start) return;
+          const rect = wrap.getBoundingClientRect();
+          const current = { x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100 };
+          const box = {
+            x: pct(Math.min(start.x, current.x)),
+            y: pct(Math.min(start.y, current.y)),
+            width: pct(Math.abs(current.x - start.x)),
+            height: pct(Math.abs(current.y - start.y)),
+          };
+          layer.querySelector(".drawn-hitbox")?.remove();
+          layer.appendChild(drawBox(box));
+          setBox(box);
+        });
+        wrap.addEventListener("pointerup", () => { start = null; });
+      }
+
+      $("#inline-canvas-series").addEventListener("change", loadChapters);
+      $("#inline-canvas-chapter").addEventListener("change", loadPages);
+      $("#inline-canvas-page").addEventListener("change", renderPage);
+      $("#inline-load-page").addEventListener("click", renderPage);
+
+      $("#inline-hitbox-task-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const pageId = $("#inline-canvas-page").value;
+        const assistantId = $("#inline-assistant-select").value;
+        const description = $("#inline-task-desc").value.trim();
+        const log = $("#inline-workspace-log");
+
+        if (!pageId || !state.lastBox) return alert("Draw a hitbox first.");
+        if (!description) return alert("Enter task description.");
+
+        try {
+          const hitbox = await Api.createHitbox(pageId, state.lastBox);
+          const hitboxId = hitbox?.id || hitbox?.hitboxId || hitbox;
+          const task = await Api.assignTaskToHitbox(hitboxId, description);
+          const taskId = task?.id || task?.taskId;
+          if (taskId && assistantId) await Api.assignTask(taskId, assistantId);
+          log.innerHTML = `<div class="log-ok">✓ Hitbox task created successfully.</div>`;
+          await renderPage();
+        } catch (error) {
+          log.innerHTML = `<div class="log-error">✕ ${esc(error.message)}</div>`;
+        }
+      });
+
+      Promise.all([loadSeries(), loadAssistants()]);
+    }
+
+    async function renderKanban() {
+      inlinePanel.innerHTML = `
+        ${panelHeader("Kanban Board", "Track task workflow directly inside the Mangaka dashboard.", `<button id="inline-refresh-kanban" class="btn-publish"><i class="fa-solid fa-rotate"></i> Refresh</button>`)}
+        <div class="kanban-grid backend-kanban">
+          <div class="kanban-column" data-status="TODO"><h3>Todo <span id="inline-count-TODO">0</span></h3><div class="kanban-drop" id="inline-col-TODO"></div></div>
+          <div class="kanban-column" data-status="DOING"><h3>Doing <span id="inline-count-DOING">0</span></h3><div class="kanban-drop" id="inline-col-DOING"></div></div>
+          <div class="kanban-column" data-status="REVIEWING"><h3>Reviewing <span id="inline-count-REVIEWING">0</span></h3><div class="kanban-drop" id="inline-col-REVIEWING"></div></div>
+          <div class="kanban-column" data-status="APPROVED"><h3>Approved <span id="inline-count-APPROVED">0</span></h3><div class="kanban-drop" id="inline-col-APPROVED"></div></div>
+        </div>`;
+
+      const statuses = ["TODO", "DOING", "REVIEWING", "APPROVED"];
+      const normalize = (status) => Api.normalizeTaskStatus ? Api.normalizeTaskStatus(status) : String(status || "TODO").toUpperCase();
+
+      function taskCard(task) {
+        const id = task.id ?? task.taskId;
+        const status = normalize(task.status);
+        const submittedUrl = task.submittedImageUrl || task.submissionUrl || task.imageUrl || "";
+        const canReview = status === "REVIEWING" && !!submittedUrl;
+        return `<div class="kanban-card backend-task-card ${canReview ? "mangaka-review-card" : ""}" draggable="${canReview ? "false" : "true"}" data-id="${id}" data-review="${canReview}">
+          <strong>${esc(task.title || task.description || `Task #${id}`)}</strong>
+          <p>${esc(task.description || "")}</p>
+          <small>${esc(task.assigneeName || task.assistantName || "Unassigned")} · ${esc(status)}</small>
+          ${canReview
+            ? `<button type="button" class="mangaka-review-submission-btn" data-task-id="${id}">
+                <i class="fa-solid fa-eye"></i> Review Submitted Image
+              </button>`
+            : ""}
+        </div>`;
+      }
+
+      async function loadTasks() {
+        statuses.forEach((status) => {
+          $(`#inline-col-${status}`).innerHTML = loading("Loading...");
+          $(`#inline-count-${status}`).textContent = "0";
+        });
+
+        try {
+          const tasks = getArray(await Api.tasks());
+          statuses.forEach((status) => {
+            const items = tasks.filter((task) => normalize(task.status) === status);
+            $(`#inline-count-${status}`).textContent = items.length;
+            $(`#inline-col-${status}`).innerHTML = items.length ? items.map(taskCard).join("") : `<div class="empty-column">Drop tasks here</div>`;
+          });
+
+          $$(".backend-task-card").forEach((card) => {
+            const reviewBtn = card.querySelector(".mangaka-review-submission-btn");
+            if (reviewBtn) {
+              reviewBtn.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const taskId = card.dataset.id;
+                localStorage.setItem("currentReviewTaskId", taskId);
+                localStorage.setItem("currentTaskId", taskId);
+                window.location.href = `review.html?taskId=${encodeURIComponent(taskId)}`;
+              });
+            }
+
+            card.addEventListener("dragstart", (event) => {
+              if (card.dataset.review === "true") {
+                event.preventDefault();
+                return;
+              }
+              event.dataTransfer.setData("text/plain", card.dataset.id);
+            });
+          });
+        } catch (error) {
+          statuses.forEach((status) => {
+            $(`#inline-col-${status}`).innerHTML = errorBox(error);
+          });
+        }
+      }
+
+      $$(".kanban-column").forEach((column) => {
+        const drop = column.querySelector(".kanban-drop");
+        const status = column.dataset.status;
+        drop.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          drop.classList.add("drag-over");
+        });
+        drop.addEventListener("dragleave", () => drop.classList.remove("drag-over"));
+        drop.addEventListener("drop", async (event) => {
+          event.preventDefault();
+          drop.classList.remove("drag-over");
+          const taskId = event.dataTransfer.getData("text/plain");
+          if (!taskId) return;
+          try {
+            await Api.updateTaskStatus(taskId, status);
+            await loadTasks();
+          } catch (error) {
+            alert("Update status failed: " + error.message);
+          }
+        });
+      });
+
+
+      function imageFromTask(task, type = "submitted") {
+        if (type === "submitted") {
+          return task.submittedImageUrl || task.submissionUrl || task.imageUrl || "";
+        }
+        return task.referenceImageUrl || task.pageImageUrl || task.hitbox?.page?.imageUrl || "";
+      }
+
+      function openSubmissionReview(task, reloadTasks) {
+        const taskId = task.id ?? task.taskId;
+        const submittedUrl = imageFromTask(task, "submitted");
+        const referenceUrl = imageFromTask(task, "reference");
+        const title = task.title || task.description || `Task #${taskId}`;
+
+        const existing = document.getElementById("mangaka-submission-modal");
+        if (existing) existing.remove();
+
+        document.body.insertAdjacentHTML("beforeend", `
+          <div class="mangaka-submission-modal" id="mangaka-submission-modal">
+            <div class="mangaka-submission-dialog">
+              <div class="mangaka-submission-header">
+                <div>
+                  <h2>Review Assistant Submission</h2>
+                  <p>${esc(title)}</p>
+                </div>
+                <button type="button" class="modal-x" id="close-submission-modal"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+
+              <div class="mangaka-submission-body">
+                <div class="submission-panel">
+                  <strong>Submitted Image</strong>
+                  ${submittedUrl ? `<img src="${esc(submittedUrl)}" alt="Assistant submitted work">` : `<div class="empty-state-box">No submitted image URL found.</div>`}
+                </div>
+                <div class="submission-panel">
+                  <strong>Original Reference</strong>
+                  ${referenceUrl ? `<img src="${esc(referenceUrl)}" alt="Original reference image">` : `<div class="empty-state-box">No original reference image found.</div>`}
+                </div>
+              </div>
+
+              <div class="mangaka-submission-note">
+                <strong>Task Request</strong>
+                <p>${esc(task.description || "No task description.")}</p>
+              </div>
+
+              <div class="mangaka-submission-actions">
+                <button type="button" class="btn-outline" id="request-submission-revision">
+                  <i class="fa-solid fa-rotate-left"></i> Request Revision
+                </button>
+                <button type="button" class="btn-publish" id="approve-submission">
+                  <i class="fa-solid fa-check"></i> Approve Submission
+                </button>
+              </div>
+            </div>
+          </div>
+        `);
+
+        const modal = document.getElementById("mangaka-submission-modal");
+        const close = () => modal?.remove();
+
+        document.getElementById("close-submission-modal")?.addEventListener("click", close);
+        modal?.addEventListener("click", (event) => {
+          if (event.target === modal) close();
+        });
+
+        document.getElementById("approve-submission")?.addEventListener("click", async () => {
+          try {
+            await Api.updateTaskStatus(taskId, "APPROVED");
+            close();
+            await reloadTasks();
+          } catch (error) {
+            alert("Approve failed: " + error.message);
+          }
+        });
+
+        document.getElementById("request-submission-revision")?.addEventListener("click", async () => {
+          try {
+            await Api.updateTaskStatus(taskId, "DOING");
+            close();
+            await reloadTasks();
+          } catch (error) {
+            alert("Request revision failed: " + error.message);
+          }
+        });
+      }
+
+      $("#inline-refresh-kanban").addEventListener("click", loadTasks);
+      loadTasks();
+    }
+  });
+})();

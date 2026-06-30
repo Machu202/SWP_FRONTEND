@@ -20,8 +20,9 @@
         <a href="assistant-assignments.html" class="btn-sidebar-action" style="background: white; color: black; margin-top: 0;"><i class="fa-solid fa-upload"></i> Submit Work</a>
         
         <nav class="nav-group">
-            <a href="assistant-dashboard.html" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a href="#dashboard" class="nav-item active" data-assistant-panel="dashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
             <a href="assistant-assignments.html" class="nav-item"><i class="fa-solid fa-clipboard-list"></i> Assignments</a>
+            <a href="#kanban" class="nav-item" data-assistant-panel="kanban"><i class="fa-solid fa-table-columns"></i> Kanban Board</a>
             <a href="resource-library.html" class="nav-item"><i class="fa-solid fa-box-open"></i> Resource Library</a>
         </nav>
         <div class="sidebar-divider"></div>
@@ -118,6 +119,7 @@
                     <div class="ast-side-card" style="background: #f3f4f6; border: none;">
                         <h3 style="font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 15px;">Quick Resources</h3>
                         <div class="ast-quick-grid">
+                            <div class="ast-quick-btn" data-assistant-panel="kanban"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</div>
                             <div class="ast-quick-btn" onclick="window.location.href='resource-library.html'"><i class="fa-solid fa-paint-brush"></i> Brush Sets</div>
                             <div class="ast-quick-btn"><i class="fa-solid fa-border-all"></i> Templates</div>
                             <div class="ast-quick-btn"><i class="fa-solid fa-book-open"></i> Style Guide</div>
@@ -132,5 +134,6 @@
     <script src="../../assets/js/api.js"></script>
     <script src="../../assets/js/script-workspace.js"></script>
     <script src="assistant.js"></script>
+    <script src="../../assets/js/assistant-dashboard-flow.js"></script>
 </body>
 </html>

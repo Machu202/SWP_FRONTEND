@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voting Center - MangaSystem</title>
+  <link rel="stylesheet" href="style-workspace.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="feature-screen">
+  <aside class="sidebar">
+    <div class="workspace-title">
+      <div class="ws-logo">MF</div>
+      <div class="ws-name">Core Flow</div>
+    </div>
+    <a href="dashboard.html" id="core-back-link" class="btn-sidebar-action"><i class="fa-solid fa-arrow-left"></i> Back Dashboard</a>
+    <nav class="nav-group">
+      <a href="chapter-manager.html" class="nav-item "><i class="fa-solid fa-layer-group"></i> Chapters & Pages</a>
+<a href="workspace.html" class="nav-item "><i class="fa-solid fa-vector-square"></i> Canvas Workspace</a>
+<a href="kanban-board.html" class="nav-item "><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a>
+<a href="editor-review.html" class="nav-item "><i class="fa-solid fa-comment-dots"></i> Tantou Review</a>
+<a href="voting-center.html" class="nav-item active"><i class="fa-solid fa-scale-balanced"></i> Voting Center</a>
+    </nav>
+    <div class="sidebar-divider"></div>
+    <nav class="nav-group" style="flex-grow:0;margin-top:auto;padding-bottom:20px;">
+      <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
+      <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <strong>Voting Center</strong>
+        <span class="muted-topbar">Board voting and Admin final decision</span>
+      </div>
+      <div class="topbar-right">
+        <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color:#9ca3af;"></i><input id="global-search" type="text" placeholder="Search..."></div>
+      </div>
+    </header>
+
+    <section class="content-padding core-feature-page">
+      
+<div class="feature-header">
+  <div>
+    <h1>Voting Center & Admin Decision</h1>
+    <p>Editorial Board can vote. Admin can finalize the publishing decision.</p>
+  </div>
+  <button id="btn-refresh-voting" class="btn-publish"><i class="fa-solid fa-rotate"></i> Refresh</button>
+</div>
+
+<div class="feature-grid two-cols">
+  <div class="card-box">
+    <h3>Reviewing Series</h3>
+    <div id="reviewing-series-list"></div>
+  </div>
+  <div class="card-box">
+    <h3>Decision Panel</h3>
+    <div id="selected-series-box" class="empty-state-box">Select a series.</div>
+    <div id="vote-summary-box"></div>
+    <div class="action-row">
+      <button id="vote-approve" class="btn-publish">Board Approve</button>
+      <button id="vote-reject" class="btn-outline danger-outline">Board Reject</button>
+    </div>
+    <div class="form-group"><label>Tantou ID for Admin Decision</label><input id="tantou-id" class="form-control" type="number" placeholder="Optional Tantou user id"></div>
+    <div class="action-row">
+      <button id="admin-approve" class="btn-publish">Admin Final Approve</button>
+      <button id="admin-reject" class="btn-outline danger-outline">Admin Final Reject</button>
+    </div>
+    <div id="voting-log" class="upload-log"></div>
+  </div>
+</div>
+
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="feature-flow.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
