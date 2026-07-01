@@ -4501,3 +4501,67 @@ textarea.form-control {
 .mangaka-tantou-readonly-note i {
   margin-right: 6px;
 }
+
+
+/* ========================================= */
+/* --- TANTOU APPROVED-ONLY REVIEW FILTER --- */
+/* ========================================= */
+.tantou-approved-only-empty {
+  padding: 32px;
+  border-left: 4px solid #10b981;
+}
+
+.tantou-approved-only-empty h2 {
+  margin: 0 0 8px;
+}
+
+.tantou-approved-only-empty p {
+  color: #64748b;
+}
+
+
+/* ========================================= */
+/* --- TANTOU SEND BACK TO MANGAKA REPORT --- */
+/* ========================================= */
+.report-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.danger-action {
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+  background: #fff !important;
+}
+
+.danger-action:hover {
+  background: #fef2f2 !important;
+}
+
+
+/* ========================================= */
+/* --- TANTOU PREPARE EDITORIAL REPORT --- */
+/* ========================================= */
+#prepare-report i {
+  margin-right: 6px;
+}
+
+
+/* ========================================= */
+/* --- BOARD TANTOU-APPROVED ONLY FILTER --- */
+/* ========================================= */
+.board-filter-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}

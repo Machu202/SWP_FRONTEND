@@ -51,14 +51,14 @@ document.addEventListener("DOMContentLoaded", () => {
       logo: "MB",
       name: "Manga Board",
       back: "board-dashboard.html",
-      visible: ["voting-center.html"],
+      visible: [],
       bodyClass: "actor-board board-screen",
     },
     admin: {
       logo: "AD",
       name: "Admin Console",
       back: "admin-dashboard.html",
-      visible: ["voting-center.html"],
+      visible: [],
       bodyClass: "actor-admin admin-screen",
     },
   };
@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll(".nav-group a.nav-item").forEach(link => {
     const hrefOnly = (link.getAttribute("href") || "").split("?")[0];
-    if (["chapter-manager.html", "workspace.html", "kanban-board.html", "editor-review.html", "voting-center.html"].includes(hrefOnly)) {
+    if (["chapter-manager.html", "workspace.html", "kanban-board.html", "editor-review.html"].includes(hrefOnly)) {
       if (!cfg.visible.includes(hrefOnly)) {
         link.style.display = "none";
         return;

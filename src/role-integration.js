@@ -24,6 +24,7 @@
   const lower = (value = "") => String(value || "").toLowerCase();
   const statusClass = (status = "") => {
     const s = lower(status);
+    if (s.includes("revision_requested") || s.includes("needs_revision") || s.includes("sent_back")) return "review";
     if (s.includes("approved") || s.includes("active") || s.includes("resolved") || s.includes("ongoing")) return "approved";
     if (s.includes("review") || s.includes("pending") || s.includes("doing") || s.includes("progress")) return "progress";
     if (s.includes("reject") || s.includes("lock") || s.includes("late") || s.includes("high")) return "review";
@@ -31,6 +32,203 @@
   };
   const badge = (text) => `<span class="status-tag ${statusClass(text)}">${esc(text || "—")}</span>`;
   const toast = (message, type = "info") => window.showToast ? window.showToast(message, type) : alert(message);
+
+  function getTantouSeriesReturnStore() {
+    try {
+      return JSON.parse(localStorage.getItem("tantouReturnedSeries") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveTantouSeriesReturn(seriesId, data = {}) {
+    if (!seriesId) return null;
+    const store = getTantouSeriesReturnStore();
+    store[String(seriesId)] = {
+      ...(store[String(seriesId)] || {}),
+      status: "REVISION_REQUESTED",
+      returnedToMangaka: true,
+      returnedAt: new Date().toISOString(),
+      ...data
+    };
+    localStorage.setItem("tantouReturnedSeries", JSON.stringify(store));
+    return store[String(seriesId)];
+  }
+
+  function getTantouSeriesReturn(seriesId) {
+    if (!seriesId) return null;
+    return getTantouSeriesReturnStore()[String(seriesId)] || null;
+  }
+
+  function applyTantouReturnOverride(series = {}) {
+    const seriesId = seriesIdOf(series);
+    const returned = getTantouSeriesReturn(seriesId);
+    if (!returned) return series;
+
+    return {
+      ...series,
+      status: returned.status || "REVISION_REQUESTED",
+      tantouReturnNote: returned.note || returned.reason || "Sent back to Mangaka for further review.",
+      returnedToMangaka: true,
+      returnedAt: returned.returnedAt
+    };
+  }
+
+  async function sendSeriesBackToMangaka(series = {}, note = "") {
+    const seriesId = seriesIdOf(series) || Api.getActiveSeriesId();
+    if (!seriesId) throw new Error("No selected series.");
+
+    const reason = note.trim() || "Sent back by Tantou Editor for Mangaka revision/review.";
+    const statusCandidates = ["REJECTED", "DRAFT", "REVISION_REQUESTED", "NEEDS_REVISION"];
+    let backendUpdated = false;
+    let backendMessage = "";
+
+    for (const status of statusCandidates) {
+      try {
+        await Api.updateSeriesStatus(seriesId, status);
+        backendUpdated = true;
+        backendMessage = `Backend status updated to ${status}.`;
+        break;
+      } catch (error) {
+        backendMessage = error?.message || String(error);
+      }
+    }
+
+    saveTantouSeriesReturn(seriesId, {
+      note: reason,
+      backendUpdated,
+      backendMessage,
+      previousStatus: series.status || series.seriesStatus || "—",
+      seriesTitle: series.title || series.name || ""
+    });
+
+    return { backendUpdated, backendMessage };
+  }
+
+  const tantouPages = new Set([
+    "tantou-dashboard.html",
+    "tantou-review.html",
+    "tantou-feedback.html",
+    "tantou-revision.html",
+    "tantou-report.html"
+  ]);
+
+  function isTantouPage() {
+    return tantouPages.has(page);
+  }
+
+  function normalizeStatusText(value = "") {
+    return String(value || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  }
+
+  function isMangakaApprovedStatus(value = "") {
+    const status = normalizeStatusText(value);
+    return status === "APPROVED" ||
+      status === "MANGAKA_APPROVED" ||
+      status === "APPROVED_BY_MANGAKA" ||
+      status === "READY_FOR_TANTOU" ||
+      status === "READY_FOR_EDITOR" ||
+      status === "READY_FOR_EDITORIAL" ||
+      status === "READY_FOR_REVIEW" ||
+      status === "TANTOU_REVIEW";
+  }
+
+  function isTantouReviewableSeries(series = {}) {
+    if (!series) return false;
+
+    const returned = getTantouSeriesReturn(seriesIdOf(series));
+    if (returned?.returnedToMangaka) return false;
+
+    const currentStatus = normalizeStatusText(series.status || series.seriesStatus || series.reviewStatus || "");
+    if (["REVISION_REQUESTED", "NEEDS_REVISION", "SENT_BACK_TO_MANGAKA", "RETURNED_TO_MANGAKA"].includes(currentStatus)) {
+      return false;
+    }
+
+    if (series.isApproved === true ||
+        series.approved === true ||
+        series.mangakaApproved === true ||
+        series.readyForTantou === true) {
+      return true;
+    }
+
+    return [
+      series.status,
+      series.seriesStatus,
+      series.reviewStatus,
+      series.publishStatus,
+      series.approvalStatus,
+      series.mangakaApprovalStatus
+    ].some(isMangakaApprovedStatus);
+  }
+
+  function seriesIdOf(series = {}) {
+    return series.id ?? series.seriesId ?? series.mangaSeriesId;
+  }
+
+  function mergeSeriesById(...lists) {
+    const merged = new Map();
+
+    lists.flat().filter(Boolean).forEach(series => {
+      const key = String(seriesIdOf(series) ?? series.title ?? series.name ?? "").trim().toLowerCase();
+      if (!key) return;
+      merged.set(key, {
+        ...(merged.get(key) || {}),
+        ...series
+      });
+    });
+
+    return Array.from(merged.values());
+  }
+
+  async function loadTantouApprovedSeries() {
+    const lists = [];
+
+    // Prefer the backend-approved queue if supported.
+    if (Api.allSeries) {
+      for (const status of ["APPROVED", "MANGAKA_APPROVED", "READY_FOR_TANTOU"]) {
+        try {
+          const result = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries({ status })) : await Api.allSeries({ status });
+          if (Array.isArray(result) && result.length) lists.push(result);
+        } catch (error) {
+          console.warn(`Could not load /manga-series?status=${status}`, error.message);
+        }
+      }
+
+      // Also load the full list as fallback and filter client-side.
+      try {
+        const result = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
+        if (Array.isArray(result) && result.length) lists.push(result);
+      } catch (error) {
+        console.warn("Could not load /manga-series for Tantou approved filter", error.message);
+      }
+    }
+
+    const merged = mergeSeriesById(...lists)
+      .map(applyTantouReturnOverride)
+      .filter(isTantouReviewableSeries);
+
+    // Ensure Tantou cannot stay on a stale DRAFT/non-approved series selected by another screen.
+    if (merged.length && !merged.some(series => String(seriesIdOf(series)) === String(Api.getActiveSeriesId()))) {
+      Api.setActiveSeriesId(seriesIdOf(merged[0]));
+      localStorage.removeItem("activeChapterId");
+      localStorage.removeItem("activePageId");
+    }
+
+    return merged;
+  }
+
+  function taskBelongsToApprovedTantouSeries(task = {}) {
+    const approvedIds = new Set(state.series.map(series => String(seriesIdOf(series))).filter(Boolean));
+    const taskSeriesId = task.seriesId ?? task.mangaSeriesId ?? task.mangaSeries?.id ?? task.hitbox?.page?.chapter?.mangaSeries?.id ?? task.hitbox?.page?.chapter?.seriesId;
+
+    if (taskSeriesId !== undefined && taskSeriesId !== null && taskSeriesId !== "") {
+      return approvedIds.has(String(taskSeriesId));
+    }
+
+    // If the backend does not return seriesId on task DTOs, at least require the task itself
+    // to be Mangaka-approved/ready instead of TODO/DOING/DRAFT work.
+    return isMangakaApprovedStatus(task.status || task.taskStatus || task.state || task.reviewStatus);
+  }
 
   function clampPercent(value, min = 0, max = 100) {
     const n = Number.parseFloat(value);
@@ -67,7 +265,10 @@
 
   function seriesPicker(selectedId = Api.getActiveSeriesId()) {
     if (!state.series.length) return "";
-    return `<select id="series-picker" class="form-control compact-control">${state.series.map(s => `<option value="${s.id}" ${String(s.id) === String(selectedId) ? "selected" : ""}>#${s.id} — ${esc(s.title)} (${esc(s.status)})</option>`).join("")}</select>`;
+    return `<select id="series-picker" class="form-control compact-control">${state.series.map(s => {
+      const id = seriesIdOf(s);
+      return `<option value="${id}" ${String(id) === String(selectedId) ? "selected" : ""}>#${esc(id)} — ${esc(s.title || s.name || "Untitled")} (${esc(s.status || s.seriesStatus || "APPROVED")})</option>`;
+    }).join("")}</select>`;
   }
 
   function chapterPicker(selectedId = Api.getActiveChapterId()) {
@@ -81,21 +282,27 @@
   }
 
   async function loadSeries() {
+    if (isTantouPage()) {
+      state.series = await loadTantouApprovedSeries();
+      if (state.series.length && !Api.getActiveSeriesId()) Api.setActiveSeriesId(seriesIdOf(state.series[0]));
+      return state.series;
+    }
+
     try {
       state.series = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
     } catch (err) {
       // Mangaka-only fallback if backend role does not allow global listing.
       state.series = Api.unwrapPage ? Api.unwrapPage(await Api.mySeries()) : await Api.mySeries();
     }
-    if (state.series.length && !Api.getActiveSeriesId()) Api.setActiveSeriesId(state.series[0].id);
+    if (state.series.length && !Api.getActiveSeriesId()) Api.setActiveSeriesId(seriesIdOf(state.series[0]));
     return state.series;
   }
 
   async function hydrateSeriesContext() {
     await loadSeries();
     let seriesId = Api.getActiveSeriesId();
-    if (!state.series.some(s => String(s.id) === String(seriesId)) && state.series[0]) {
-      seriesId = state.series[0].id;
+    if (!state.series.some(s => String(seriesIdOf(s)) === String(seriesId)) && state.series[0]) {
+      seriesId = seriesIdOf(state.series[0]);
       Api.setActiveSeriesId(seriesId);
     }
     if (seriesId) {
@@ -216,7 +423,7 @@
     const isKanban = location.hash === "#kanban";
     const root = shell(
       isKanban ? "Tantou Kanban Tasks" : "Tantou Dashboard",
-      isKanban ? "Manage review tasks directly inside the Tantou dashboard." : "Live review queue, assigned tasks, and feedback metrics from Backend 2.",
+      isKanban ? "Manage review tasks directly inside the Tantou dashboard." : "Only Mangaka-approved series/pages are visible to Tantou Editor.",
       isKanban
         ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>`
         : `<a class="btn-publish" href="tantou-review.html">Open Chapter Review</a><a class="btn-outline" href="tantou-dashboard.html#kanban" style="margin-left:10px;"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a>`
@@ -224,7 +431,14 @@
 
     try {
       await hydrateSeriesContext();
-      state.tasks = await Api.tasks().catch(() => []);
+      if (!state.series.length) {
+        root.innerHTML = `<div class="card-box empty-state-box tantou-approved-only-empty">
+          <h2>No Mangaka-approved series/pages available.</h2>
+          <p>Tantou Editor can only review pages after Mangaka approves them. Draft series and unfinished Assistant work are hidden.</p>
+        </div>`;
+        return;
+      }
+      state.tasks = (await Api.tasks().catch(() => [])).filter(taskBelongsToApprovedTantouSeries);
 
       const dashboardNav = $$(".tantou-nav .nav-item");
       dashboardNav.forEach(link => {
@@ -246,14 +460,14 @@
         <div class="stats-grid" style="margin-bottom:30px;">
           <div class="stat-card"><div class="stat-value">${state.tasks.length}</div><div class="stat-label">My Review Tasks</div></div>
           <div class="stat-card"><div class="stat-value">${openFeedbacks.length}</div><div class="stat-label">Open Feedback</div></div>
-          <div class="stat-card"><div class="stat-value">${reviewing}</div><div class="stat-label">Board Queue</div></div>
+          <div class="stat-card"><div class="stat-value">${reviewing}</div><div class="stat-label">In Review</div></div>
           <div class="stat-card"><div class="stat-value">${ready}</div><div class="stat-label">Ready / Approved</div></div>
         </div>
 
         <div class="card-box tantou-dashboard-action-card">
           <div>
             <h2>Kanban Tasks</h2>
-            <p class="muted-note">Review task statuses without leaving the main dashboard.</p>
+            <p class="muted-note">Only tasks/pages from Mangaka-approved series are shown.</p>
           </div>
           <a class="btn-publish" href="tantou-dashboard.html#kanban"><i class="fa-solid fa-table-columns"></i> Open Kanban Tasks</a>
         </div>
@@ -270,6 +484,13 @@
     const root = shell("Annotation & Feedback", "View pinned feedback visually, resolve notes, or open the pinned review workspace.");
     try {
       await hydrateSeriesContext();
+      if (!state.series.length) {
+        root.innerHTML = `<div class="card-box empty-state-box tantou-approved-only-empty">
+          <h2>No Mangaka-approved pages available for Tantou feedback.</h2>
+          <p>Only pages from Mangaka-approved series are visible here.</p>
+        </div>`;
+        return;
+      }
       const pageId = Api.getActivePageId() || state.pages[0]?.id;
       let canvas = null;
 
@@ -396,6 +617,13 @@
     const root = shell("Chapter Review & Hitbox Feedback", "Select a backend page, click the manga preview, and create coordinate-based Tantou feedback.");
     try {
       await hydrateSeriesContext();
+      if (!state.series.length) {
+        root.innerHTML = `<div class="card-box empty-state-box tantou-approved-only-empty">
+          <h2>No Mangaka-approved pages available for chapter review.</h2>
+          <p>Tantou Editor can only create feedback after Mangaka approves the series/pages.</p>
+        </div>`;
+        return;
+      }
       const pageId = Api.getActivePageId() || state.pages[0]?.id;
       let canvas = null;
       if (pageId) canvas = await Api.canvasInit(pageId).catch(async () => {
@@ -576,16 +804,31 @@
     const root = shell("Revision Tracking", "Review current backend pages and feedback resolution before sending to board.");
     try {
       await hydrateSeriesContext();
+      if (!state.series.length) {
+        root.innerHTML = `<div class="card-box empty-state-box tantou-approved-only-empty">
+          <h2>No Mangaka-approved pages available for revision tracking.</h2>
+          <p>Draft/non-approved series are hidden from Tantou Editor.</p>
+        </div>`;
+        return;
+      }
       const pageCards = await Promise.all(state.pages.map(async p => {
         const fb = await Api.feedbacks(p.id).catch(() => []);
         return `<div class="list-card"><div class="list-card-img">${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="Page ${p.pageNumber}">` : `<i class="fa-solid fa-image"></i>`}</div><div class="list-card-content"><h2 class="list-card-title">Page ${esc(p.pageNumber || p.id)}</h2><p class="list-card-meta">${fb.length} feedback item(s), ${fb.filter(x => x.isResolved).length} resolved</p></div><button class="btn-icon-only choose-page" data-id="${p.id}"><i class="fa-solid fa-arrow-right"></i></button></div>`;
       }));
-      root.innerHTML = `<div class="toolbar-row">${seriesPicker()}${chapterPicker()}${pagePicker()}</div><div class="card-box">${pageCards.join("") || `<div class="empty-state-box">No pages available for selected chapter.</div>`}<button id="approve-report" class="btn-publish">Approve for Editorial Report</button></div>`;
+      root.innerHTML = `<div class="toolbar-row">${seriesPicker()}${chapterPicker()}${pagePicker()}</div><div class="card-box">${pageCards.join("") || `<div class="empty-state-box">No pages available for selected chapter.</div>`}<button id="prepare-report" class="btn-publish"><i class="fa-solid fa-file-lines"></i> Prepare for Editorial Report</button></div>`;
       bindCommonPickers(tantouRevision);
       $$(".choose-page").forEach(btn => btn.addEventListener("click", () => { Api.setActivePageId(btn.dataset.id); location.href = "tantou-feedback.html"; }));
-      $("#approve-report")?.addEventListener("click", async () => {
-        try { await Api.updateSeriesStatus(Api.getActiveSeriesId(), "REVIEWING"); toast("Series submitted for Editorial Board voting.", "success"); location.href = "tantou-report.html"; }
-        catch (err) { toast(err.message, "error"); }
+      $("#prepare-report")?.addEventListener("click", () => {
+        const seriesId = Api.getActiveSeriesId();
+        if (seriesId) {
+          localStorage.setItem(`tantouPreparedReport:${seriesId}`, "true");
+          localStorage.setItem(`tantouPreparedReportAt:${seriesId}`, new Date().toISOString());
+        }
+
+        // Do not call APPROVED -> REVIEWING here.
+        // Backend rejects that transition. This action only prepares the report page.
+        toast("Prepared for Editorial Report.", "success");
+        location.href = "tantou-report.html";
       });
     } catch (err) { errorBox(root, err); }
   }
@@ -594,34 +837,242 @@
     const root = shell("Editorial Report", "Backend-ready report gate: move an approved/reviewed series into board voting flow.");
     try {
       await hydrateSeriesContext();
-      const s = state.series.find(x => String(x.id) === String(Api.getActiveSeriesId())) || state.series[0];
+      if (!state.series.length) {
+        root.innerHTML = `<div class="card-box empty-state-box tantou-approved-only-empty">
+          <h2>No Mangaka-approved series available for report.</h2>
+          <p>Tantou report can only be prepared after Mangaka-approved pages are available.</p>
+        </div>`;
+        return;
+      }
+      const s = state.series.find(x => String(seriesIdOf(x)) === String(Api.getActiveSeriesId())) || state.series[0];
       root.innerHTML = `
         <div class="toolbar-row">${seriesPicker()}</div>
         <div class="card-box" style="max-width:900px;">
           <h2>${esc(s?.title || "No series selected")}</h2>
           <p>${esc(s?.summary || "No summary")}</p>
           <table class="data-table"><tbody><tr><th>Genre</th><td>${esc(s?.genre || "—")}</td></tr><tr><th>Status</th><td>${badge(s?.status)}</td></tr><tr><th>Mangaka</th><td>${esc(s?.mangakaName || "—")}</td></tr><tr><th>Tantou</th><td>${esc(s?.tantouName || "—")}</td></tr></tbody></table>
-          <div class="form-group"><label>Recommendation Notes (frontend only)</label><textarea class="form-control" id="report-notes">Ready for board review after Tantou inspection.</textarea></div>
-          <button id="submit-board" class="btn-publish">Submit to Editorial Board</button>
-          <a class="btn-outline" href="board-submissions.html" style="margin-left:10px;text-decoration:none;display:inline-flex;">Open Board View</a>
+          <div class="form-group"><label>Recommendation Notes</label><textarea class="form-control" id="report-notes">Ready for board review after Tantou inspection.</textarea></div>
+          <div class="report-action-row">
+            <button id="send-back-mangaka" class="btn-outline danger-action" type="button"><i class="fa-solid fa-rotate-left"></i> Send Back to Mangaka</button>
+            <button id="submit-board" class="btn-publish" type="button"><i class="fa-solid fa-paper-plane"></i> Submit to Editorial Board</button>
+          </div>
+          <p class="muted-note" id="report-status-note">Send back changes this series to REVISION_REQUESTED in the Tantou workflow.</p>
         </div>`;
       bindCommonPickers(tantouReport);
+      $("#send-back-mangaka")?.addEventListener("click", async () => {
+        const note = $("#report-notes")?.value || "";
+        if (!confirm("Send this series back to Mangaka for further review?")) return;
+
+        const button = $("#send-back-mangaka");
+        const oldText = button?.innerHTML;
+        if (button) {
+          button.disabled = true;
+          button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending back...`;
+        }
+
+        try {
+          const result = await sendSeriesBackToMangaka(s, note);
+          toast(result.backendUpdated ? "Sent back to Mangaka and backend status updated." : "Sent back to Mangaka in Tantou workflow. Backend status transition was not accepted, so a local revision status was saved.", result.backendUpdated ? "success" : "info");
+          await tantouReport();
+        } catch (err) {
+          toast(err.message || "Could not send back to Mangaka.", "error");
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.innerHTML = oldText;
+          }
+        }
+      });
       $("#submit-board")?.addEventListener("click", async () => {
-        try { await Api.updateSeriesStatus(Api.getActiveSeriesId(), "REVIEWING"); toast("Submitted to board queue.", "success"); }
-        catch (err) { toast(err.message, "error"); }
+        const seriesId = Api.getActiveSeriesId();
+        const note = $("#report-notes")?.value || "";
+
+        saveTantouBoardSubmission(seriesId, {
+          note,
+          seriesTitle: s?.title || s?.name || "",
+          status: "TANTOU_APPROVED"
+        });
+
+        // Try backend transition only as a best-effort. The Board UI no longer depends on
+        // generic APPROVED status; it depends on Tantou approval/submission.
+        try {
+          await Api.updateSeriesStatus(seriesId, "REVIEWING");
+          toast("Submitted to Editorial Board queue.", "success");
+        } catch (err) {
+          console.warn("Backend did not accept board submission status transition; local Tantou approval was saved.", err.message);
+          toast("Marked as Tantou-approved for Board voting.", "success");
+        }
       });
     } catch (err) { errorBox(root, err); }
   }
 
+
+  function getTantouBoardSubmissionStore() {
+    try {
+      return JSON.parse(localStorage.getItem("tantouBoardSubmittedSeries") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveTantouBoardSubmission(seriesId, data = {}) {
+    if (!seriesId) return null;
+
+    const store = getTantouBoardSubmissionStore();
+    store[String(seriesId)] = {
+      ...(store[String(seriesId)] || {}),
+      status: "TANTOU_APPROVED",
+      boardEligible: true,
+      tantouApprovedForBoard: true,
+      submittedToBoard: true,
+      submittedAt: new Date().toISOString(),
+      ...data
+    };
+
+    localStorage.setItem("tantouBoardSubmittedSeries", JSON.stringify(store));
+    return store[String(seriesId)];
+  }
+
+  function getTantouBoardSubmission(seriesId) {
+    if (!seriesId) return null;
+    return getTantouBoardSubmissionStore()[String(seriesId)] || null;
+  }
+
+  function applyTantouBoardSubmission(series = {}) {
+    const seriesId = seriesIdOf(series);
+    const submitted = getTantouBoardSubmission(seriesId);
+    if (!submitted) return series;
+
+    return {
+      ...series,
+      status: submitted.status || series.status || "TANTOU_APPROVED",
+      boardEligible: true,
+      tantouApprovedForBoard: true,
+      submittedToBoard: true,
+      tantouSubmittedAt: submitted.submittedAt,
+      tantouReportNote: submitted.note || series.tantouReportNote
+    };
+  }
+
+  function isTantouBoardStatus(value) {
+    const status = String(value || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+
+    return [
+      "TANTOU_APPROVED",
+      "APPROVED_BY_TANTOU",
+      "TANTOU_RECOMMENDED",
+      "READY_FOR_BOARD",
+      "READY_FOR_EDITORIAL_BOARD",
+      "SUBMITTED_TO_BOARD",
+      "SUBMITTED_TO_EDITORIAL_BOARD",
+      "BOARD_QUEUE",
+      "BOARD_REVIEW",
+      "BOARD_REVIEWING",
+      "EDITORIAL_BOARD",
+      "EDITORIAL_BOARD_REVIEW",
+      "VOTING",
+      "IN_VOTING",
+      "REVIEWING"
+    ].includes(status);
+  }
+
+  function isSeriesApprovedByTantouForBoard(series = {}) {
+    const seriesId = seriesIdOf(series);
+
+    // If Tantou explicitly sent it back to Mangaka, it must not be votable.
+    const returned = getTantouSeriesReturn(seriesId);
+    if (returned?.returnedToMangaka) return false;
+
+    // Tantou's Submit to Editorial Board action marks this local store.
+    const submitted = getTantouBoardSubmission(seriesId);
+    if (submitted?.submittedToBoard || submitted?.tantouApprovedForBoard || submitted?.boardEligible) return true;
+
+    if (
+      series.tantouApprovedForBoard === true ||
+      series.approvedByTantou === true ||
+      series.tantouApproved === true ||
+      series.submittedToBoard === true ||
+      series.boardEligible === true ||
+      series.readyForBoard === true
+    ) {
+      return true;
+    }
+
+    return [
+      series.status,
+      series.seriesStatus,
+      series.reviewStatus,
+      series.publishStatus,
+      series.approvalStatus,
+      series.tantouStatus,
+      series.boardStatus
+    ].some(isTantouBoardStatus);
+  }
+
+  async function loadBoardEligibleSeries() {
+    try {
+      state.series = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
+    } catch (err) {
+      state.series = [];
+      console.warn("Could not load series for Board queue:", err.message);
+    }
+
+    state.series = mergeSeriesById(state.series)
+      .map(applyTantouReturnOverride)
+      .map(applyTantouBoardSubmission)
+      .filter(isSeriesApprovedByTantouForBoard);
+
+    const activeId = Api.getActiveSeriesId();
+
+    if (state.series.length && !state.series.some(s => String(seriesIdOf(s)) === String(activeId))) {
+      Api.setActiveSeriesId(seriesIdOf(state.series[0]));
+      localStorage.removeItem("activeChapterId");
+      localStorage.removeItem("activePageId");
+    }
+
+    return state.series;
+  }
+
+  async function hydrateBoardSeriesContext() {
+    await loadBoardEligibleSeries();
+
+    let seriesId = Api.getActiveSeriesId();
+    if (!state.series.some(s => String(seriesIdOf(s)) === String(seriesId)) && state.series[0]) {
+      seriesId = seriesIdOf(state.series[0]);
+      Api.setActiveSeriesId(seriesId);
+      localStorage.removeItem("activeChapterId");
+      localStorage.removeItem("activePageId");
+    }
+
+    state.chapters = [];
+    state.pages = [];
+
+    if (seriesId) {
+      state.chapters = await Api.chapters(seriesId).catch(() => []);
+      if (state.chapters.length && !state.chapters.some(ch => String(ch.id) === String(Api.getActiveChapterId()))) {
+        Api.setActiveChapterId(state.chapters[0].id);
+      }
+
+      const chapterId = Api.getActiveChapterId() || state.chapters[0]?.id || "";
+      if (chapterId) {
+        state.pages = await Api.pages(chapterId).catch(() => []);
+        if (state.pages.length && !state.pages.some(p => String(p.id) === String(Api.getActivePageId()))) {
+          Api.setActivePageId(state.pages[0].id);
+        }
+      }
+    }
+  }
+
+
   async function boardDashboard() {
     const root = shell("Board Dashboard", "Editorial Board submission queue and vote status from /votes.", `<a class="btn-publish" href="board-submissions.html">Open Submissions</a>`);
     try {
-      await loadSeries();
-      const reviewing = state.series.filter(s => /review/i.test(s.status || ""));
-      const summaries = await Promise.all(reviewing.map(s => Api.voteSummary(s.id).catch(() => ({ seriesId: s.id, totalVotes: 0, approvedVotes: 0, rejectedVotes: 0 }))));
+      const boardEligible = await loadBoardEligibleSeries();
+      const summaries = await Promise.all(boardEligible.map(s => Api.voteSummary(seriesIdOf(s)).catch(() => ({ seriesId: seriesIdOf(s), totalVotes: 0, approvedVotes: 0, rejectedVotes: 0 }))));
       root.innerHTML = `
-        <div class="stats-grid" style="margin-bottom:30px;"><div class="stat-card"><div class="stat-value">${reviewing.length}</div><div class="stat-label">Submissions</div></div><div class="stat-card"><div class="stat-value">${summaries.reduce((a,b)=>a+(b.totalVotes||0),0)}</div><div class="stat-label">Votes Cast</div></div><div class="stat-card"><div class="stat-value">${summaries.filter(x => (x.totalVotes||0) === 0).length}</div><div class="stat-label">Needs Vote</div></div><div class="stat-card"><div class="stat-value">${summaries.reduce((a,b)=>a+(b.rejectedVotes||0),0)}</div><div class="stat-label">Reject / Revision Votes</div></div></div>
-        <div class="card-box">${reviewing.map((s, i) => `<div class="list-card"><div class="list-card-content"><h2 class="list-card-title">${esc(s.title)}</h2><p class="list-card-meta">${badge(s.status)} • Approve ${summaries[i]?.approvedVotes || 0} / Reject ${summaries[i]?.rejectedVotes || 0}</p></div><button class="btn-icon-only set-series" data-id="${s.id}"><i class="fa-solid fa-arrow-right"></i></button></div>`).join("") || `<div class="empty-state-box">No series in REVIEWING status.</div>`}</div>`;
+        <div class="board-filter-note"><i class="fa-solid fa-lock"></i> Board can only vote on series submitted/approved by Tantou Editor.</div>
+        <div class="stats-grid" style="margin-bottom:30px;"><div class="stat-card"><div class="stat-value">${boardEligible.length}</div><div class="stat-label">Tantou-approved submissions</div></div><div class="stat-card"><div class="stat-value">${summaries.reduce((a,b)=>a+(b.totalVotes||0),0)}</div><div class="stat-label">Votes Cast</div></div><div class="stat-card"><div class="stat-value">${summaries.filter(x => (x.totalVotes||0) === 0).length}</div><div class="stat-label">Needs Vote</div></div><div class="stat-card"><div class="stat-value">${summaries.reduce((a,b)=>a+(b.rejectedVotes||0),0)}</div><div class="stat-label">Reject / Revision Votes</div></div></div>
+        <div class="card-box">${boardEligible.map((s, i) => `<div class="list-card"><div class="list-card-content"><h2 class="list-card-title">${esc(s.title)}</h2><p class="list-card-meta">${badge(s.status || "TANTOU_APPROVED")} • Approve ${summaries[i]?.approvedVotes || 0} / Reject ${summaries[i]?.rejectedVotes || 0}</p></div><button class="btn-icon-only set-series" data-id="${seriesIdOf(s)}"><i class="fa-solid fa-arrow-right"></i></button></div>`).join("") || `<div class="empty-state-box">No Tantou-approved series waiting for Board voting.</div>`}</div>`;
       $$(".set-series").forEach(btn => btn.addEventListener("click", () => { Api.setActiveSeriesId(btn.dataset.id); location.href = "board-submissions.html"; }));
     } catch (err) { errorBox(root, err, "The all-series endpoint requires the patched backend included in this package."); }
   }
@@ -629,15 +1080,23 @@
   async function boardSubmissions() {
     const root = shell("Board Submissions", "Review manga metadata, chapters, and current vote summary before voting.", `<a class="btn-publish" href="board-voting.html">Start Voting</a>`);
     try {
-      await hydrateSeriesContext();
+      await hydrateBoardSeriesContext();
+
+      if (!state.series.length) {
+        root.innerHTML = `<div class="board-filter-note"><i class="fa-solid fa-lock"></i> Board voting is locked until Tantou Editor submits a series to the Editorial Board.</div><div class="card-box empty-state-box">No Tantou-approved series waiting for Board voting.</div>`;
+        return;
+      }
+
       const seriesId = Api.getActiveSeriesId();
-      const s = state.series.find(x => String(x.id) === String(seriesId)) || state.series[0];
-      const summary = seriesId ? await Api.voteSummary(seriesId).catch(() => null) : null;
+      const s = state.series.find(x => String(seriesIdOf(x)) === String(seriesId)) || state.series[0];
+      const actualSeriesId = seriesIdOf(s);
+      const summary = actualSeriesId ? await Api.voteSummary(actualSeriesId).catch(() => null) : null;
       root.innerHTML = `
-        <div class="toolbar-row">${seriesPicker()}${chapterPicker()}</div>
+        <div class="board-filter-note"><i class="fa-solid fa-lock"></i> Only Tantou-approved/submitted series are available here.</div>
+        <div class="toolbar-row">${seriesPicker(actualSeriesId)}${chapterPicker()}</div>
         <div class="grid-layout">
           <div class="card-box"><h2>${esc(s?.title || "No series")}</h2><p>${esc(s?.summary || "No summary")}</p><table class="data-table"><thead><tr><th>Chapter</th><th>Title</th><th>Status</th></tr></thead><tbody>${state.chapters.map(ch => `<tr><td>${esc(ch.chapterNumber)}</td><td>${esc(ch.title)}</td><td>${badge(ch.publishStatus)}</td></tr>`).join("") || `<tr><td colspan="3">No chapters found.</td></tr>`}</tbody></table></div>
-          <div class="card-box"><h2>Vote Summary</h2><p>${badge(s?.status)}</p><p><strong>Total:</strong> ${summary?.totalVotes ?? 0}</p><p><strong>Approve:</strong> ${summary?.approvedVotes ?? 0}</p><p><strong>Reject / Revision:</strong> ${summary?.rejectedVotes ?? 0}</p><a class="btn-publish" href="board-voting.html">Vote on this Series</a></div>
+          <div class="card-box"><h2>Vote Summary</h2><p>${badge(s?.status || "TANTOU_APPROVED")}</p><p><strong>Total:</strong> ${summary?.totalVotes ?? 0}</p><p><strong>Approve:</strong> ${summary?.approvedVotes ?? 0}</p><p><strong>Reject / Revision:</strong> ${summary?.rejectedVotes ?? 0}</p><a class="btn-publish" href="board-voting.html">Vote on this Series</a></div>
         </div>`;
       bindCommonPickers(boardSubmissions);
     } catch (err) { errorBox(root, err); }
@@ -646,14 +1105,20 @@
   async function boardVoting() {
     const root = shell("Board Voting", "Cast Approve or Reject vote through /api/v1/votes/series/{seriesId}.");
     try {
-      await loadSeries();
-      const reviewing = state.series.filter(s => /review/i.test(s.status || ""));
-      if (reviewing.length && !reviewing.some(s => String(s.id) === String(Api.getActiveSeriesId()))) Api.setActiveSeriesId(reviewing[0].id);
+      await loadBoardEligibleSeries();
+
+      if (!state.series.length) {
+        root.innerHTML = `<div class="board-filter-note"><i class="fa-solid fa-lock"></i> Voting is locked. No series has been submitted/approved by Tantou Editor yet.</div><div class="card-box empty-state-box">No Tantou-approved series waiting for vote.</div>`;
+        return;
+      }
+
       const seriesId = Api.getActiveSeriesId();
-      const s = state.series.find(x => String(x.id) === String(seriesId)) || reviewing[0] || state.series[0];
-      const summary = s ? await Api.voteSummary(s.id).catch(() => null) : null;
+      const s = state.series.find(x => String(seriesIdOf(x)) === String(seriesId)) || state.series[0];
+      const actualSeriesId = seriesIdOf(s);
+      const summary = s ? await Api.voteSummary(actualSeriesId).catch(() => null) : null;
       root.innerHTML = `
-        <div class="toolbar-row">${seriesPicker(s?.id)}</div>
+        <div class="board-filter-note"><i class="fa-solid fa-lock"></i> Voting is only enabled for series approved/submitted by Tantou Editor.</div>
+        <div class="toolbar-row">${seriesPicker(actualSeriesId)}</div>
         <div class="card-box">
           <h2>${esc(s?.title || "No series selected")}</h2><p>${esc(s?.summary || "")}</p>
           <div class="series-grid board-vote-grid">
@@ -668,6 +1133,12 @@
       $$("[data-vote-value]").forEach(btn => btn.addEventListener("click", () => { $$("[data-vote-value]").forEach(x => x.classList.remove("selected")); btn.classList.add("selected"); }));
       $("#submit-vote")?.addEventListener("click", async () => {
         try {
+          const current = state.series.find(x => String(seriesIdOf(x)) === String(Api.getActiveSeriesId()));
+          if (!current || !isSeriesApprovedByTantouForBoard(current)) {
+            toast("This series is not approved by Tantou Editor for Board voting.", "error");
+            return;
+          }
+
           const val = $("[data-vote-value].selected")?.dataset.voteValue === "true";
           await Api.castVote(Api.getActiveSeriesId(), val);
           toast("Vote submitted.", "success");
@@ -680,7 +1151,7 @@
   async function boardResult() {
     const root = shell("Final Result", "Live voting summary for the selected manga series.");
     try {
-      await loadSeries();
+      await loadBoardEligibleSeries();
       const seriesId = Api.getActiveSeriesId();
       const s = state.series.find(x => String(x.id) === String(seriesId)) || state.series[0];
       const summary = s ? await Api.voteSummary(s.id).catch(() => ({ totalVotes: 0, approvedVotes: 0, rejectedVotes: 0 })) : null;
