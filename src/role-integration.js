@@ -33,6 +33,120 @@
   const badge = (text) => `<span class="status-tag ${statusClass(text)}">${esc(text || "—")}</span>`;
   const toast = (message, type = "info") => window.showToast ? window.showToast(message, type) : alert(message);
 
+  function cachedUserProfile() {
+    try {
+      return JSON.parse(localStorage.getItem("profileCache") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function currentProfileFromLocalStorage() {
+    const cached = cachedUserProfile();
+
+    return {
+      id: localStorage.getItem("userId") || localStorage.getItem("id") || "",
+      username: localStorage.getItem("username") || localStorage.getItem("userName") || "",
+      email: localStorage.getItem("email") || localStorage.getItem("userEmail") || "",
+      fullName: localStorage.getItem("fullName") || localStorage.getItem("name") || "",
+      role: localStorage.getItem("role") || localStorage.getItem("userRole") || "",
+      ...cached
+    };
+  }
+
+  function profileDisplayName(profile = currentProfileFromLocalStorage()) {
+    return profile.fullName ||
+      profile.name ||
+      profile.displayName ||
+      profile.username ||
+      profile.userName ||
+      profile.email ||
+      "User";
+  }
+
+  function profileAvatarUrl(profile = currentProfileFromLocalStorage()) {
+    return profile.profileImageUrl ||
+      profile.avatarUrl ||
+      profile.photoUrl ||
+      profile.picture ||
+      profile.imageUrl ||
+      "";
+  }
+
+  function avatarInitials(name = "User", fallback = "U") {
+    const source = String(name || fallback || "U").trim();
+    const parts = source.split(/\s+/).filter(Boolean);
+
+    if (!parts.length) return String(fallback || "U").slice(0, 2).toUpperCase();
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+
+  function avatarMarkup(profile = currentProfileFromLocalStorage()) {
+    const name = profileDisplayName(profile);
+    const image = profileAvatarUrl(profile);
+
+    if (image) {
+      return `<img class="unified-avatar-img" src="${esc(image)}" alt="${esc(name)} avatar">`;
+    }
+
+    return `<span class="unified-avatar-initials">${esc(avatarInitials(name))}</span>`;
+  }
+
+  function applyUnifiedAvatar(profile = currentProfileFromLocalStorage()) {
+    const html = avatarMarkup(profile);
+
+    [
+      ".editor-avatar",
+      ".topbar-avatar",
+      ".admin-brand-avatar",
+      ".admin-top-avatar",
+      ".board-brand-avatar",
+      ".board-top-avatar",
+      ".ws-logo"
+    ].forEach(selector => {
+      $$(selector).forEach(element => {
+        // Login cover images should not be touched.
+        if (element.classList.contains("manga-image")) return;
+
+        element.classList.add("unified-avatar");
+        element.innerHTML = html;
+        element.setAttribute("aria-label", `${profileDisplayName(profile)} avatar`);
+      });
+    });
+  }
+
+  async function syncShellAvatarWithProfile() {
+    const localProfile = currentProfileFromLocalStorage();
+    applyUnifiedAvatar(localProfile);
+
+    try {
+      const backendProfile = Api.profile
+        ? await Api.profile()
+        : (Api.currentUser ? await Api.currentUser() : null);
+
+      if (backendProfile && typeof backendProfile === "object") {
+        const profile = {
+          ...localProfile,
+          ...(backendProfile.data || backendProfile.user || backendProfile.profile || backendProfile)
+        };
+
+        localStorage.setItem("profileCache", JSON.stringify(profile));
+
+        if (profile.fullName || profile.name) localStorage.setItem("fullName", profile.fullName || profile.name);
+        if (profile.email) localStorage.setItem("email", profile.email);
+        if (profile.username) localStorage.setItem("username", profile.username);
+        if (profile.role || profile.roleName) localStorage.setItem("role", profile.role || profile.roleName);
+
+        applyUnifiedAvatar(profile);
+      }
+    } catch (error) {
+      // The shell still uses login/localStorage data when profile endpoint is unavailable.
+      console.warn("Using cached avatar/profile for shell:", error.message);
+    }
+  }
+
   function getTantouSeriesReturnStore() {
     try {
       return JSON.parse(localStorage.getItem("tantouReturnedSeries") || "{}");
@@ -851,6 +965,15 @@
           <h2>${esc(s?.title || "No series selected")}</h2>
           <p>${esc(s?.summary || "No summary")}</p>
           <table class="data-table"><tbody><tr><th>Genre</th><td>${esc(s?.genre || "—")}</td></tr><tr><th>Status</th><td>${badge(s?.status)}</td></tr><tr><th>Mangaka</th><td>${esc(s?.mangakaName || "—")}</td></tr><tr><th>Tantou</th><td>${esc(s?.tantouName || "—")}</td></tr></tbody></table>
+          <div class="board-role-note tantou-note"><i class="fa-solid fa-circle-info"></i> Tantou can only recommend. Cancellation is decided by the Editorial Board.</div>
+          <div class="form-group">
+            <label>Tantou Recommendation</label>
+            <select id="tantou-recommendation" class="form-control">
+              <option value="CONTINUE">Recommend Continue</option>
+              <option value="REVISION">Recommend Revision</option>
+              <option value="CANCEL">Recommend Cancellation</option>
+            </select>
+          </div>
           <div class="form-group"><label>Recommendation Notes</label><textarea class="form-control" id="report-notes">Ready for board review after Tantou inspection.</textarea></div>
           <div class="report-action-row">
             <button id="send-back-mangaka" class="btn-outline danger-action" type="button"><i class="fa-solid fa-rotate-left"></i> Send Back to Mangaka</button>
@@ -887,8 +1010,12 @@
         const seriesId = Api.getActiveSeriesId();
         const note = $("#report-notes")?.value || "";
 
+        const recommendation = $("#tantou-recommendation")?.value || "CONTINUE";
+
         saveTantouBoardSubmission(seriesId, {
           note,
+          recommendation,
+          recommendationLabel: boardDecisionLabel(recommendation),
           seriesTitle: s?.title || s?.name || "",
           status: "TANTOU_APPROVED"
         });
@@ -1009,6 +1136,248 @@
     ].some(isTantouBoardStatus);
   }
 
+
+  function getBoardDecisionStore() {
+    try {
+      return JSON.parse(localStorage.getItem("boardSeriesDecisions") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveBoardDecision(seriesId, decision, data = {}) {
+    if (!seriesId) return null;
+
+    const normalizedDecision = String(decision || "").trim().toUpperCase();
+    const store = getBoardDecisionStore();
+    store[String(seriesId)] = {
+      ...(store[String(seriesId)] || {}),
+      decision: normalizedDecision,
+      status: boardDecisionStatus(normalizedDecision),
+      decidedAt: new Date().toISOString(),
+      decidedBy: "Editorial Board",
+      ...data
+    };
+
+    localStorage.setItem("boardSeriesDecisions", JSON.stringify(store));
+    return store[String(seriesId)];
+  }
+
+  function getBoardDecision(seriesId) {
+    if (!seriesId) return null;
+    return getBoardDecisionStore()[String(seriesId)] || null;
+  }
+
+  function getBoardDiscussionStore() {
+    try {
+      return JSON.parse(localStorage.getItem("boardDiscussionBySeries") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveBoardDiscussionStore(store) {
+    localStorage.setItem("boardDiscussionBySeries", JSON.stringify(store || {}));
+  }
+
+  function getBoardDiscussion(seriesId) {
+    if (!seriesId) return [];
+    const store = getBoardDiscussionStore();
+    return Array.isArray(store[String(seriesId)]) ? store[String(seriesId)] : [];
+  }
+
+  function currentBoardMemberName() {
+    return localStorage.getItem("fullName") ||
+      localStorage.getItem("name") ||
+      localStorage.getItem("username") ||
+      localStorage.getItem("email") ||
+      "Board Member";
+  }
+
+  function currentUserInitials(name = currentBoardMemberName()) {
+    return String(name || "BM")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0])
+      .join("")
+      .toUpperCase() || "BM";
+  }
+
+  function addBoardDiscussionMessage(seriesId, message) {
+    const text = String(message || "").trim();
+    if (!seriesId || !text) return null;
+
+    const store = getBoardDiscussionStore();
+    const key = String(seriesId);
+    const list = Array.isArray(store[key]) ? store[key] : [];
+
+    const saved = {
+      id: `bd-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      seriesId: key,
+      senderId: localStorage.getItem("userId") || localStorage.getItem("id") || "",
+      senderName: currentBoardMemberName(),
+      senderRole: "EDITORIAL_BOARD",
+      message: text,
+      createdAt: new Date().toISOString()
+    };
+
+    store[key] = [...list, saved];
+    saveBoardDiscussionStore(store);
+    return saved;
+  }
+
+  function renderBoardDiscussion(seriesId, { readOnly = false } = {}) {
+    const messages = getBoardDiscussion(seriesId);
+
+    return `
+      <div class="card-box board-discussion-card ${readOnly ? "readonly" : ""}">
+        <div class="board-discussion-header">
+          <div>
+            <h2>Board Discussion</h2>
+            <p>${readOnly ? "Read-only discussion history for Admin audit." : "Discuss the series before submitting the Board decision."}</p>
+          </div>
+          <span class="status-tag progress">${messages.length}</span>
+        </div>
+        <div class="board-discussion-list" id="board-discussion-list">
+          ${messages.length ? messages.map(msg => `
+            <div class="board-discussion-message">
+              <div class="board-discussion-avatar">${esc(currentUserInitials(msg.senderName))}</div>
+              <div class="board-discussion-body">
+                <div class="board-discussion-meta">
+                  <strong>${esc(msg.senderName || "Board Member")}</strong>
+                  <span>${esc(fmtDate(msg.createdAt))}</span>
+                </div>
+                <p>${esc(msg.message || "")}</p>
+              </div>
+            </div>
+          `).join("") : `<div class="empty-state-box">No Board discussion yet.</div>`}
+        </div>
+        ${readOnly ? `
+          <div class="board-filter-note"><i class="fa-solid fa-lock"></i> Admin can view this discussion, but cannot participate.</div>
+        ` : `
+          <form id="board-discussion-form" class="board-discussion-form">
+            <textarea id="board-discussion-input" class="form-control" rows="3" placeholder="Add Board-only discussion note before voting..."></textarea>
+            <button class="btn-publish" type="submit"><i class="fa-solid fa-paper-plane"></i> Send Discussion Message</button>
+          </form>
+        `}
+      </div>
+    `;
+  }
+
+  function bindBoardDiscussion(seriesId, refreshFn) {
+    const form = $("#board-discussion-form");
+    const input = $("#board-discussion-input");
+    if (!form || !input) return;
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) {
+        toast("Write a discussion message first.", "error");
+        return;
+      }
+
+      addBoardDiscussionMessage(seriesId, text);
+      toast("Board discussion message saved.", "success");
+      if (typeof refreshFn === "function") refreshFn();
+    });
+  }
+
+  function boardDecisionStatus(decision) {
+    switch (String(decision || "").toUpperCase()) {
+      case "CONTINUE":
+        return "BOARD_DECIDED_CONTINUE";
+      case "REVISION":
+        return "BOARD_REQUESTED_REVISION";
+      case "CANCEL":
+        return "BOARD_CANCELLED";
+      default:
+        return "BOARD_PENDING";
+    }
+  }
+
+  function boardDecisionLabel(decision) {
+    switch (String(decision || "").toUpperCase()) {
+      case "CONTINUE":
+        return "Continue Serialization";
+      case "REVISION":
+        return "Request Revision";
+      case "CANCEL":
+        return "Cancel Series";
+      default:
+        return "Waiting for Board Decision";
+    }
+  }
+
+  function applyBoardDecision(series = {}) {
+    const seriesId = seriesIdOf(series);
+    const decision = getBoardDecision(seriesId);
+    if (!decision) return series;
+
+    return {
+      ...series,
+      boardDecision: decision.decision,
+      boardDecisionStatus: decision.status,
+      boardDecisionComment: decision.comment,
+      boardDecidedAt: decision.decidedAt,
+      status: decision.status || series.status
+    };
+  }
+
+  function getAdminFinalizationStore() {
+    try {
+      return JSON.parse(localStorage.getItem("adminFinalizedBoardDecisions") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveAdminFinalization(seriesId, data = {}) {
+    if (!seriesId) return null;
+    const store = getAdminFinalizationStore();
+    store[String(seriesId)] = {
+      ...(store[String(seriesId)] || {}),
+      finalizedAt: new Date().toISOString(),
+      finalizedBy: "Admin",
+      ...data
+    };
+    localStorage.setItem("adminFinalizedBoardDecisions", JSON.stringify(store));
+    return store[String(seriesId)];
+  }
+
+  function getAdminFinalization(seriesId) {
+    if (!seriesId) return null;
+    return getAdminFinalizationStore()[String(seriesId)] || null;
+  }
+
+  function isBoardDecidedSeries(series = {}) {
+    return Boolean(getBoardDecision(seriesIdOf(series)) || series.boardDecision || series.boardDecisionStatus);
+  }
+
+  async function loadBoardDecidedSeries() {
+    try {
+      state.series = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
+    } catch (err) {
+      state.series = [];
+      console.warn("Could not load series for Admin finalization:", err.message);
+    }
+
+    state.series = mergeSeriesById(state.series)
+      .map(applyTantouReturnOverride)
+      .map(applyTantouBoardSubmission)
+      .map(applyBoardDecision)
+      .filter(isBoardDecidedSeries);
+
+    const activeId = Api.getActiveSeriesId();
+    if (state.series.length && !state.series.some(s => String(seriesIdOf(s)) === String(activeId))) {
+      Api.setActiveSeriesId(seriesIdOf(state.series[0]));
+    }
+
+    return state.series;
+  }
+
+
   async function loadBoardEligibleSeries() {
     try {
       state.series = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
@@ -1020,6 +1389,7 @@
     state.series = mergeSeriesById(state.series)
       .map(applyTantouReturnOverride)
       .map(applyTantouBoardSubmission)
+      .map(applyBoardDecision)
       .filter(isSeriesApprovedByTantouForBoard);
 
     const activeId = Api.getActiveSeriesId();
@@ -1103,7 +1473,7 @@
   }
 
   async function boardVoting() {
-    const root = shell("Board Voting", "Cast Approve or Reject vote through /api/v1/votes/series/{seriesId}.");
+    const root = shell("Strategic Continuity Review", "Editorial Board decides whether the series continues, needs revision, or is cancelled.");
     try {
       await loadBoardEligibleSeries();
 
@@ -1115,22 +1485,59 @@
       const seriesId = Api.getActiveSeriesId();
       const s = state.series.find(x => String(seriesIdOf(x)) === String(seriesId)) || state.series[0];
       const actualSeriesId = seriesIdOf(s);
+      const submitted = getTantouBoardSubmission(actualSeriesId);
+      const existingDecision = getBoardDecision(actualSeriesId);
       const summary = s ? await Api.voteSummary(actualSeriesId).catch(() => null) : null;
+      const defaultDecision = existingDecision?.decision || submitted?.recommendation || "CONTINUE";
+
       root.innerHTML = `
-        <div class="board-filter-note"><i class="fa-solid fa-lock"></i> Voting is only enabled for series approved/submitted by Tantou Editor.</div>
+        <div class="board-filter-note"><i class="fa-solid fa-lock"></i> Only Editorial Board can decide cancellation. Tantou recommendation: <strong>${esc(boardDecisionLabel(submitted?.recommendation || "CONTINUE"))}</strong></div>
         <div class="toolbar-row">${seriesPicker(actualSeriesId)}</div>
-        <div class="card-box">
-          <h2>${esc(s?.title || "No series selected")}</h2><p>${esc(s?.summary || "")}</p>
-          <div class="series-grid board-vote-grid">
-            <button class="action-btn selected" data-vote-value="true"><i class="fa-solid fa-check"></i> Approve</button>
-            <button class="action-btn" data-vote-value="false"><i class="fa-solid fa-xmark"></i> Reject / Request Revision</button>
+        <div class="strategic-review-grid">
+          <div class="card-box">
+            <h2>${esc(s?.title || "No series selected")}</h2>
+            <p>${esc(s?.summary || "")}</p>
+            <table class="data-table"><tbody>
+              <tr><th>Status</th><td>${badge(s?.status || "TANTOU_APPROVED")}</td></tr>
+              <tr><th>Mangaka</th><td>${esc(s?.mangakaName || "—")}</td></tr>
+              <tr><th>Tantou Recommendation</th><td>${badge(boardDecisionLabel(submitted?.recommendation || "CONTINUE"))}</td></tr>
+            </tbody></table>
           </div>
-          <div class="form-group"><label>Board Comment (kept client-side until backend adds comment field)</label><textarea class="form-control" id="board-comment">Pacing should be improved before publication.</textarea></div>
-          <button id="submit-vote" class="btn-publish">Submit Vote</button>
-          <p class="muted-note">Current summary: ${summary?.approvedVotes ?? 0} approve, ${summary?.rejectedVotes ?? 0} reject/revision.</p>
+          <div class="card-box">
+            <h2>Tantou Final Plea</h2>
+            <p class="tantou-plea-text">${esc(submitted?.note || s?.tantouReportNote || "No Tantou note submitted.")}</p>
+          </div>
+          <div class="card-box">
+            <h2>Vote Summary</h2>
+            <p><strong>Approve:</strong> ${summary?.approvedVotes ?? 0}</p>
+            <p><strong>Reject / Revision:</strong> ${summary?.rejectedVotes ?? 0}</p>
+            <p><strong>Total:</strong> ${summary?.totalVotes ?? 0}</p>
+          </div>
+        </div>
+
+        <div class="board-voting-workspace">
+          ${renderBoardDiscussion(actualSeriesId, { readOnly: false })}
+
+          <div class="card-box strategic-decision-panel">
+          <h2>Strategic Decision</h2>
+          <div class="series-grid board-vote-grid board-decision-grid">
+            <button class="action-btn ${defaultDecision === "CONTINUE" ? "selected" : ""}" data-board-decision="CONTINUE"><i class="fa-solid fa-check"></i> Continue Serialization</button>
+            <button class="action-btn ${defaultDecision === "REVISION" ? "selected" : ""}" data-board-decision="REVISION"><i class="fa-solid fa-rotate-left"></i> Request Revision</button>
+            <button class="action-btn danger-decision ${defaultDecision === "CANCEL" ? "selected" : ""}" data-board-decision="CANCEL"><i class="fa-solid fa-ban"></i> Cancel Series</button>
+          </div>
+          <div class="form-group"><label>Board Decision Comment</label><textarea class="form-control" id="board-comment">${esc(existingDecision?.comment || submitted?.note || "Board decision notes...")}</textarea></div>
+          <button id="submit-vote" class="btn-publish">Submit Board Decision</button>
+          <p class="muted-note">Cancel Series is a Board decision. Admin will only finalize/archive after the decision is recorded.</p>
+          </div>
         </div>`;
       bindCommonPickers(boardVoting);
-      $$("[data-vote-value]").forEach(btn => btn.addEventListener("click", () => { $$("[data-vote-value]").forEach(x => x.classList.remove("selected")); btn.classList.add("selected"); }));
+      bindBoardDiscussion(actualSeriesId, boardVoting);
+
+      $$("[data-board-decision]").forEach(btn => btn.addEventListener("click", () => {
+        $$("[data-board-decision]").forEach(x => x.classList.remove("selected"));
+        btn.classList.add("selected");
+      }));
+
       $("#submit-vote")?.addEventListener("click", async () => {
         try {
           const current = state.series.find(x => String(seriesIdOf(x)) === String(Api.getActiveSeriesId()));
@@ -1139,9 +1546,27 @@
             return;
           }
 
-          const val = $("[data-vote-value].selected")?.dataset.voteValue === "true";
-          await Api.castVote(Api.getActiveSeriesId(), val);
-          toast("Vote submitted.", "success");
+          const decision = $("[data-board-decision].selected")?.dataset.boardDecision || "CONTINUE";
+          const comment = $("#board-comment")?.value || "";
+          const approveLike = decision === "CONTINUE";
+
+          // Backend currently supports boolean vote only.
+          // Revision and Cancel are saved as local Board decisions and sent as a reject vote when possible.
+          try {
+            await Api.castVote(Api.getActiveSeriesId(), approveLike);
+          } catch (voteError) {
+            console.warn("Backend vote failed; Board decision was saved locally.", voteError.message);
+          }
+
+          saveBoardDecision(Api.getActiveSeriesId(), decision, {
+            comment,
+            seriesTitle: current?.title || current?.name || "",
+            tantouRecommendation: getTantouBoardSubmission(Api.getActiveSeriesId())?.recommendation || "",
+            backendVoteValue: approveLike,
+            discussionCount: getBoardDiscussion(Api.getActiveSeriesId()).length
+          });
+
+          toast(`Board decision saved: ${boardDecisionLabel(decision)}.`, "success");
           location.href = "board-result.html";
         } catch (err) { toast(err.message, "error"); }
       });
@@ -1149,14 +1574,32 @@
   }
 
   async function boardResult() {
-    const root = shell("Final Result", "Live voting summary for the selected manga series.");
+    const root = shell("Decision History", "Live voting summary and recorded Editorial Board decision for the selected manga series.");
     try {
       await loadBoardEligibleSeries();
+
+      if (!state.series.length) {
+        root.innerHTML = `<div class="board-filter-note"><i class="fa-solid fa-lock"></i> No Tantou-approved series has reached Board decision yet.</div>`;
+        return;
+      }
+
       const seriesId = Api.getActiveSeriesId();
-      const s = state.series.find(x => String(x.id) === String(seriesId)) || state.series[0];
-      const summary = s ? await Api.voteSummary(s.id).catch(() => ({ totalVotes: 0, approvedVotes: 0, rejectedVotes: 0 })) : null;
-      const result = (summary?.approvedVotes || 0) > (summary?.rejectedVotes || 0) ? "Recommended Approval" : (summary?.totalVotes ? "Revision / Rejection Risk" : "Waiting for Votes");
-      root.innerHTML = `<div class="toolbar-row">${seriesPicker(s?.id)}</div><div class="card-box"><span class="status-tag progress">${esc(result)}</span><h2 style="margin-top:15px;">${esc(s?.title || "No series")}</h2><p>Status: ${badge(s?.status)}</p><table class="data-table"><thead><tr><th>Decision</th><th>Count</th></tr></thead><tbody><tr><td>Approve</td><td>${summary?.approvedVotes || 0}</td></tr><tr><td>Reject / Request Revision</td><td>${summary?.rejectedVotes || 0}</td></tr><tr><td>Total</td><td>${summary?.totalVotes || 0}</td></tr></tbody></table></div>`;
+      const s = state.series.find(x => String(seriesIdOf(x)) === String(seriesId)) || state.series[0];
+      const actualSeriesId = seriesIdOf(s);
+      const summary = s ? await Api.voteSummary(actualSeriesId).catch(() => ({ totalVotes: 0, approvedVotes: 0, rejectedVotes: 0 })) : null;
+      const decision = getBoardDecision(actualSeriesId);
+      const result = decision?.decision ? boardDecisionLabel(decision.decision) : ((summary?.approvedVotes || 0) > (summary?.rejectedVotes || 0) ? "Recommended Approval" : (summary?.totalVotes ? "Revision / Rejection Risk" : "Waiting for Votes"));
+      root.innerHTML = `
+        <div class="toolbar-row">${seriesPicker(actualSeriesId)}</div>
+        <div class="card-box">
+          <span class="status-tag progress">${esc(result)}</span>
+          <h2 style="margin-top:15px;">${esc(s?.title || "No series")}</h2>
+          <p>Status: ${badge(decision?.status || s?.status)}</p>
+          ${decision?.decision ? `<div class="board-decision-summary ${decision.decision === "CANCEL" ? "danger-summary" : ""}"><strong>Board Decision:</strong> ${esc(boardDecisionLabel(decision.decision))}<br><span>${esc(decision.comment || "No comment.")}</span></div>` : `<div class="board-filter-note"><i class="fa-solid fa-clock"></i> No final Board decision has been submitted yet.</div>`}
+          <table class="data-table"><thead><tr><th>Decision</th><th>Count</th></tr></thead><tbody><tr><td>Approve</td><td>${summary?.approvedVotes || 0}</td></tr><tr><td>Reject / Revision</td><td>${summary?.rejectedVotes || 0}</td></tr><tr><td>Total</td><td>${summary?.totalVotes || 0}</td></tr></tbody></table>
+          <div style="margin-top:18px;"><a class="btn-publish" href="admin-final-approval.html">Send to Admin Finalization</a></div>
+        </div>
+        ${renderBoardDiscussion(actualSeriesId, { readOnly: true })}`;
       bindCommonPickers(boardResult);
     } catch (err) { errorBox(root, err); }
   }
@@ -1221,17 +1664,78 @@
   }
 
   async function adminFinalApproval() {
-    const root = shell("Final Approval", "Admin final publishing approval with Editorial Board vote summary.");
+    const root = shell("Final Decision Management", "Admin finalizes the Editorial Board decision. Admin does not decide cancellation.");
     try {
-      await loadSeries();
-      const reviewing = state.series.filter(s => /review/i.test(s.status || ""));
-      if (reviewing.length && !reviewing.some(s => String(s.id) === String(Api.getActiveSeriesId()))) Api.setActiveSeriesId(reviewing[0].id);
-      const s = state.series.find(x => String(x.id) === String(Api.getActiveSeriesId())) || reviewing[0] || state.series[0];
-      const summary = s ? await Api.voteSummary(s.id).catch(() => null) : null;
-      root.innerHTML = `<div class="toolbar-row">${seriesPicker(s?.id)}</div><div class="card-box"><h2>${esc(s?.title || "No series selected")}</h2><p>${badge(s?.status)} • Mangaka: ${esc(s?.mangakaName || "—")}</p><table class="data-table"><thead><tr><th>Decision</th><th>Count</th></tr></thead><tbody><tr><td>Approve</td><td>${summary?.approvedVotes || 0}</td></tr><tr><td>Reject / Revision</td><td>${summary?.rejectedVotes || 0}</td></tr><tr><td>Total</td><td>${summary?.totalVotes || 0}</td></tr></tbody></table><div style="margin-top:20px;"><button id="admin-approve" class="btn-publish">Approve Publication</button><button id="admin-reject" class="btn-publish danger-button" style="margin-left:10px;">Reject / Request Revision</button></div></div>`;
+      await loadBoardDecidedSeries();
+
+      if (!state.series.length) {
+        root.innerHTML = `<div class="board-filter-note"><i class="fa-solid fa-lock"></i> No Board decision is waiting for Admin finalization.</div><div class="card-box empty-state-box">Board must decide Continue, Revision, or Cancel first.</div>`;
+        return;
+      }
+
+      const seriesId = Api.getActiveSeriesId();
+      const s = state.series.find(x => String(seriesIdOf(x)) === String(seriesId)) || state.series[0];
+      const actualSeriesId = seriesIdOf(s);
+      const decision = getBoardDecision(actualSeriesId);
+      const finalization = getAdminFinalization(actualSeriesId);
+      const summary = s ? await Api.voteSummary(actualSeriesId).catch(() => null) : null;
+      const isCancel = decision?.decision === "CANCEL";
+      const isRevision = decision?.decision === "REVISION";
+      const primaryText = isCancel ? "Confirm Cancellation / Archive" : (isRevision ? "Finalize Revision Request" : "Approve Publication");
+
+      root.innerHTML = `
+        <div class="toolbar-row">${seriesPicker(actualSeriesId)}</div>
+        <div class="admin-finalization-grid">
+          <div class="card-box">
+            <h2>${esc(s?.title || "No series selected")}</h2>
+            <p>${badge(decision?.status || s?.status)} • Mangaka: ${esc(s?.mangakaName || "—")}</p>
+            <div class="board-role-note"><i class="fa-solid fa-circle-info"></i> Board decides. Admin only applies the final system action.</div>
+            <div class="board-decision-summary ${isCancel ? "danger-summary" : ""}">
+              <strong>Board Decision:</strong> ${esc(boardDecisionLabel(decision?.decision))}<br>
+              <span>${esc(decision?.comment || "No board comment.")}</span>
+            </div>
+            <table class="data-table"><thead><tr><th>Vote</th><th>Count</th></tr></thead><tbody><tr><td>Approve</td><td>${summary?.approvedVotes || 0}</td></tr><tr><td>Reject / Revision</td><td>${summary?.rejectedVotes || 0}</td></tr><tr><td>Total</td><td>${summary?.totalVotes || 0}</td></tr></tbody></table>
+            ${finalization ? `<div class="board-filter-note"><i class="fa-solid fa-check-circle"></i> Already finalized as ${esc(finalization.finalStatus || finalization.action)} at ${fmtDate(finalization.finalizedAt)}.</div>` : ""}
+            <div style="margin-top:20px;">
+              <button id="admin-finalize-board-decision" class="btn-publish ${isCancel ? "danger-button" : ""}">${esc(primaryText)}</button>
+            </div>
+          </div>
+          ${renderBoardDiscussion(actualSeriesId, { readOnly: true })}
+        </div>`;
       bindCommonPickers(adminFinalApproval);
-      $("#admin-approve")?.addEventListener("click", async () => { try { await Api.adminDecision(Api.getActiveSeriesId(), true); toast("Admin approved publication.", "success"); adminFinalApproval(); } catch (err) { toast(err.message, "error"); } });
-      $("#admin-reject")?.addEventListener("click", async () => { try { await Api.adminDecision(Api.getActiveSeriesId(), false); toast("Admin rejected publication.", "success"); adminFinalApproval(); } catch (err) { toast(err.message, "error"); } });
+
+      $("#admin-finalize-board-decision")?.addEventListener("click", async () => {
+        try {
+          const currentDecision = getBoardDecision(Api.getActiveSeriesId());
+          if (!currentDecision) {
+            toast("No Board decision to finalize.", "error");
+            return;
+          }
+
+          const cancel = currentDecision.decision === "CANCEL";
+          const revision = currentDecision.decision === "REVISION";
+          const finalStatus = cancel ? "ADMIN_ARCHIVED_CANCELLED" : (revision ? "ADMIN_SENT_REVISION" : "ADMIN_APPROVED_PUBLICATION");
+
+          if (cancel && !confirm("Finalize Board cancellation and archive this series?")) return;
+
+          // Backend only has boolean adminDecision, so map Continue=true and Revision/Cancel=false.
+          try {
+            await Api.adminDecision(Api.getActiveSeriesId(), currentDecision.decision === "CONTINUE");
+          } catch (backendError) {
+            console.warn("Backend admin decision failed; local finalization was saved.", backendError.message);
+          }
+
+          saveAdminFinalization(Api.getActiveSeriesId(), {
+            action: currentDecision.decision,
+            finalStatus,
+            boardDecision: currentDecision.decision,
+            boardComment: currentDecision.comment || ""
+          });
+
+          toast(cancel ? "Cancellation finalized and archived." : (revision ? "Revision request finalized." : "Publication approved."), "success");
+          await adminFinalApproval();
+        } catch (err) { toast(err.message, "error"); }
+      });
     } catch (err) { errorBox(root, err); }
   }
 
@@ -1255,8 +1759,13 @@
   };
 
   document.addEventListener("DOMContentLoaded", () => {
+    syncShellAvatarWithProfile();
+
     const userId = localStorage.getItem("userId");
     Api.connectNotifications?.(userId, (message) => toast(typeof message === "string" ? message : (message.message || "New notification"), "info"));
     handlers[page]?.();
+
+    // Some handlers re-render page content. Keep avatar consistent afterwards.
+    setTimeout(syncShellAvatarWithProfile, 0);
   });
 })();

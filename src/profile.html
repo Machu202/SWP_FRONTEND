@@ -1,48 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - MangaSystem</title>
-    <link rel="stylesheet" href="style-workspace.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - MangaSystem</title>
+  <link rel="stylesheet" href="style-workspace.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body>
-    <aside class="sidebar">
-        <div class="workspace-title">
-            <div class="ws-logo">MK</div>
-            <div class="ws-name">Mangaka Workspace</div>
+<body class="profile-screen">
+  <aside class="sidebar" id="profile-sidebar">
+    <div id="profile-brand-block"></div>
+    <nav class="nav-group" id="profile-role-nav"></nav>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-divider"></div>
+    <nav class="nav-group footer-nav" id="profile-footer-nav"></nav>
+  </aside>
+
+  <main class="main-wrapper" id="profile-main">
+    <header class="topbar" id="profile-topbar">
+      <div id="profile-topbar-left"></div>
+      <div class="topbar-right" id="profile-topbar-right"></div>
+    </header>
+
+    <section class="content-padding profile-content">
+      <div class="page-header profile-page-header">
+        <div>
+          <span class="profile-kicker" id="profile-role-kicker">USER PROFILE</span>
+          <h1>Profile</h1>
+          <p>Real account data for the logged-in user.</p>
         </div>
-        
-        <nav class="nav-group">
-        </nav>
-        <div class="sidebar-divider"></div>
-        <nav class="nav-group" style="flex-grow: 0; margin-top: auto; padding-bottom: 20px;">
-            <a href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i> Profile</a>
-            <a href="notifications.html" class="nav-item"><i class="fa-solid fa-bell"></i> Notifications</a>
-            <a href="index.html" class="nav-item"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-        </nav>
-    </aside>
-    <main class="main-wrapper">
-        <header class="topbar">
-            <div class="topbar-left">
-                <a href="#">Workflow</a><a href="schedule.html">Schedule</a><a href="#">Assets</a>
+        <button id="profile-refresh" class="btn-outline" type="button"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+
+      <div id="profile-status" class="profile-status-msg" hidden></div>
+
+      <div class="profile-layout-grid">
+        <section class="card-box profile-summary-card">
+          <div class="profile-summary-header">
+            <div class="profile-big-avatar" id="profile-big-avatar">U</div>
+            <div>
+              <h2 id="profile-display-name">Loading...</h2>
+              <p id="profile-display-email">Loading account...</p>
+              <div class="profile-pill-row">
+                <span class="status-tag approved" id="profile-role-pill">ROLE</span>
+                <span class="status-tag progress" id="profile-status-pill">ACTIVE</span>
+              </div>
             </div>
-            <div class="topbar-right">
-                <div class="search-box"><i class="fa-solid fa-magnifying-glass" style="color: #9ca3af;"></i><input type="text" placeholder="Search..."></div>
-                <a href="notifications.html" class="top-icon"><i class="fa-regular fa-bell"></i></a>
-                <div style="width: 32px; height: 32px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">MK</div>
-            </div>
-        </header>
-        <section class="content-padding">
-            <div class="page-header">
-        <div><h1>Profile</h1><p>Update logged-in user's personal profile.</p></div>
-        
-    </div><div class="card-box" style="max-width:760px;"><div class="form-group"><label>Full name</label><input value="Demo User"></div><div class="form-group"><label>Email</label><input value="demo@mangastudio.com"></div><button class="btn-publish" data-toast="Profile updated">Update Profile</button></div>
+          </div>
+
+          <div class="profile-meta-grid">
+            <div><span>User ID</span><strong id="profile-user-id">—</strong></div>
+            <div><span>Username</span><strong id="profile-username">—</strong></div>
+            <div><span>Role</span><strong id="profile-role-text">—</strong></div>
+            <div><span>Last loaded</span><strong id="profile-loaded-at">—</strong></div>
+          </div>
         </section>
-    </main>
-    <script src="api.js"></script>
-    <script src="script.js"></script>
-    <script src="script-workspace.js"></script>
+
+        <section class="card-box profile-edit-card">
+          <h2>Account Information</h2>
+          <p class="muted-note">Updates are sent to the profile endpoint when available, with local fallback for frontend-only testing.</p>
+
+          <form id="profile-form" class="profile-form">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="profile-full-name">Full name</label>
+                <input id="profile-full-name" class="form-control" type="text" autocomplete="name" placeholder="Full name">
+              </div>
+              <div class="form-group">
+                <label for="profile-email">Email</label>
+                <input id="profile-email" class="form-control" type="email" autocomplete="email" placeholder="email@example.com">
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="profile-username-input">Username</label>
+                <input id="profile-username-input" class="form-control" type="text" autocomplete="username" placeholder="username">
+              </div>
+              <div class="form-group">
+                <label for="profile-phone">Phone</label>
+                <input id="profile-phone" class="form-control" type="text" placeholder="Optional phone number">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="profile-bio">Bio / Notes</label>
+              <textarea id="profile-bio" class="form-control" rows="4" placeholder="Optional profile notes..."></textarea>
+            </div>
+
+            <div class="profile-action-row">
+              <button id="profile-save" class="btn-publish" type="submit"><i class="fa-solid fa-floppy-disk"></i> Update Profile</button>
+              <button id="profile-reset" class="btn-outline" type="button">Reset</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card-box profile-role-card">
+          <h2 id="profile-role-card-title">Role Workspace</h2>
+          <p id="profile-role-card-text">Workspace shortcuts for your current role.</p>
+          <div id="profile-shortcuts" class="profile-shortcuts"></div>
+        </section>
+
+        <section class="card-box profile-security-card">
+          <h2>Session & Security</h2>
+          <div class="profile-session-list">
+            <div><span>JWT token</span><strong id="profile-token-state">—</strong></div>
+            <div><span>Login source</span><strong id="profile-login-source">Password / OAuth</strong></div>
+            <div><span>Local account cache</span><strong id="profile-cache-state">Ready</strong></div>
+          </div>
+          <button id="profile-clear-cache" class="btn-outline danger-action" type="button"><i class="fa-solid fa-trash"></i> Clear Local Profile Cache</button>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="script.js"></script>
+  <script src="assets/js/profile.js"></script>
 </body>
 </html>
