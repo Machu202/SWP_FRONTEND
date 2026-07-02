@@ -58,6 +58,10 @@
         if (location.hash !== "#kanban") history.replaceState(null, "", "#kanban");
         return renderKanban();
       }
+      if (panelName === "schedule") {
+        if (location.hash !== "#schedule") history.replaceState(null, "", "#schedule");
+        return renderSchedule();
+      }
 
       if (location.hash) history.replaceState(null, "", location.pathname);
       return showDashboard();
@@ -74,6 +78,7 @@
     if (location.hash === "#chapters") showPanel("chapters");
     else if (location.hash === "#canvas") showPanel("canvas");
     else if (location.hash === "#kanban") showPanel("kanban");
+    else if (location.hash === "#schedule") showPanel("schedule");
     else renderDashboardSeries();
 
     function loading(message = "Loading...") {
@@ -113,12 +118,70 @@
       return Array.from(merged.values());
     }
 
+    function normalizeIdentity(value = "") {
+      return String(value || "").trim().toLowerCase();
+    }
+
+    function currentMangakaIdentity() {
+      let cached = {};
+      try {
+        cached = JSON.parse(localStorage.getItem("profileCache") || "{}");
+      } catch (_) {
+        cached = {};
+      }
+
+      return {
+        id: normalizeIdentity(localStorage.getItem("userId") || localStorage.getItem("id") || cached.id || cached.userId),
+        username: normalizeIdentity(localStorage.getItem("username") || localStorage.getItem("userName") || cached.username || cached.userName),
+        email: normalizeIdentity(localStorage.getItem("email") || localStorage.getItem("userEmail") || cached.email),
+        fullName: normalizeIdentity(localStorage.getItem("fullName") || localStorage.getItem("name") || cached.fullName || cached.name)
+      };
+    }
+
+    function seriesOwnerTokens(series = {}) {
+      const mangaka = series.mangaka || series.author || series.creator || series.owner || series.user || series.createdBy || {};
+      return {
+        id: normalizeIdentity(
+          series.mangakaId || series.authorId || series.creatorId || series.ownerId || series.userId || series.createdById ||
+          mangaka.id || mangaka.userId || mangaka.accountId
+        ),
+        username: normalizeIdentity(
+          series.mangakaUsername || series.authorUsername || series.creatorUsername || series.ownerUsername || series.username ||
+          mangaka.username || mangaka.userName || mangaka.login
+        ),
+        email: normalizeIdentity(
+          series.mangakaEmail || series.authorEmail || series.creatorEmail || series.ownerEmail || series.email ||
+          mangaka.email || mangaka.mail
+        ),
+        fullName: normalizeIdentity(
+          series.mangakaName || series.authorName || series.creatorName || series.ownerName || series.fullName ||
+          mangaka.fullName || mangaka.name || mangaka.displayName
+        )
+      };
+    }
+
+    function isSeriesOwnedByCurrentMangaka(series = {}) {
+      if (series.__fromMySeries === true) return true;
+
+      const identity = currentMangakaIdentity();
+      const owner = seriesOwnerTokens(series);
+
+      if (identity.id && owner.id && identity.id === owner.id) return true;
+      if (identity.username && owner.username && identity.username === owner.username) return true;
+      if (identity.email && owner.email && identity.email === owner.email) return true;
+      if (identity.fullName && owner.fullName && identity.fullName === owner.fullName) return true;
+
+      // If the series came from /manga-series without owner fields, do not show it on the Mangaka dashboard.
+      // The full catalog remains visible in the Series tab.
+      return false;
+    }
+
     async function loadMangakaSeriesList() {
       let mySeries = [];
       let allSeries = [];
 
       try {
-        mySeries = getArray(await Api.mySeries());
+        mySeries = getArray(await Api.mySeries()).map((series) => ({ ...series, __fromMySeries: true }));
       } catch (error) {
         console.warn("Could not load /manga-series/my-series", error);
         mySeries = [];
@@ -131,10 +194,10 @@
         allSeries = [];
       }
 
-      // Important: always merge both endpoints.
-      // /my-series can return only the newly created Mangaka-owned series,
-      // while /manga-series can return older/imported visible series.
-      return mergeSeriesLists(allSeries, mySeries);
+      // Mangaka dashboard and work panels must only show the logged-in Mangaka's own series.
+      // The full catalog/all series list stays available only in the separate Series tab.
+      const ownedFromAll = allSeries.filter(isSeriesOwnedByCurrentMangaka);
+      return mergeSeriesLists(ownedFromAll, mySeries).map(({ __fromMySeries, ...series }) => series);
     }
 
     function cleanSeriesDescription(raw = "") {
@@ -179,17 +242,88 @@
       ) || "Chưa có mô tả chi tiết...";
     }
 
+    function firstUsableUrl(value) {
+      if (!value) return "";
+
+      if (typeof value === "string") {
+        const text = value.trim();
+        if (!text) return "";
+
+        // Try JSON strings such as {"url":"..."} or {"coverImageUrl":"..."}.
+        if ((text.startsWith("{") && text.endsWith("}")) || (text.startsWith("[") && text.endsWith("]"))) {
+          try {
+            return firstUsableUrl(JSON.parse(text));
+          } catch (_) {
+            return text;
+          }
+        }
+
+        return text;
+      }
+
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          const url = firstUsableUrl(item);
+          if (url) return url;
+        }
+        return "";
+      }
+
+      if (typeof value === "object") {
+        return firstUsableUrl(
+          value.coverImageUrl || value.coverUrl || value.imageUrl || value.thumbnailUrl ||
+          value.url || value.fileUrl || value.resourceUrl || value.secureUrl || value.downloadUrl ||
+          value.path || value.data || value.file || value.image || ""
+        );
+      }
+
+      return "";
+    }
+
+    function resolveSeriesCoverUrl(raw) {
+      const value = firstUsableUrl(raw);
+      if (!value) return "";
+      if (/^(data:|blob:|https?:\/\/)/i.test(value)) return value;
+
+      // Frontend bundled/static assets should resolve relative to the current page.
+      if (/^(\.\.?\/|assets\/|public\/|images\/|img\/|cover\.png)/i.test(value)) {
+        try { return new URL(value, window.location.href).href; } catch (_) { return value; }
+      }
+
+      return Api.resolveMediaUrl?.(value) || value;
+    }
+
     function seriesCoverOf(series) {
       const meta = seriesMetaOf(series);
-      const raw = series?.coverImageUrl ||
-        series?.coverUrl ||
-        series?.imageUrl ||
-        series?.thumbnailUrl ||
-        series?.cover ||
-        meta.coverImageUrl ||
-        meta.coverUrl ||
-        "";
-      return Api.resolveMediaUrl?.(raw) || raw;
+      const candidates = [
+        series?.coverImageUrl,
+        series?.coverUrl,
+        series?.imageUrl,
+        series?.thumbnailUrl,
+        series?.cover,
+        series?.coverImage,
+        series?.image,
+        series?.thumbnail,
+        series?.primaryArt,
+        series?.poster,
+        series?.resource,
+        series?.resources,
+        meta.coverImageUrl,
+        meta.coverUrl,
+        meta.imageUrl,
+        meta.thumbnailUrl,
+        meta.cover,
+        meta.coverImage,
+        meta.image,
+        meta.thumbnail
+      ];
+
+      for (const candidate of candidates) {
+        const resolved = resolveSeriesCoverUrl(candidate);
+        if (resolved) return resolved;
+      }
+
+      return "";
     }
 
     function seriesPlaceholder(title = "") {
@@ -241,7 +375,7 @@
           container.innerHTML = `
             <div class="empty-state-box" style="grid-column: 1 / -1;">
               <i class="fa-solid fa-book-open"></i>
-              <p>Không có series nào đang hoạt động. Vui lòng tạo mới!</p>
+              <p>No series created by this Mangaka yet. Create a new series or open the Series tab to view all series.</p>
             </div>`;
           return;
         }
@@ -738,6 +872,436 @@
 
       Promise.all([loadSeries(), loadAssistants()]);
     }
+
+
+    function scheduleToast(message, type = "info") {
+      if (window.showToast) window.showToast(message, type);
+      else console.log(`[${type}] ${message}`);
+    }
+
+    function scheduleSeriesId(series = {}) {
+      return series.id ?? series.seriesId ?? series.mangaSeriesId ?? "";
+    }
+
+    function scheduleSeriesTitle(series = {}) {
+      return series.title || series.name || series.seriesTitle || `Series #${scheduleSeriesId(series)}`;
+    }
+
+    function asScheduleArray(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.content)) return payload.content;
+      if (Array.isArray(payload?.data)) return payload.data;
+      if (Array.isArray(payload?.data?.content)) return payload.data.content;
+      if (Array.isArray(payload?.items)) return payload.items;
+      return [];
+    }
+
+    function activeScheduleSeriesId(scheduleState) {
+      return $("#dash-schedule-series")?.value ||
+        Api.getActiveSeriesId?.() ||
+        localStorage.getItem("activeSeriesId") ||
+        scheduleSeriesId(scheduleState.series[0]) ||
+        "";
+    }
+
+    function localScheduleKey(seriesId) {
+      return `mangakaScheduleLocal:${seriesId}`;
+    }
+
+    function getLocalSchedules(seriesId) {
+      try { return JSON.parse(localStorage.getItem(localScheduleKey(seriesId)) || "[]"); }
+      catch (_) { return []; }
+    }
+
+    function saveLocalSchedules(seriesId, list) {
+      localStorage.setItem(localScheduleKey(seriesId), JSON.stringify(list || []));
+    }
+
+    function addLocalSchedule(seriesId, item) {
+      const saved = { id: `local-schedule-${Date.now()}`, source: "LOCAL_SCHEDULE", seriesId, ...item };
+      saveLocalSchedules(seriesId, [saved, ...getLocalSchedules(seriesId)]);
+      return saved;
+    }
+
+    function removeLocalSchedule(seriesId, id) {
+      saveLocalSchedules(seriesId, getLocalSchedules(seriesId).filter(item => String(item.id) !== String(id)));
+    }
+
+    function localDeadlineKey(seriesId) {
+      return `mangakaDeadlineLocal:${seriesId}`;
+    }
+
+    function getLocalDeadlines(seriesId) {
+      try { return JSON.parse(localStorage.getItem(localDeadlineKey(seriesId)) || "[]"); }
+      catch (_) { return []; }
+    }
+
+    function saveLocalDeadlines(seriesId, list) {
+      localStorage.setItem(localDeadlineKey(seriesId), JSON.stringify(list || []));
+    }
+
+    function addLocalDeadline(seriesId, item) {
+      const saved = { id: `local-deadline-${Date.now()}`, source: "LOCAL_DEADLINE", seriesId, ...item };
+      saveLocalDeadlines(seriesId, [saved, ...getLocalDeadlines(seriesId)]);
+      return saved;
+    }
+
+    function removeLocalDeadline(seriesId, id) {
+      saveLocalDeadlines(seriesId, getLocalDeadlines(seriesId).filter(item => String(item.id) !== String(id)));
+    }
+
+    function fmtScheduleDate(value) {
+      if (!value) return "—";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
+      return date.toLocaleString();
+    }
+
+    function scheduleDaysUntil(value) {
+      if (!value) return null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const target = new Date(value);
+      if (Number.isNaN(target.getTime())) return null;
+      target.setHours(0, 0, 0, 0);
+      return Math.round((target - today) / 86400000);
+    }
+
+    function deadlineRisk(deadline) {
+      const explicit = deadline.warningLevel || deadline.risk || deadline.status;
+      if (explicit) return explicit;
+      const days = scheduleDaysUntil(deadline.deadlineDate || deadline.deadlineDateStr || deadline.date);
+      if (days === null) return "Normal";
+      if (days < 0) return "Overdue";
+      if (days <= 2) return "High";
+      if (days <= 7) return "Medium";
+      return "Normal";
+    }
+
+    function scheduleBadge(value = "") {
+      const text = String(value || "—");
+      const normalized = text.toUpperCase();
+      let klass = "neutral";
+      if (/OVERDUE|HIGH|DANGER|LATE/.test(normalized)) klass = "danger";
+      else if (/MEDIUM|WARNING|SOON/.test(normalized)) klass = "warning";
+      else if (/LOW|NORMAL|OPEN|WEEKLY|ACTIVE/.test(normalized)) klass = "success";
+      return `<span class="schedule-badge ${klass}">${esc(text)}</span>`;
+    }
+
+    async function loadScheduleSeries(scheduleState) {
+      scheduleState.series = await loadMangakaSeriesList();
+      const selected = Api.getActiveSeriesId?.() || localStorage.getItem("activeSeriesId") || "";
+      if (scheduleState.series.length && !scheduleState.series.some((series) => String(scheduleSeriesId(series)) === String(selected))) {
+        Api.setActiveSeriesId?.(scheduleSeriesId(scheduleState.series[0]));
+      }
+    }
+
+    async function loadDashboardSchedules(scheduleState) {
+      const seriesId = activeScheduleSeriesId(scheduleState);
+      let schedules = [];
+      if (!seriesId) {
+        scheduleState.schedules = [];
+        return;
+      }
+
+      try {
+        schedules = asScheduleArray(await Api.schedules?.(seriesId));
+      } catch (error) {
+        console.warn("Could not load backend schedules.", error.message);
+      }
+
+      scheduleState.schedules = [...schedules, ...getLocalSchedules(seriesId)];
+    }
+
+    async function loadDashboardDeadlines(scheduleState) {
+      const seriesId = activeScheduleSeriesId(scheduleState);
+      let deadlines = [];
+      if (!seriesId) {
+        scheduleState.deadlines = [];
+        return;
+      }
+
+      try {
+        deadlines = asScheduleArray(await Api.deadlines?.(seriesId));
+      } catch (error) {
+        console.warn("Could not load backend deadlines.", error.message);
+      }
+
+      scheduleState.deadlines = [...deadlines, ...getLocalDeadlines(seriesId)];
+    }
+
+    function filterScheduleRows(rows, scheduleState) {
+      const needle = String(scheduleState.search || "").trim().toLowerCase();
+      if (!needle) return rows;
+      return rows.filter(row => JSON.stringify(row).toLowerCase().includes(needle));
+    }
+
+    function renderScheduleSeriesPicker(scheduleState) {
+      const select = $("#dash-schedule-series");
+      if (!select) return;
+
+      if (!scheduleState.series.length) {
+        select.innerHTML = `<option value="">No owned series found</option>`;
+        select.disabled = true;
+        return;
+      }
+
+      const selected = activeScheduleSeriesId(scheduleState);
+      select.disabled = false;
+      select.innerHTML = scheduleState.series.map((series) => {
+        const id = scheduleSeriesId(series);
+        return `<option value="${esc(id)}" ${String(id) === String(selected) ? "selected" : ""}>#${esc(id)} — ${esc(scheduleSeriesTitle(series))}</option>`;
+      }).join("");
+    }
+
+    function renderScheduleCalendarTable(scheduleState) {
+      const body = $("#dash-calendar-table-body");
+      const count = $("#dash-calendar-count");
+      if (!body) return;
+
+      const seriesId = activeScheduleSeriesId(scheduleState);
+      const series = scheduleState.series.find(s => String(scheduleSeriesId(s)) === String(seriesId)) || scheduleState.series[0] || {};
+      const rows = filterScheduleRows(scheduleState.schedules, scheduleState);
+      if (count) count.textContent = String(rows.length);
+
+      if (!seriesId) {
+        body.innerHTML = `<tr><td colspan="4">Create a series first.</td></tr>`;
+        return;
+      }
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="4">No schedule for selected series.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = rows.map((item) => {
+        const id = item.id ?? item.scheduleId;
+        const isLocal = String(id).startsWith("local-schedule") || item.source === "LOCAL_SCHEDULE";
+        return `<tr>
+          <td>${esc(fmtScheduleDate(item.publishDate || item.date || item.scheduledDate))}</td>
+          <td>${esc(item.frequency || item.repeatType || "—")}</td>
+          <td>${esc(scheduleSeriesTitle(series))}</td>
+          <td><button class="btn-outline dash-delete-schedule" data-id="${esc(id)}" data-local="${isLocal}">Delete</button></td>
+        </tr>`;
+      }).join("");
+
+      $$(".dash-delete-schedule").forEach((button) => {
+        button.addEventListener("click", async () => {
+          if (!confirm("Delete this schedule?")) return;
+          const activeId = activeScheduleSeriesId(scheduleState);
+          try {
+            if (button.dataset.local === "true") removeLocalSchedule(activeId, button.dataset.id);
+            else await Api.deleteSchedule?.(button.dataset.id);
+            scheduleToast("Schedule deleted.", "success");
+          } catch (error) {
+            scheduleToast(error.message, "error");
+          }
+          await refreshDashboardSchedule(scheduleState);
+        });
+      });
+    }
+
+    function renderScheduleDeadlineTable(scheduleState) {
+      const body = $("#dash-deadline-table-body");
+      const count = $("#dash-deadline-count");
+      if (!body) return;
+
+      const rows = filterScheduleRows(scheduleState.deadlines, scheduleState);
+      if (count) count.textContent = String(rows.length);
+
+      if (!activeScheduleSeriesId(scheduleState)) {
+        body.innerHTML = `<tr><td colspan="4">Create a series first.</td></tr>`;
+        return;
+      }
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="4">No deadlines for selected series.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = rows.map((item) => {
+        const id = item.id ?? item.eventId;
+        const isLocal = String(id).startsWith("local-deadline") || item.source === "LOCAL_DEADLINE";
+        return `<tr>
+          <td>${esc(item.eventName || item.title || "Untitled deadline")}</td>
+          <td>${esc(fmtScheduleDate(item.deadlineDate || item.deadlineDateStr || item.date))}</td>
+          <td>${scheduleBadge(deadlineRisk(item))}</td>
+          <td><button class="btn-outline dash-delete-deadline" data-id="${esc(id)}" data-local="${isLocal}">Delete</button></td>
+        </tr>`;
+      }).join("");
+
+      $$(".dash-delete-deadline").forEach((button) => {
+        button.addEventListener("click", async () => {
+          if (!confirm("Delete this deadline?")) return;
+          const activeId = activeScheduleSeriesId(scheduleState);
+          try {
+            if (button.dataset.local === "true") removeLocalDeadline(activeId, button.dataset.id);
+            else await Api.deleteDeadline?.(button.dataset.id);
+            scheduleToast("Deadline deleted.", "success");
+          } catch (error) {
+            scheduleToast(error.message, "error");
+          }
+          await refreshDashboardSchedule(scheduleState);
+        });
+      });
+    }
+
+    function renderDashboardScheduleTables(scheduleState) {
+      renderScheduleSeriesPicker(scheduleState);
+      renderScheduleCalendarTable(scheduleState);
+      renderScheduleDeadlineTable(scheduleState);
+    }
+
+    async function refreshDashboardSchedule(scheduleState) {
+      const calendarBody = $("#dash-calendar-table-body");
+      const deadlineBody = $("#dash-deadline-table-body");
+      if (calendarBody) calendarBody.innerHTML = `<tr><td colspan="4">Loading schedules...</td></tr>`;
+      if (deadlineBody) deadlineBody.innerHTML = `<tr><td colspan="4">Loading deadlines...</td></tr>`;
+      await Promise.all([loadDashboardSchedules(scheduleState), loadDashboardDeadlines(scheduleState)]);
+      renderDashboardScheduleTables(scheduleState);
+    }
+
+    function setDashboardScheduleTab(tab) {
+      $$(".dashboard-schedule-tab").forEach(button => button.classList.toggle("active", button.dataset.tab === tab));
+      $$(".dashboard-schedule-panel").forEach(panel => panel.classList.toggle("active", panel.id === `dash-${tab}-panel`));
+    }
+
+    async function createDashboardSchedule(scheduleState) {
+      const seriesId = activeScheduleSeriesId(scheduleState);
+      const publishDate = $("#dash-schedule-date")?.value || "";
+      const frequency = $("#dash-schedule-frequency")?.value.trim() || "Weekly";
+      if (!seriesId) return scheduleToast("Select a series first.", "error");
+      if (!publishDate) return scheduleToast("Choose a publish date.", "error");
+
+      try {
+        await Api.createSchedule?.({ seriesId: Number(seriesId), publishDate, frequency });
+        scheduleToast("Schedule saved.", "success");
+      } catch (error) {
+        console.warn("Backend schedule create failed; saving local schedule.", error.message);
+        addLocalSchedule(seriesId, { publishDate, frequency, status: "OPEN" });
+        scheduleToast("Backend rejected schedule, so it was saved locally for this browser.", "info");
+      }
+
+      $("#dash-schedule-date").value = "";
+      $("#dash-schedule-frequency").value = "Weekly";
+      await refreshDashboardSchedule(scheduleState);
+    }
+
+    async function createDashboardDeadline(scheduleState) {
+      const seriesId = activeScheduleSeriesId(scheduleState);
+      const eventName = $("#dash-deadline-name")?.value.trim() || "";
+      const deadlineDate = $("#dash-deadline-date")?.value || "";
+      if (!seriesId) return scheduleToast("Select a series first.", "error");
+      if (!eventName) return scheduleToast("Enter an event name.", "error");
+      if (!deadlineDate) return scheduleToast("Choose a deadline date.", "error");
+
+      try {
+        await Api.createDeadline?.(seriesId, eventName, deadlineDate);
+        scheduleToast("Deadline saved.", "success");
+      } catch (error) {
+        console.warn("Backend deadline create failed; saving local deadline.", error.message);
+        addLocalDeadline(seriesId, { eventName, deadlineDateStr: deadlineDate, status: "OPEN" });
+        scheduleToast("Backend rejected deadline, so it was saved locally for this browser.", "info");
+      }
+
+      $("#dash-deadline-name").value = "";
+      $("#dash-deadline-date").value = "";
+      await refreshDashboardSchedule(scheduleState);
+    }
+
+    async function renderSchedule() {
+      const scheduleState = {
+        series: [],
+        schedules: [],
+        deadlines: [],
+        search: ""
+      };
+
+      inlinePanel.innerHTML = `
+        ${panelHeader("Mangaka Schedule", "Manage publishing schedules and deadline warnings inside the Mangaka dashboard.", `<button id="dash-schedule-refresh" class="btn-publish"><i class="fa-solid fa-rotate"></i> Refresh</button>`)}
+        <div class="dashboard-schedule-shell">
+          <div class="dashboard-schedule-tabs">
+            <button type="button" class="dashboard-schedule-tab active" data-tab="calendar"><i class="fa-solid fa-calendar-days"></i> Publishing Calendar</button>
+            <button type="button" class="dashboard-schedule-tab" data-tab="deadlines"><i class="fa-solid fa-triangle-exclamation"></i> Deadline Monitor</button>
+          </div>
+
+          <div class="toolbar-row dashboard-schedule-toolbar">
+            <select id="dash-schedule-series" class="form-control"></select>
+            <input id="dash-schedule-search" class="form-control" type="search" placeholder="Search schedules or deadlines...">
+          </div>
+
+          <div id="dash-calendar-panel" class="dashboard-schedule-panel active">
+            <div class="inline-feature-grid two-cols dashboard-schedule-grid">
+              <div class="card-box">
+                <div class="section-title-row">
+                  <h3>Publishing Calendar</h3>
+                  <span id="dash-calendar-count" class="schedule-count">0 schedules</span>
+                </div>
+                <p class="muted-note">Track and create publishing schedules by selected owned series.</p>
+                <table class="data-table dashboard-schedule-table">
+                  <thead><tr><th>Publish Date</th><th>Frequency</th><th>Series</th><th>Action</th></tr></thead>
+                  <tbody id="dash-calendar-table-body"><tr><td colspan="4">Loading schedules...</td></tr></tbody>
+                </table>
+              </div>
+
+              <div class="card-box">
+                <h3>Add Schedule</h3>
+                <div class="feature-form">
+                  <div class="form-group"><label>Publish Date</label><input id="dash-schedule-date" class="form-control" type="datetime-local"></div>
+                  <div class="form-group"><label>Frequency</label><input id="dash-schedule-frequency" class="form-control" value="Weekly" placeholder="Weekly"></div>
+                  <button id="dash-create-schedule" class="btn-publish" type="button">Save Schedule</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="dash-deadlines-panel" class="dashboard-schedule-panel">
+            <div class="inline-feature-grid two-cols dashboard-schedule-grid">
+              <div class="card-box">
+                <div class="section-title-row">
+                  <h3>Deadline Monitor</h3>
+                  <span id="dash-deadline-count" class="schedule-count">0 deadlines</span>
+                </div>
+                <p class="muted-note">Create and monitor color-coded deadline warnings for the selected owned series.</p>
+                <table class="data-table dashboard-schedule-table">
+                  <thead><tr><th>Task/Event</th><th>Deadline</th><th>Risk</th><th>Action</th></tr></thead>
+                  <tbody id="dash-deadline-table-body"><tr><td colspan="4">Loading deadlines...</td></tr></tbody>
+                </table>
+              </div>
+
+              <div class="card-box">
+                <h3>Add Deadline</h3>
+                <div class="feature-form">
+                  <div class="form-group"><label>Event Name</label><input id="dash-deadline-name" class="form-control" placeholder="Chapter review due"></div>
+                  <div class="form-group"><label>Deadline Date</label><input id="dash-deadline-date" class="form-control" type="datetime-local"></div>
+                  <button id="dash-create-deadline" class="btn-publish" type="button">Create Deadline</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      $$(".dashboard-schedule-tab").forEach(button => button.addEventListener("click", () => setDashboardScheduleTab(button.dataset.tab)));
+      $("#dash-schedule-series")?.addEventListener("change", async (event) => {
+        Api.setActiveSeriesId?.(event.target.value);
+        await refreshDashboardSchedule(scheduleState);
+      });
+      $("#dash-schedule-search")?.addEventListener("input", (event) => {
+        scheduleState.search = event.target.value || "";
+        renderDashboardScheduleTables(scheduleState);
+      });
+      $("#dash-schedule-refresh")?.addEventListener("click", async () => {
+        await loadScheduleSeries(scheduleState);
+        await refreshDashboardSchedule(scheduleState);
+        scheduleToast("Schedule refreshed.", "success");
+      });
+      $("#dash-create-schedule")?.addEventListener("click", () => createDashboardSchedule(scheduleState));
+      $("#dash-create-deadline")?.addEventListener("click", () => createDashboardDeadline(scheduleState));
+
+      await loadScheduleSeries(scheduleState);
+      await refreshDashboardSchedule(scheduleState);
+    }
+
 
     async function renderKanban() {
       inlinePanel.innerHTML = `

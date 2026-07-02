@@ -1,216 +1,463 @@
-(function () {
-  document.addEventListener("DOMContentLoaded", () => {
-    const Api = window.MangaApi;
-    const $ = (selector) => document.querySelector(selector);
-    const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+(() => {
+  const Api = window.MangaApi || {};
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+  const esc = (value = "") => String(value ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
+  const toast = (message, type = "info") => window.showToast ? window.showToast(message, type) : alert(message);
 
-    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[ch]));
+  const state = {
+    series: [],
+    schedules: [],
+    deadlines: [],
+    activeTab: "calendar",
+    search: ""
+  };
 
-    const getArray = (value) => Array.isArray(value) ? value : (value?.content || value?.data || value?.items || []);
-    const role = localStorage.getItem("role") || localStorage.getItem("userRole") || "User";
-    const normalizedRole = String(role || "").toLowerCase();
-    const canEditSchedule = normalizedRole.includes("mangaka") || normalizedRole.includes("role_mangaka");
+  function asArray(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.content)) return payload.content;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.data?.content)) return payload.data.content;
+    if (Array.isArray(payload?.items)) return payload.items;
+    return [];
+  }
 
-    function applySchedulePermissions() {
-      const editorPanel = $("#schedule-editor-panel");
-      const permissionNote = $("#schedule-permission-note");
+  function currentUserId() {
+    return String(localStorage.getItem("userId") || localStorage.getItem("id") || "");
+  }
 
-      if (editorPanel) {
-        editorPanel.hidden = !canEditSchedule;
-        editorPanel.classList.toggle("schedule-readonly-hidden", !canEditSchedule);
-      }
+  function normalizeRole(role = localStorage.getItem("role") || localStorage.getItem("userRole") || "") {
+    return String(role || "").toUpperCase().replace(/^ROLE_/, "").replace(/[\s-]+/g, "_");
+  }
 
-      if (permissionNote) {
-        permissionNote.hidden = canEditSchedule;
-        permissionNote.innerHTML = `
-          <i class="fa-solid fa-lock"></i>
-          <strong>View-only schedule.</strong>
-          The current backend lets Mangaka create/edit/delete publishing schedules. ${esc(role)} can view deadlines but edit controls are disabled.
-        `;
-      }
-    }
+  function canEdit() {
+    return normalizeRole().includes("MANGAKA");
+  }
 
-    function normalizeDate(item) {
-      return item.deadlineDate || item.deadlineDateStr || item.date || item.dueDate || item.scheduledDate || "";
-    }
+  function seriesIdOf(series = {}) {
+    return series.id ?? series.seriesId ?? series.mangaSeriesId ?? "";
+  }
 
-    function normalizeStatus(item) {
-      return String(item.status || item.state || "OPEN").toUpperCase();
-    }
+  function seriesTitleOf(series = {}) {
+    return series.title || series.name || series.seriesTitle || `Series #${seriesIdOf(series)}`;
+  }
 
-    function daysUntil(dateStr) {
-      if (!dateStr) return null;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const target = new Date(dateStr);
-      target.setHours(0, 0, 0, 0);
-      return Math.round((target - today) / 86400000);
-    }
+  function belongsToCurrentMangaka(series = {}) {
+    const uid = currentUserId();
+    if (!uid) return true;
+    return [
+      series.mangakaId,
+      series.ownerId,
+      series.createdById,
+      series.authorId,
+      series.userId,
+      series.mangaka?.id,
+      series.owner?.id,
+      series.createdBy?.id
+    ].some(value => value !== undefined && value !== null && String(value) === uid);
+  }
 
-    function dateBadge(dateStr) {
-      const days = daysUntil(dateStr);
-      if (days === null || Number.isNaN(days)) return `<span class="schedule-badge neutral">No date</span>`;
-      if (days < 0) return `<span class="schedule-badge danger">Overdue ${Math.abs(days)}d</span>`;
-      if (days === 0) return `<span class="schedule-badge warning">Today</span>`;
-      if (days <= 3) return `<span class="schedule-badge warning">${days}d left</span>`;
-      return `<span class="schedule-badge success">${days}d left</span>`;
-    }
-
-    async function loadBackendDeadlines() {
-      if (!Api?.allSeries || !Api?.deadlines) return [];
-      let seriesList = [];
+  async function loadOwnedSeries() {
+    let list = [];
+    try {
+      list = asArray(await Api.mySeries?.());
+    } catch (mySeriesError) {
+      console.warn("/manga-series/my-series unavailable, falling back to filtered /manga-series.", mySeriesError.message);
       try {
-        seriesList = getArray(await Api.allSeries());
-      } catch (_) {
-        return [];
-      }
-
-      const deadlineGroups = await Promise.all(seriesList.slice(0, 25).map(async (series) => {
-        const seriesId = series.id ?? series.seriesId;
-        if (!seriesId) return [];
-        try {
-          const deadlines = getArray(await Api.deadlines(seriesId));
-          return deadlines.map((item) => ({
-            id: `backend-${item.id ?? item.eventId ?? seriesId}-${item.eventName || item.title || item.deadlineDateStr || ""}`,
-            backendId: item.id ?? item.eventId,
-            source: "BACKEND_DEADLINE",
-            title: item.eventName || item.title || "Series deadline",
-            description: item.description || "",
-            seriesId,
-            seriesTitle: series.title || series.name || `Series #${seriesId}`,
-            date: item.deadlineDateStr || item.deadlineDate || item.date,
-            deadlineDate: item.deadlineDateStr || item.deadlineDate || item.date,
-            status: item.status || "OPEN"
-          }));
-        } catch (_) {
-          return [];
-        }
-      }));
-
-      return deadlineGroups.flat();
-    }
-
-    function mergeItems(...lists) {
-      const map = new Map();
-      lists.flat().filter(Boolean).forEach((item) => {
-        const key = String(item.id || `${item.source}-${item.title}-${normalizeDate(item)}`);
-        map.set(key, { ...(map.get(key) || {}), ...item });
-      });
-      return Array.from(map.values()).sort((a, b) => String(normalizeDate(a)).localeCompare(String(normalizeDate(b))));
-    }
-
-    function renderItems(items) {
-      const list = $("#schedule-list");
-      const count = $("#schedule-count");
-      const statusFilter = $("#schedule-status-filter")?.value || "ALL";
-      const search = ($("#schedule-search")?.value || "").trim().toLowerCase();
-
-      let visible = items;
-      if (statusFilter !== "ALL") visible = visible.filter((item) => normalizeStatus(item) === statusFilter);
-      if (search) {
-        visible = visible.filter((item) => [
-          item.title, item.description, item.seriesTitle, item.chapterTitle, item.assistantName, item.type
-        ].join(" ").toLowerCase().includes(search));
-      }
-
-      if (count) count.textContent = String(visible.length);
-
-      if (!visible.length) {
-        list.innerHTML = `<div class="empty-state-box">No schedule items found.</div>`;
-        return;
-      }
-
-      list.innerHTML = visible.map((item) => {
-        const date = normalizeDate(item);
-        const local = String(item.id || "").startsWith("local-") || item.source === "MANGAKA_CANVAS" || item.source === "MANUAL";
-        return `
-          <article class="schedule-item ${normalizeStatus(item) === "DONE" ? "done" : ""}">
-            <div class="schedule-item-main">
-              <div class="schedule-item-title-row">
-                <h3>${esc(item.title || item.eventName || "Untitled deadline")}</h3>
-                ${dateBadge(date)}
-              </div>
-              <p>${esc(item.description || "No description.")}</p>
-              <div class="schedule-meta">
-                ${item.seriesTitle ? `<span><i class="fa-solid fa-book"></i> ${esc(item.seriesTitle)}</span>` : ""}
-                ${item.chapterTitle ? `<span><i class="fa-solid fa-layer-group"></i> ${esc(item.chapterTitle)}</span>` : ""}
-                ${item.assistantName ? `<span><i class="fa-solid fa-user"></i> ${esc(item.assistantName)}</span>` : ""}
-                <span><i class="fa-solid fa-calendar-day"></i> ${esc(date || "No date")}</span>
-                <span>${esc(item.source || item.type || "Schedule")}</span>
-              </div>
-            </div>
-            <div class="schedule-actions">
-              ${canEditSchedule ? `<button type="button" class="btn-outline mini-btn" data-toggle-done="${esc(item.id)}">${normalizeStatus(item) === "DONE" ? "Reopen" : "Mark Done"}</button>` : `<span class="schedule-badge neutral">View only</span>`}
-              ${canEditSchedule && local ? `<button type="button" class="btn-outline mini-btn danger" data-delete-item="${esc(item.id)}">Delete</button>` : ""}
-            </div>
-          </article>`;
-      }).join("");
-
-      if (canEditSchedule) {
-        $$("[data-toggle-done]").forEach((button) => {
-          button.addEventListener("click", () => {
-            const current = items.find((item) => String(item.id) === String(button.dataset.toggleDone));
-            if (!current || !Api?.updateScheduleItem) return;
-            Api.updateScheduleItem(current.id, { status: normalizeStatus(current) === "DONE" ? "OPEN" : "DONE" });
-            loadAndRender();
-          });
-        });
-
-        $$("[data-delete-item]").forEach((button) => {
-          button.addEventListener("click", () => {
-            if (!confirm("Delete this local schedule item?")) return;
-            Api?.deleteScheduleItem?.(button.dataset.deleteItem);
-            loadAndRender();
-          });
-        });
+        list = asArray(await Api.allSeries?.());
+        list = list.filter(belongsToCurrentMangaka);
+      } catch (allSeriesError) {
+        console.warn("Could not load series.", allSeriesError.message);
+        list = [];
       }
     }
 
-    async function loadAndRender() {
-      const list = $("#schedule-list");
-      list.innerHTML = `<div class="api-loading">Loading schedule...</div>`;
-
-      const localItems = Api?.getScheduleItems?.() || [];
-      const backendItems = await loadBackendDeadlines();
-      const items = mergeItems(backendItems, localItems);
-      window.__studioScheduleItems = items;
-      renderItems(items);
-    }
-
-    $("#schedule-status-filter")?.addEventListener("change", () => renderItems(window.__studioScheduleItems || []));
-    $("#schedule-search")?.addEventListener("input", () => renderItems(window.__studioScheduleItems || []));
-    $("#schedule-refresh")?.addEventListener("click", loadAndRender);
-
-    $("#manual-schedule-form")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      if (!canEditSchedule) {
-        alert("Only Mangaka can create or edit publishing schedules in the current backend flow.");
-        return;
-      }
-
-      const title = $("#manual-title").value.trim();
-      const date = $("#manual-date").value;
-      if (!title || !date) return alert("Enter title and date.");
-
-      Api?.addScheduleItem?.({
-        source: "MANGAKA_MANUAL",
-        type: "PUBLISHING_SCHEDULE",
-        title,
-        description: $("#manual-description").value.trim(),
-        deadlineDate: date,
-        date,
-        status: "OPEN",
-        createdByRole: role
-      });
-
-      event.target.reset();
-      loadAndRender();
+    const map = new Map();
+    list.forEach(series => {
+      const id = seriesIdOf(series);
+      if (id) map.set(String(id), { ...(map.get(String(id)) || {}), ...series });
     });
+    state.series = Array.from(map.values());
 
-    $("#schedule-role-label").textContent = role;
-    applySchedulePermissions();
-    loadAndRender();
+    const activeId = Api.getActiveSeriesId?.() || localStorage.getItem("activeSeriesId") || "";
+    if (state.series.length && !state.series.some(series => String(seriesIdOf(series)) === String(activeId))) {
+      Api.setActiveSeriesId?.(seriesIdOf(state.series[0]));
+    }
+
+    renderSeriesPicker();
+  }
+
+  function activeSeriesId() {
+    return Api.getActiveSeriesId?.() || localStorage.getItem("activeSeriesId") || seriesIdOf(state.series[0]) || "";
+  }
+
+  function activeSeries() {
+    const id = activeSeriesId();
+    return state.series.find(series => String(seriesIdOf(series)) === String(id)) || state.series[0] || null;
+  }
+
+  function renderSeriesPicker() {
+    const select = $("#series-select");
+    if (!select) return;
+
+    if (!state.series.length) {
+      select.innerHTML = `<option value="">No owned series found</option>`;
+      select.disabled = true;
+      return;
+    }
+
+    select.disabled = false;
+    const selected = activeSeriesId();
+    select.innerHTML = state.series.map(series => {
+      const id = seriesIdOf(series);
+      return `<option value="${esc(id)}" ${String(id) === String(selected) ? "selected" : ""}>#${esc(id)} — ${esc(seriesTitleOf(series))}</option>`;
+    }).join("");
+  }
+
+  function fmtDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
+    return date.toLocaleString();
+  }
+
+  function daysUntil(value) {
+    if (!value) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(value);
+    if (Number.isNaN(target.getTime())) return null;
+    target.setHours(0, 0, 0, 0);
+    return Math.round((target - today) / 86400000);
+  }
+
+  function riskForDeadline(deadline) {
+    const explicit = deadline.warningLevel || deadline.risk || deadline.status;
+    if (explicit) return explicit;
+    const days = daysUntil(deadline.deadlineDate || deadline.deadlineDateStr || deadline.date);
+    if (days === null) return "Normal";
+    if (days < 0) return "Overdue";
+    if (days <= 2) return "High";
+    if (days <= 7) return "Medium";
+    return "Normal";
+  }
+
+  function badge(value = "") {
+    const text = String(value || "—");
+    const normalized = text.toUpperCase();
+    let klass = "neutral";
+    if (/OVERDUE|HIGH|DANGER|LATE/.test(normalized)) klass = "danger";
+    else if (/MEDIUM|WARNING|SOON/.test(normalized)) klass = "warning";
+    else if (/LOW|NORMAL|OPEN|WEEKLY|ACTIVE/.test(normalized)) klass = "success";
+    return `<span class="schedule-badge ${klass}">${esc(text)}</span>`;
+  }
+
+  function showMessage(message, type = "info") {
+    const box = $("#schedule-message");
+    if (!box) return;
+    box.hidden = !message;
+    box.textContent = message || "";
+    box.dataset.type = type;
+  }
+
+  function localScheduleKey(seriesId) {
+    return `mangakaScheduleLocal:${seriesId}`;
+  }
+
+  function getLocalSchedules(seriesId) {
+    try {
+      return JSON.parse(localStorage.getItem(localScheduleKey(seriesId)) || "[]");
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveLocalSchedules(seriesId, list) {
+    localStorage.setItem(localScheduleKey(seriesId), JSON.stringify(list || []));
+  }
+
+  function addLocalSchedule(seriesId, item) {
+    const list = getLocalSchedules(seriesId);
+    const saved = { id: `local-schedule-${Date.now()}`, source: "LOCAL_SCHEDULE", seriesId, ...item };
+    saveLocalSchedules(seriesId, [saved, ...list]);
+    return saved;
+  }
+
+  function deleteLocalSchedule(seriesId, id) {
+    saveLocalSchedules(seriesId, getLocalSchedules(seriesId).filter(item => String(item.id) !== String(id)));
+  }
+
+  function localDeadlineKey(seriesId) {
+    return `mangakaDeadlineLocal:${seriesId}`;
+  }
+
+  function getLocalDeadlines(seriesId) {
+    try {
+      return JSON.parse(localStorage.getItem(localDeadlineKey(seriesId)) || "[]");
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveLocalDeadlines(seriesId, list) {
+    localStorage.setItem(localDeadlineKey(seriesId), JSON.stringify(list || []));
+  }
+
+  function addLocalDeadline(seriesId, item) {
+    const list = getLocalDeadlines(seriesId);
+    const saved = { id: `local-deadline-${Date.now()}`, source: "LOCAL_DEADLINE", seriesId, ...item };
+    saveLocalDeadlines(seriesId, [saved, ...list]);
+    return saved;
+  }
+
+  function deleteLocalDeadline(seriesId, id) {
+    saveLocalDeadlines(seriesId, getLocalDeadlines(seriesId).filter(item => String(item.id) !== String(id)));
+  }
+
+  async function loadSchedules() {
+    const seriesId = activeSeriesId();
+    if (!seriesId) {
+      state.schedules = [];
+      return;
+    }
+
+    let backend = [];
+    try {
+      backend = asArray(await Api.schedules?.(seriesId));
+    } catch (error) {
+      console.warn("Backend schedules unavailable; using local schedules only.", error.message);
+    }
+
+    const local = getLocalSchedules(seriesId);
+    const map = new Map();
+    [...backend, ...local].forEach(item => {
+      const id = item.id ?? item.scheduleId ?? `${item.publishDate}-${item.frequency}`;
+      map.set(String(id), { ...(map.get(String(id)) || {}), ...item, id });
+    });
+    state.schedules = Array.from(map.values()).sort((a, b) => String(a.publishDate || a.date || "").localeCompare(String(b.publishDate || b.date || "")));
+  }
+
+  async function loadDeadlines() {
+    const seriesId = activeSeriesId();
+    if (!seriesId) {
+      state.deadlines = [];
+      return;
+    }
+
+    let backend = [];
+    try {
+      backend = asArray(await Api.deadlines?.(seriesId));
+    } catch (error) {
+      console.warn("Backend deadlines unavailable; using local deadlines only.", error.message);
+    }
+
+    const local = getLocalDeadlines(seriesId);
+    const map = new Map();
+    [...backend, ...local].forEach(item => {
+      const id = item.id ?? item.eventId ?? `${item.eventName || item.title}-${item.deadlineDate || item.deadlineDateStr}`;
+      map.set(String(id), { ...(map.get(String(id)) || {}), ...item, id });
+    });
+    state.deadlines = Array.from(map.values()).sort((a, b) => String(a.deadlineDate || a.deadlineDateStr || "").localeCompare(String(b.deadlineDate || b.deadlineDateStr || "")));
+  }
+
+  function matchesSearch(item) {
+    const search = state.search.trim().toLowerCase();
+    if (!search) return true;
+    return [item.title, item.eventName, item.frequency, item.description, seriesTitleOf(activeSeries()), item.publishDate, item.deadlineDate, item.warningLevel]
+      .join(" ")
+      .toLowerCase()
+      .includes(search);
+  }
+
+  function renderCalendar() {
+    const body = $("#calendar-table-body");
+    const count = $("#calendar-count");
+    if (!body) return;
+
+    const series = activeSeries();
+    const rows = state.schedules.filter(matchesSearch);
+    if (count) count.textContent = String(rows.length);
+
+    if (!activeSeriesId()) {
+      body.innerHTML = `<tr><td colspan="4">Create a series first.</td></tr>`;
+      return;
+    }
+
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="4">No schedule for selected series.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(item => {
+      const id = item.id ?? item.scheduleId;
+      const isLocal = String(id).startsWith("local-schedule") || item.source === "LOCAL_SCHEDULE";
+      return `<tr>
+        <td>${esc(fmtDate(item.publishDate || item.date || item.scheduledDate))}</td>
+        <td>${esc(item.frequency || item.repeatType || "—")}</td>
+        <td>${esc(seriesTitleOf(series))}</td>
+        <td>${canEdit() ? `<button class="btn-outline delete-schedule" data-id="${esc(id)}" data-local="${isLocal}">Delete</button>` : `<span class="schedule-badge neutral">View only</span>`}</td>
+      </tr>`;
+    }).join("");
+
+    $$(".delete-schedule").forEach(button => button.addEventListener("click", async () => {
+      if (!canEdit()) return;
+      if (!confirm("Delete this schedule?")) return;
+      const seriesId = activeSeriesId();
+      try {
+        if (button.dataset.local === "true") deleteLocalSchedule(seriesId, button.dataset.id);
+        else await Api.deleteSchedule?.(button.dataset.id);
+        toast("Schedule deleted.", "success");
+      } catch (error) {
+        toast(error.message, "error");
+      }
+      await loadAndRender();
+    }));
+  }
+
+  function renderDeadlines() {
+    const body = $("#deadline-table-body");
+    const count = $("#deadline-count");
+    if (!body) return;
+
+    const rows = state.deadlines.filter(matchesSearch);
+    if (count) count.textContent = String(rows.length);
+
+    if (!activeSeriesId()) {
+      body.innerHTML = `<tr><td colspan="4">Create a series first.</td></tr>`;
+      return;
+    }
+
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="4">No deadlines for selected series.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(item => {
+      const id = item.id ?? item.eventId;
+      const isLocal = String(id).startsWith("local-deadline") || item.source === "LOCAL_DEADLINE";
+      return `<tr>
+        <td>${esc(item.eventName || item.title || "Untitled deadline")}</td>
+        <td>${esc(fmtDate(item.deadlineDate || item.deadlineDateStr || item.date))}</td>
+        <td>${badge(riskForDeadline(item))}</td>
+        <td>${canEdit() ? `<button class="btn-outline delete-deadline" data-id="${esc(id)}" data-local="${isLocal}">Delete</button>` : `<span class="schedule-badge neutral">View only</span>`}</td>
+      </tr>`;
+    }).join("");
+
+    $$(".delete-deadline").forEach(button => button.addEventListener("click", async () => {
+      if (!canEdit()) return;
+      if (!confirm("Delete this deadline?")) return;
+      const seriesId = activeSeriesId();
+      try {
+        if (button.dataset.local === "true") deleteLocalDeadline(seriesId, button.dataset.id);
+        else await Api.deleteDeadline?.(button.dataset.id);
+        toast("Deadline deleted.", "success");
+      } catch (error) {
+        toast(error.message, "error");
+      }
+      await loadAndRender();
+    }));
+  }
+
+  function renderAll() {
+    renderSeriesPicker();
+    renderCalendar();
+    renderDeadlines();
+  }
+
+  async function loadAndRender() {
+    const calendarBody = $("#calendar-table-body");
+    const deadlineBody = $("#deadline-table-body");
+    if (calendarBody) calendarBody.innerHTML = `<tr><td colspan="4">Loading schedules...</td></tr>`;
+    if (deadlineBody) deadlineBody.innerHTML = `<tr><td colspan="4">Loading deadlines...</td></tr>`;
+
+    await Promise.all([loadSchedules(), loadDeadlines()]);
+    renderAll();
+  }
+
+  function setActiveTab(tab) {
+    state.activeTab = tab;
+    $$(".schedule-tab").forEach(button => button.classList.toggle("active", button.dataset.tab === tab));
+    $$(".schedule-panel").forEach(panel => panel.classList.toggle("active", panel.id === `${tab}-panel`));
+  }
+
+  async function createSchedule() {
+    if (!canEdit()) return showMessage("Only Mangaka can create publishing schedules for owned series.", "warning");
+    const seriesId = activeSeriesId();
+    const publishDate = $("#schedule-date")?.value || "";
+    const frequency = $("#schedule-frequency")?.value.trim() || "Weekly";
+    if (!seriesId) return toast("Select a series first.", "error");
+    if (!publishDate) return toast("Choose a publish date.", "error");
+
+    try {
+      await Api.createSchedule?.({ seriesId: Number(seriesId), publishDate, frequency });
+      toast("Schedule saved.", "success");
+    } catch (error) {
+      console.warn("Backend schedule create failed; saving local schedule.", error.message);
+      addLocalSchedule(seriesId, { publishDate, frequency, status: "OPEN" });
+      toast("Backend rejected schedule, so it was saved locally for this browser.", "info");
+    }
+
+    $("#schedule-date").value = "";
+    $("#schedule-frequency").value = "Weekly";
+    await loadAndRender();
+  }
+
+  async function createDeadline() {
+    if (!canEdit()) return showMessage("Only Mangaka can create deadline warnings for owned series.", "warning");
+    const seriesId = activeSeriesId();
+    const eventName = $("#deadline-name")?.value.trim() || "";
+    const deadlineDate = $("#deadline-date")?.value || "";
+    if (!seriesId) return toast("Select a series first.", "error");
+    if (!eventName || !deadlineDate) return toast("Enter event name and deadline date.", "error");
+
+    try {
+      await Api.createDeadline?.(seriesId, eventName, deadlineDate);
+      toast("Deadline created.", "success");
+    } catch (error) {
+      console.warn("Backend deadline create failed; saving local deadline.", error.message);
+      addLocalDeadline(seriesId, { eventName, deadlineDate, status: "OPEN" });
+      toast("Backend rejected deadline, so it was saved locally for this browser.", "info");
+    }
+
+    $("#deadline-name").value = "";
+    $("#deadline-date").value = "";
+    await loadAndRender();
+  }
+
+  function applyAvatar() {
+    const fullName = localStorage.getItem("fullName") || localStorage.getItem("name") || localStorage.getItem("username") || "MK";
+    const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase() || "MK";
+    ["#schedule-avatar", "#schedule-top-avatar"].forEach(selector => {
+      const node = $(selector);
+      if (node) node.textContent = initials;
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    applyAvatar();
+
+    if (!canEdit()) {
+      showMessage("This Mangaka schedule page is editable only for Mangaka accounts. You can view data, but edit controls may fail if the backend blocks your role.", "warning");
+    }
+
+    $$(".schedule-tab").forEach(button => button.addEventListener("click", () => setActiveTab(button.dataset.tab)));
+    $("#series-select")?.addEventListener("change", async (event) => {
+      Api.setActiveSeriesId?.(event.target.value);
+      await loadAndRender();
+    });
+    $("#global-schedule-search")?.addEventListener("input", event => {
+      state.search = event.target.value || "";
+      renderAll();
+    });
+    $("#schedule-refresh")?.addEventListener("click", async () => {
+      await loadOwnedSeries();
+      await loadAndRender();
+      toast("Schedule refreshed.", "success");
+    });
+    $("#create-schedule")?.addEventListener("click", createSchedule);
+    $("#create-deadline")?.addEventListener("click", createDeadline);
+
+    await loadOwnedSeries();
+    await loadAndRender();
   });
 })();

@@ -49,6 +49,7 @@
         ["Dashboard", "pages/assistant/assistant-dashboard.html", "fa-table-cells-large"],
         ["Assignments", "pages/assistant/assistant-assignments.html", "fa-clipboard-list"],
         ["Kanban Board", "pages/assistant/assistant-dashboard.html#kanban", "fa-table-columns"],
+        ["Schedule", "pages/assistant/assistant-dashboard.html#schedule", "fa-calendar-days"],
         ["Resource Library", "pages/assistant/resource-library.html", "fa-box-archive"]
       ],
       footer: [
@@ -99,6 +100,7 @@
       nav: [
         ["Dashboard", "board-dashboard.html", "fa-border-all"],
         ["Review Queue", "board-submissions.html", "fa-folder-open"],
+        ["Schedule", "board-dashboard.html#schedule", "fa-calendar-days"],
         ["Voting", "board-voting.html", "fa-scale-balanced"],
         ["Decision History", "board-result.html", "fa-clock-rotate-left"]
       ],

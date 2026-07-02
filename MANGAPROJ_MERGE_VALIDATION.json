@@ -1,0 +1,44 @@
+{
+  "frontend_source": "/mnt/data/SWP_FRONTEND(9).zip",
+  "backend_source": "/mnt/data/SWP_BACKEND(4).zip",
+  "rar_frontend_source": "/mnt/data/rar_extracted/MANGAPROJ/SWP_FRONTEND-BranchTest6",
+  "rar_backend_source": "/mnt/data/rar_extracted/MANGAPROJ/SWP_BACKEND",
+  "frontend_whitelist_files_copied_count": 60,
+  "protected_admin_tantou_board_files_changed": [],
+  "frontend_js_files_checked": 25,
+  "frontend_js_failures": [],
+  "backend_patched_files": [
+    "pom.xml",
+    "src/main/java/com/mangastudio/backend/entity/Page.java",
+    "src/main/java/com/mangastudio/backend/repository/PageVersionRepository.java",
+    "src/main/java/com/mangastudio/backend/service/PageService.java",
+    "src/main/java/com/mangastudio/backend/service/impl/PageServiceImpl.java",
+    "src/main/resources/application.yml"
+  ],
+  "backend_important_files_present": [
+    [
+      "pom.xml",
+      true
+    ],
+    [
+      "src/main/resources/application.yml",
+      true
+    ],
+    [
+      "src/main/java/com/mangastudio/backend/dto/response/TaskResponse.java",
+      true
+    ],
+    [
+      "src/main/java/com/mangastudio/backend/controller/TaskController.java",
+      true
+    ],
+    [
+      "src/main/java/com/mangastudio/backend/controller/WorkspaceController.java",
+      true
+    ],
+    [
+      "src/main/java/com/mangastudio/backend/service/impl/PageServiceImpl.java",
+      true
+    ]
+  ]
+}

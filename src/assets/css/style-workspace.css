@@ -4998,3 +4998,593 @@ textarea.form-control {
 .ws-logo.unified-avatar img {
   border-radius: inherit;
 }
+
+
+/* ========================================= */
+/* --- MANGAKA OWNED DASHBOARD + COVER FIX --- */
+/* ========================================= */
+.series-cover-box {
+  position: relative;
+  overflow: hidden;
+}
+
+.series-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.series-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+  background: #eef2ff;
+  color: #0f172a;
+}
+
+.series-cover-placeholder span {
+  display: inline-grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto;
+  border-radius: 16px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.series-cover-placeholder small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA SCHEDULE ADMIN-PORT VIEW --- */
+/* ========================================= */
+.mangaka-schedule-screen .content-padding,
+.mangaka-schedule-content {
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+.mangaka-schedule-topbar .topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+
+.mangaka-schedule-topbar .topbar-left a.active {
+  color: #111827;
+  font-weight: 900;
+}
+
+.schedule-page-header {
+  margin-bottom: 16px;
+}
+
+.schedule-admin-port-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 5px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.schedule-tab {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #475569;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.schedule-tab.active {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+.mangaka-owned-series-toolbar {
+  margin-bottom: 18px;
+}
+
+.mangaka-owned-series-toolbar select {
+  max-width: 520px;
+}
+
+.schedule-panel {
+  display: none;
+}
+
+.schedule-panel.active {
+  display: block;
+}
+
+.schedule-section-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.schedule-section-title h2 {
+  margin: 0 0 4px;
+}
+
+.schedule-section-title p {
+  margin: 0;
+  color: #64748b;
+}
+
+.schedule-form-card h2 {
+  margin-top: 0;
+}
+
+.mangaka-schedule-screen .data-table td {
+  vertical-align: middle;
+}
+
+.mangaka-schedule-screen .schedule-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.mangaka-schedule-screen .schedule-badge.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.mangaka-schedule-screen .schedule-badge.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.mangaka-schedule-screen .schedule-badge.danger {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.mangaka-schedule-screen .schedule-badge.neutral {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.mangaka-schedule-screen .profile-avatar-bubble {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+@media (max-width: 1050px) {
+  .schedule-section-title,
+  .mangaka-owned-series-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .schedule-admin-port-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================================= */
+/* --- MANGAKA DASHBOARD INLINE SCHEDULE --- */
+/* ========================================= */
+.mangaka-clean-topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.plain-user-avatar {
+  width: 34px;
+  height: 34px;
+  background: #e0e7ff;
+  border: 2px solid #c7d2fe;
+  border-radius: 50%;
+  color: #4f46e5;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  cursor: default;
+  user-select: none;
+}
+
+.dashboard-schedule-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.dashboard-schedule-tabs {
+  display: inline-flex;
+  gap: 8px;
+  width: fit-content;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.dashboard-schedule-tab {
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 900;
+  color: #475569;
+  cursor: pointer;
+}
+
+.dashboard-schedule-tab.active {
+  background: #000;
+  color: #fff;
+}
+
+.dashboard-schedule-toolbar {
+  align-items: center;
+}
+
+.dashboard-schedule-toolbar select {
+  max-width: 420px;
+}
+
+.dashboard-schedule-panel {
+  display: none;
+}
+
+.dashboard-schedule-panel.active {
+  display: block;
+}
+
+.dashboard-schedule-grid {
+  align-items: start;
+}
+
+.schedule-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: #e5e7eb;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dashboard-schedule-table th,
+.dashboard-schedule-table td {
+  white-space: nowrap;
+}
+
+.schedule-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  background: #e5e7eb;
+  color: #334155;
+}
+
+.schedule-badge.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.schedule-badge.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.schedule-badge.danger {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.schedule-badge.neutral {
+  background: #e5e7eb;
+  color: #475569;
+}
+
+@media (max-width: 1000px) {
+  .dashboard-schedule-tabs {
+    display: grid;
+    width: 100%;
+  }
+
+  .dashboard-schedule-toolbar select {
+    max-width: none;
+  }
+
+  .dashboard-schedule-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+
+/* ========================================= */
+/* --- READ-ONLY SCHEDULE FOR NON-MANGAKA --- */
+/* ========================================= */
+.role-readonly-schedule-shell,
+#assistant-schedule-root {
+  display: grid;
+  gap: 16px;
+}
+
+.readonly-schedule-note {
+  margin-bottom: 12px;
+}
+
+.readonly-schedule-tabs {
+  display: inline-flex;
+  width: fit-content;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 12px;
+}
+
+.readonly-schedule-tab {
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 900;
+  color: #475569;
+  cursor: pointer;
+}
+
+.readonly-schedule-tab.active {
+  background: #000;
+  color: #fff;
+}
+
+.readonly-schedule-panel {
+  display: none;
+}
+
+.readonly-schedule-panel.active {
+  display: block;
+}
+
+.readonly-schedule-panel .card-box {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .readonly-schedule-tabs {
+    display: grid;
+    width: 100%;
+  }
+}
+
+
+/* ========================================= */
+/* --- SCHEDULE TAB EVERYWHERE FIX --- */
+/* ========================================= */
+.nav-item[href*="#schedule"] i {
+  width: 18px;
+}
+
+
+/* ========================================= */
+/* --- ASSISTANT SCHEDULE EVERYWHERE FIX --- */
+/* ========================================= */
+.nav-item[href*="assistant-dashboard.html#schedule"] i,
+.nav-item[data-assistant-panel="schedule"] i {
+  width: 18px;
+}
+
+#assistant-schedule-root {
+  display: grid;
+  gap: 14px;
+}
+
+
+/* ========================================= */
+/* --- EDITORIAL BOARD SCHEDULE EVERYWHERE FIX --- */
+/* ========================================= */
+.board-nav .nav-item[href*="#schedule"] i {
+  width: 18px;
+}
+
+
+/* ========================================= */
+/* --- TANTOU KANBAN ROUTE/PREVIEW FIX --- */
+/* ========================================= */
+.tantou-kanban-preview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.tantou-kanban-preview-column {
+  background: #fff;
+  border: 1px solid #d8dee9;
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.tantou-kanban-preview-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.tantou-kanban-preview-title span {
+  background: #e5e7eb;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.tantou-kanban-preview-list {
+  display: grid;
+  gap: 8px;
+  min-height: 76px;
+}
+
+.tantou-kanban-preview-card {
+  border-left: 4px solid #4f46e5;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .06);
+}
+
+.tantou-kanban-preview-card strong,
+.backend-task-card strong {
+  overflow-wrap: anywhere;
+}
+
+.tantou-kanban-preview-card small,
+.backend-task-card small {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.tantou-dashboard-kanban.backend-kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(210px, 1fr));
+  gap: 16px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tantou-dashboard-kanban .kanban-column {
+  min-width: 210px;
+}
+
+.tantou-approved-series-card {
+  margin-top: 18px;
+}
+
+@media (max-width: 1100px) {
+  .tantou-kanban-preview,
+  .tantou-dashboard-kanban.backend-kanban {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .tantou-kanban-preview,
+  .tantou-dashboard-kanban.backend-kanban {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================================= */
+/* --- MANGAKA AVATAR DROPDOWN FIX --- */
+/* ========================================= */
+.plain-user-avatar {
+  cursor: pointer;
+}
+
+.mangaka-avatar-menu-wrap {
+  position: relative;
+}
+
+.mangaka-avatar-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 44px;
+  width: 230px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, .14);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.mangaka-avatar-dropdown-head {
+  padding: 15px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.mangaka-avatar-dropdown-name {
+  font-weight: 900;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.mangaka-avatar-dropdown-email {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.mangaka-avatar-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  color: #334155;
+  text-decoration: none;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mangaka-avatar-dropdown-link:hover {
+  background: #f8fafc;
+}
+
+.mangaka-avatar-dropdown-link i {
+  width: 16px;
+  color: #64748b;
+}
+
+.mangaka-avatar-dropdown-link.logout {
+  color: #ef4444;
+  border-bottom: 0;
+}
+
+.mangaka-avatar-dropdown-link.logout i {
+  color: #ef4444;
+}

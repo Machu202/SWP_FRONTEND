@@ -144,7 +144,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 coverImageUrl,
                 coverUrl: coverImageUrl,
                 imageUrl: coverImageUrl,
-                thumbnailUrl: coverImageUrl
+                thumbnailUrl: coverImageUrl,
+                coverImage: coverImageUrl,
+                primaryArtUrl: coverImageUrl
             };
 
             savePendingSeriesMeta(title, {
@@ -224,17 +226,74 @@ document.addEventListener("DOMContentLoaded", () => {
         ) || "Chưa có mô tả chi tiết...";
     }
 
+    function firstUsableUrl(value) {
+        if (!value) return "";
+        if (typeof value === "string") {
+            const text = value.trim();
+            if (!text) return "";
+            if ((text.startsWith("{") && text.endsWith("}")) || (text.startsWith("[") && text.endsWith("]"))) {
+                try { return firstUsableUrl(JSON.parse(text)); } catch (_) { return text; }
+            }
+            return text;
+        }
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                const url = firstUsableUrl(item);
+                if (url) return url;
+            }
+            return "";
+        }
+        if (typeof value === "object") {
+            return firstUsableUrl(
+                value.coverImageUrl || value.coverUrl || value.imageUrl || value.thumbnailUrl ||
+                value.url || value.fileUrl || value.resourceUrl || value.secureUrl || value.downloadUrl ||
+                value.path || value.data || value.file || value.image || ""
+            );
+        }
+        return "";
+    }
+
+    function resolveSeriesCoverUrl(raw) {
+        const value = firstUsableUrl(raw);
+        if (!value) return "";
+        if (/^(data:|blob:|https?:\/\/)/i.test(value)) return value;
+        if (/^(\.\.?\/|assets\/|public\/|images\/|img\/|cover\.png)/i.test(value)) {
+            try { return new URL(value, window.location.href).href; } catch (_) { return value; }
+        }
+        return window.MangaApi.resolveMediaUrl?.(value) || value;
+    }
+
     function seriesCoverOf(series) {
         const meta = seriesMetaOf(series);
-        const raw = series.coverImageUrl ||
-            series.coverUrl ||
-            series.imageUrl ||
-            series.thumbnailUrl ||
-            series.cover ||
-            meta.coverImageUrl ||
-            meta.coverUrl ||
-            "";
-        return window.MangaApi.resolveMediaUrl?.(raw) || raw;
+        const candidates = [
+            series.coverImageUrl,
+            series.coverUrl,
+            series.imageUrl,
+            series.thumbnailUrl,
+            series.cover,
+            series.coverImage,
+            series.image,
+            series.thumbnail,
+            series.primaryArt,
+            series.poster,
+            series.resource,
+            series.resources,
+            meta.coverImageUrl,
+            meta.coverUrl,
+            meta.imageUrl,
+            meta.thumbnailUrl,
+            meta.cover,
+            meta.coverImage,
+            meta.image,
+            meta.thumbnail
+        ];
+
+        for (const candidate of candidates) {
+            const resolved = resolveSeriesCoverUrl(candidate);
+            if (resolved) return resolved;
+        }
+
+        return "";
     }
 
     function seriesPlaceholder(title = "") {

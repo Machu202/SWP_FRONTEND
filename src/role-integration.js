@@ -33,6 +33,13 @@
   const badge = (text) => `<span class="status-tag ${statusClass(text)}">${esc(text || "—")}</span>`;
   const toast = (message, type = "info") => window.showToast ? window.showToast(message, type) : alert(message);
 
+  function withApiTimeout(promise, label = "backend request", ms = 8000) {
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), ms))
+    ]);
+  }
+
   function cachedUserProfile() {
     try {
       return JSON.parse(localStorage.getItem("profileCache") || "{}");
@@ -333,15 +340,43 @@
 
   function taskBelongsToApprovedTantouSeries(task = {}) {
     const approvedIds = new Set(state.series.map(series => String(seriesIdOf(series))).filter(Boolean));
-    const taskSeriesId = task.seriesId ?? task.mangaSeriesId ?? task.mangaSeries?.id ?? task.hitbox?.page?.chapter?.mangaSeries?.id ?? task.hitbox?.page?.chapter?.seriesId;
+    const approvedTitles = new Set(state.series.map(series => String(series.title || series.name || "").trim().toLowerCase()).filter(Boolean));
+
+    const taskSeriesId =
+      task.seriesId ??
+      task.mangaSeriesId ??
+      task.series?.id ??
+      task.mangaSeries?.id ??
+      task.chapter?.seriesId ??
+      task.chapter?.mangaSeriesId ??
+      task.page?.chapter?.seriesId ??
+      task.page?.chapter?.mangaSeriesId ??
+      task.page?.chapter?.mangaSeries?.id ??
+      task.hitbox?.page?.chapter?.seriesId ??
+      task.hitbox?.page?.chapter?.mangaSeriesId ??
+      task.hitbox?.page?.chapter?.mangaSeries?.id;
 
     if (taskSeriesId !== undefined && taskSeriesId !== null && taskSeriesId !== "") {
       return approvedIds.has(String(taskSeriesId));
     }
 
-    // If the backend does not return seriesId on task DTOs, at least require the task itself
-    // to be Mangaka-approved/ready instead of TODO/DOING/DRAFT work.
-    return isMangakaApprovedStatus(task.status || task.taskStatus || task.state || task.reviewStatus);
+    const taskSeriesTitle = String(
+      task.seriesTitle ||
+      task.mangaSeriesTitle ||
+      task.series?.title ||
+      task.mangaSeries?.title ||
+      task.chapter?.seriesTitle ||
+      task.page?.chapter?.mangaSeries?.title ||
+      task.hitbox?.page?.chapter?.mangaSeries?.title ||
+      ""
+    ).trim().toLowerCase();
+
+    if (taskSeriesTitle) return approvedTitles.has(taskSeriesTitle);
+
+    // Backend task DTOs sometimes do not expose the series relation.
+    // Do not hide all Tantou Kanban tasks in that case; only exclude clearly non-reviewable work.
+    const status = normalizeTaskStatus(task.status || task.taskStatus || task.state || task.reviewStatus);
+    return !["DRAFT", "CANCELLED", "REJECTED", "ARCHIVED"].includes(status);
   }
 
   function clampPercent(value, min = 0, max = 100) {
@@ -461,6 +496,39 @@
     return Api.normalizeTaskStatus ? Api.normalizeTaskStatus(status) : String(status || "TODO").toUpperCase();
   }
 
+
+  function renderTantouKanbanPreview(tasks = []) {
+    const statuses = ["TODO", "DOING", "REVIEWING", "APPROVED"];
+
+    return `
+      <div class="card-box tantou-dashboard-action-card">
+        <div>
+          <h2>Kanban Tasks</h2>
+          <p class="muted-note">Task workflow preview from Mangaka-approved series.</p>
+        </div>
+        <a class="btn-publish" href="tantou-dashboard.html#kanban"><i class="fa-solid fa-table-columns"></i> Open Kanban Tasks</a>
+      </div>
+
+      <div class="tantou-kanban-preview">
+        ${statuses.map(status => {
+          const items = tasks.filter(task => normalizeTaskStatus(task.status) === status);
+          const label = status === "TODO" ? "Todo" : status === "DOING" ? "Doing" : status === "REVIEWING" ? "Reviewing" : "Approved";
+          return `
+            <div class="tantou-kanban-preview-column">
+              <div class="tantou-kanban-preview-title">${label} <span>${items.length}</span></div>
+              <div class="tantou-kanban-preview-list">
+                ${items.slice(0, 4).map(task => `
+                  <div class="tantou-kanban-preview-card">
+                    <strong>${esc(taskTitleOf(task))}</strong>
+                    <small>${esc(task.assigneeName || task.assistantName || "Unassigned")} · ${esc(normalizeTaskStatus(task.status))}</small>
+                  </div>
+                `).join("") || `<div class="empty-column">No ${esc(label.toLowerCase())} tasks</div>`}
+              </div>
+            </div>`;
+        }).join("")}
+      </div>`;
+  }
+
   function renderTantouKanban(root, tasks = []) {
     const statuses = ["TODO", "DOING", "REVIEWING", "APPROVED"];
 
@@ -533,15 +601,223 @@
     });
   }
 
+
+  function scheduleRisk(deadline = {}) {
+    const explicit = deadline.warningLevel || deadline.risk || deadline.status;
+    if (explicit) return explicit;
+
+    const raw = deadline.deadlineDate || deadline.deadlineDateStr || deadline.date;
+    if (!raw) return "Normal";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(raw);
+    if (Number.isNaN(target.getTime())) return "Normal";
+    target.setHours(0, 0, 0, 0);
+
+    const days = Math.round((target - today) / 86400000);
+    if (days < 0) return "Overdue";
+    if (days <= 2) return "High";
+    if (days <= 7) return "Medium";
+    return "Normal";
+  }
+
+  function renderReadOnlyScheduleTables(schedules = [], deadlines = [], activeSeries = null) {
+    const seriesTitle = activeSeries?.title || activeSeries?.name || "Selected series";
+
+    return `
+      <div class="role-readonly-schedule-shell">
+        <div class="board-filter-note readonly-schedule-note">
+          <i class="fa-solid fa-lock"></i>
+          View-only schedule. Mangaka owns publishing schedule editing; this role can only view calendar and deadlines.
+        </div>
+
+        <div class="readonly-schedule-tabs">
+          <button type="button" class="readonly-schedule-tab active" data-readonly-tab="calendar"><i class="fa-solid fa-calendar-days"></i> Publishing Calendar</button>
+          <button type="button" class="readonly-schedule-tab" data-readonly-tab="deadlines"><i class="fa-solid fa-triangle-exclamation"></i> Deadline Monitor</button>
+        </div>
+
+        <div id="readonly-calendar-panel" class="readonly-schedule-panel active">
+          <div class="card-box">
+            <div class="section-title-row">
+              <h2>Publishing Calendar</h2>
+              <span class="schedule-count">${schedules.length} schedules</span>
+            </div>
+            <p class="muted-note">Read-only publishing schedule for ${esc(seriesTitle)}.</p>
+            <table class="data-table dashboard-schedule-table">
+              <thead><tr><th>Publish Date</th><th>Frequency</th><th>Series</th><th>Permission</th></tr></thead>
+              <tbody>
+                ${schedules.map(sc => `
+                  <tr>
+                    <td>${fmtDate(sc.publishDate || sc.date || sc.scheduledDate)}</td>
+                    <td>${esc(sc.frequency || sc.repeatType || "—")}</td>
+                    <td>${esc(seriesTitle)}</td>
+                    <td><span class="schedule-badge neutral">View only</span></td>
+                  </tr>
+                `).join("") || `<tr><td colspan="4">No schedule for selected series.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="readonly-deadlines-panel" class="readonly-schedule-panel">
+          <div class="card-box">
+            <div class="section-title-row">
+              <h2>Deadline Monitor</h2>
+              <span class="schedule-count">${deadlines.length} deadlines</span>
+            </div>
+            <p class="muted-note">Read-only deadline warnings for ${esc(seriesTitle)}.</p>
+            <table class="data-table dashboard-schedule-table">
+              <thead><tr><th>Task/Event</th><th>Deadline</th><th>Risk</th><th>Permission</th></tr></thead>
+              <tbody>
+                ${deadlines.map(d => `
+                  <tr>
+                    <td>${esc(d.eventName || d.title || "Untitled deadline")}</td>
+                    <td>${fmtDate(d.deadlineDate || d.deadlineDateStr || d.date)}</td>
+                    <td>${badge(scheduleRisk(d))}</td>
+                    <td><span class="schedule-badge neutral">View only</span></td>
+                  </tr>
+                `).join("") || `<tr><td colspan="4">No deadlines for selected series.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function bindReadOnlyScheduleTabs() {
+    $$(".readonly-schedule-tab").forEach(button => {
+      button.addEventListener("click", () => {
+        const tab = button.dataset.readonlyTab;
+        $$(".readonly-schedule-tab").forEach(item => item.classList.toggle("active", item === button));
+        $$(".readonly-schedule-panel").forEach(panel => panel.classList.toggle("active", panel.id === `readonly-${tab}-panel`));
+      });
+    });
+  }
+
+  function markScheduleNavActive() {
+    const current = location.pathname.split("/").pop() + location.hash;
+    $$(".nav-item").forEach(link => {
+      const href = link.getAttribute("href") || "";
+      const isSchedule = href.includes("#schedule") && current.includes("#schedule");
+      if (isSchedule) link.classList.add("active");
+      else if (current.includes("#schedule") && !href.includes("#schedule")) link.classList.remove("active");
+    });
+  }
+
+
+  async function loadScheduleVisibleSeries(options = {}) {
+    const lists = [];
+
+    if (Api.allSeries) {
+      try {
+        const result = Api.unwrapPage
+          ? Api.unwrapPage(await withApiTimeout(Api.allSeries(), "/manga-series"))
+          : await withApiTimeout(Api.allSeries(), "/manga-series");
+        if (Array.isArray(result) && result.length) lists.push(result);
+      } catch (error) {
+        console.warn("Could not load all series for read-only schedule:", error.message);
+      }
+    }
+
+    if (!lists.length && Api.mySeries) {
+      try {
+        const result = Api.unwrapPage
+          ? Api.unwrapPage(await withApiTimeout(Api.mySeries(), "/manga-series/my-series"))
+          : await withApiTimeout(Api.mySeries(), "/manga-series/my-series");
+        if (Array.isArray(result) && result.length) lists.push(result);
+      } catch (error) {
+        console.warn("Could not load my-series for read-only schedule:", error.message);
+      }
+    }
+
+    if (!lists.length && typeof loadTantouApprovedSeries === "function" && isTantouPage()) {
+      try {
+        const result = await loadTantouApprovedSeries();
+        if (Array.isArray(result) && result.length) lists.push(result);
+      } catch (error) {
+        console.warn("Could not load Tantou approved fallback for read-only schedule:", error.message);
+      }
+    }
+
+    state.series = mergeSeriesById(...lists);
+
+    const activeId = Api.getActiveSeriesId();
+    if (state.series.length && !state.series.some(series => String(seriesIdOf(series)) === String(activeId))) {
+      Api.setActiveSeriesId(seriesIdOf(state.series[0]));
+      localStorage.removeItem("activeChapterId");
+      localStorage.removeItem("activePageId");
+    }
+
+    return state.series;
+  }
+
+  async function renderRoleReadOnlySchedule(root, options = {}) {
+    if (!root) return;
+
+    await loadScheduleVisibleSeries(options);
+
+    let seriesId = Api.getActiveSeriesId();
+    if (!state.series.some(s => String(seriesIdOf(s)) === String(seriesId)) && state.series[0]) {
+      seriesId = seriesIdOf(state.series[0]);
+      Api.setActiveSeriesId(seriesId);
+    }
+
+    const activeSeries = state.series.find(s => String(seriesIdOf(s)) === String(seriesId)) || state.series[0] || null;
+
+    if (!activeSeries || !seriesId) {
+      root.innerHTML = `
+        <div class="board-filter-note readonly-schedule-note">
+          <i class="fa-solid fa-lock"></i> Schedule is view-only for this role.
+        </div>
+        <div class="card-box empty-state-box">No series available to display schedules.</div>`;
+      markScheduleNavActive();
+      return;
+    }
+
+    const [schedules, deadlines] = await Promise.all([
+      withApiTimeout(Api.schedules(seriesId), `/schedules/${seriesId}`).catch(() => []),
+      withApiTimeout(Api.deadlines(seriesId), `/deadlines/${seriesId}`).catch(() => [])
+    ]);
+
+    root.innerHTML = `
+      <div class="toolbar-row">
+        ${seriesPicker(seriesId)}
+        <button id="readonly-schedule-refresh" class="btn-outline"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+      ${renderReadOnlyScheduleTables(schedules || [], deadlines || [], activeSeries)}
+    `;
+
+    bindCommonPickers(async () => {
+      const reroot = $("#integration-root");
+      await renderRoleReadOnlySchedule(reroot, options);
+    });
+    $("#readonly-schedule-refresh")?.addEventListener("click", async () => {
+      await renderRoleReadOnlySchedule(root, options);
+      toast("Schedule refreshed.", "success");
+    });
+    bindReadOnlyScheduleTabs();
+    markScheduleNavActive();
+  }
+
+
   async function tantouDashboard() {
     const isKanban = location.hash === "#kanban";
+    const isSchedule = location.hash === "#schedule";
     const root = shell(
-      isKanban ? "Tantou Kanban Tasks" : "Tantou Dashboard",
-      isKanban ? "Manage review tasks directly inside the Tantou dashboard." : "Only Mangaka-approved series/pages are visible to Tantou Editor.",
-      isKanban
+      isSchedule ? "Tantou Schedule" : (isKanban ? "Tantou Kanban Tasks" : "Tantou Dashboard"),
+      isSchedule ? "View Mangaka-owned schedules and deadlines. Tantou Editor cannot edit them." : (isKanban ? "Manage review tasks directly inside the Tantou dashboard." : "Only Mangaka-approved series/pages are visible to Tantou Editor."),
+      isSchedule
         ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>`
-        : `<a class="btn-publish" href="tantou-review.html">Open Chapter Review</a><a class="btn-outline" href="tantou-dashboard.html#kanban" style="margin-left:10px;"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a>`
+        : (isKanban
+          ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>`
+          : `<a class="btn-publish" href="tantou-review.html">Open Chapter Review</a><a class="btn-outline" href="tantou-dashboard.html#kanban" style="margin-left:10px;"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a><a class="btn-outline" href="tantou-dashboard.html#schedule" style="margin-left:10px;"><i class="fa-solid fa-calendar-days"></i> Schedule</a>`)
     );
+
+    if (isSchedule) {
+      await renderRoleReadOnlySchedule(root, { role: "tantou" });
+      return;
+    }
 
     try {
       await hydrateSeriesContext();
@@ -578,16 +854,14 @@
           <div class="stat-card"><div class="stat-value">${ready}</div><div class="stat-label">Ready / Approved</div></div>
         </div>
 
-        <div class="card-box tantou-dashboard-action-card">
-          <div>
-            <h2>Kanban Tasks</h2>
-            <p class="muted-note">Only tasks/pages from Mangaka-approved series are shown.</p>
-          </div>
-          <a class="btn-publish" href="tantou-dashboard.html#kanban"><i class="fa-solid fa-table-columns"></i> Open Kanban Tasks</a>
-        </div>
+        ${renderTantouKanbanPreview(state.tasks)}
 
-        <div class="card-box">
-          ${state.series.map(s => `<div class="list-card"><div class="list-card-content"><h2 class="list-card-title">${esc(s.title)}</h2><p class="list-card-meta">${esc(s.genre || "No genre")} • ${badge(s.status)} • Mangaka: ${esc(s.mangakaName || "—")}</p></div><button class="btn-icon-only set-series" data-id="${s.id}"><i class="fa-solid fa-arrow-right"></i></button></div>`).join("") || `<div class="empty-state-box">No manga series returned by backend.</div>`}
+        <div class="card-box tantou-approved-series-card">
+          <div class="section-title-row">
+            <h2>Approved Series Queue</h2>
+            <span class="schedule-count">${state.series.length} series</span>
+          </div>
+          ${state.series.map(s => `<div class="list-card"><div class="list-card-content"><h2 class="list-card-title">${esc(s.title)}</h2><p class="list-card-meta">${esc(s.genre || "No genre")} • ${badge(s.status)} • Mangaka: ${esc(s.mangakaName || "—")}</p></div><button class="btn-icon-only set-series" data-id="${s.id}" title="Open chapter review"><i class="fa-solid fa-arrow-right"></i></button></div>`).join("") || `<div class="empty-state-box">No manga series returned by backend.</div>`}
         </div>`;
       $$(".set-series").forEach(btn => btn.addEventListener("click", () => { Api.setActiveSeriesId(btn.dataset.id); location.href = "tantou-review.html"; }));
       bindCommonPickers(tantouDashboard);
@@ -1435,7 +1709,16 @@
 
 
   async function boardDashboard() {
-    const root = shell("Board Dashboard", "Editorial Board submission queue and vote status from /votes.", `<a class="btn-publish" href="board-submissions.html">Open Submissions</a>`);
+    const isSchedule = location.hash === "#schedule";
+    const root = shell(
+      isSchedule ? "Board Schedule" : "Board Dashboard",
+      isSchedule ? "View publishing schedules and deadlines. Editorial Board cannot edit them." : "Editorial Board submission queue and vote status from /votes.",
+      isSchedule ? `<a class="btn-outline" href="board-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>` : `<a class="btn-publish" href="board-submissions.html">Open Submissions</a><a class="btn-outline" href="board-dashboard.html#schedule" style="margin-left:10px;"><i class="fa-solid fa-calendar-days"></i> Schedule</a>`
+    );
+    if (isSchedule) {
+      try { await renderRoleReadOnlySchedule(root, { role: "board" }); } catch (err) { errorBox(root, err); }
+      return;
+    }
     try {
       const boardEligible = await loadBoardEligibleSeries();
       const summaries = await Promise.all(boardEligible.map(s => Api.voteSummary(seriesIdOf(s)).catch(() => ({ seriesId: seriesIdOf(s), totalVotes: 0, approvedVotes: 0, rejectedVotes: 0 }))));
@@ -1605,7 +1888,16 @@
   }
 
   async function adminDashboard() {
-    const root = shell("Admin Dashboard", "System users, settings, deadlines, schedule, and final approval metrics from Backend 1/2.");
+    const isSchedule = location.hash === "#schedule";
+    const root = shell(
+      isSchedule ? "Admin Schedule" : "Admin Dashboard",
+      isSchedule ? "View publishing schedules and deadlines. Admin cannot edit Mangaka-owned schedules here." : "System users, settings, deadlines, schedule, and final approval metrics from Backend 1/2.",
+      isSchedule ? `<a class="btn-outline" href="admin-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>` : `<a class="btn-outline" href="admin-dashboard.html#schedule"><i class="fa-solid fa-calendar-days"></i> Schedule</a>`
+    );
+    if (isSchedule) {
+      try { await renderRoleReadOnlySchedule(root, { role: "admin" }); } catch (err) { errorBox(root, err); }
+      return;
+    }
     try {
       const [users, params, series] = await Promise.all([Api.users().catch(() => []), Api.parameters().catch(() => []), Api.allSeries().catch(() => [])]);
       state.users = users; state.params = params; state.series = series;
@@ -1638,28 +1930,20 @@
   }
 
   async function adminCalendar() {
-    const root = shell("Publishing Calendar", "Track and create publishing schedules by selected series.");
+    const root = shell("Publishing Calendar", "View publishing schedules by selected series. Editing is Mangaka-only.");
     try {
-      await loadSeries();
-      const seriesId = Api.getActiveSeriesId();
-      state.schedules = seriesId ? await Api.schedules(seriesId).catch(() => []) : [];
-      root.innerHTML = `<div class="toolbar-row">${seriesPicker()}</div><div class="grid-layout"><div class="card-box"><table class="data-table"><thead><tr><th>Publish Date</th><th>Frequency</th><th>Series</th><th>Action</th></tr></thead><tbody>${state.schedules.map(sc => `<tr><td>${fmtDate(sc.publishDate)}</td><td>${esc(sc.frequency)}</td><td>#${esc(seriesId)}</td><td><button class="btn-outline delete-schedule" data-id="${sc.id}">Delete</button></td></tr>`).join("") || `<tr><td colspan="4">No schedule for selected series.</td></tr>`}</tbody></table></div><div class="card-box"><h2>Add Schedule</h2><div class="form-group"><label>Publish Date</label><input id="schedule-date" class="form-control" type="datetime-local"></div><div class="form-group"><label>Frequency</label><input id="schedule-frequency" class="form-control" value="Weekly"></div><button id="create-schedule" class="btn-publish">Save Schedule</button></div></div>`;
-      bindCommonPickers(adminCalendar);
-      $$(".delete-schedule").forEach(btn => btn.addEventListener("click", async () => { try { await Api.deleteSchedule(btn.dataset.id); toast("Schedule deleted.", "success"); adminCalendar(); } catch (err) { toast(err.message, "error"); } }));
-      $("#create-schedule")?.addEventListener("click", async () => { try { await Api.createSchedule({ seriesId: Number(Api.getActiveSeriesId()), publishDate: $("#schedule-date").value, frequency: $("#schedule-frequency").value }); toast("Schedule saved.", "success"); adminCalendar(); } catch (err) { toast(err.message, "error"); } });
+      await renderRoleReadOnlySchedule(root, { role: "admin" });
     } catch (err) { errorBox(root, err); }
   }
 
   async function adminDeadlines() {
-    const root = shell("Deadline Monitor", "Create and monitor color-coded deadline warnings for a selected series.");
+    const root = shell("Deadline Monitor", "View deadline warnings by selected series. Editing is Mangaka-only.");
     try {
-      await loadSeries();
-      const seriesId = Api.getActiveSeriesId();
-      state.deadlines = seriesId ? await Api.deadlines(seriesId).catch(() => []) : [];
-      root.innerHTML = `<div class="toolbar-row">${seriesPicker()}</div><div class="grid-layout"><div class="card-box"><table class="data-table"><thead><tr><th>Task/Event</th><th>Deadline</th><th>Risk</th><th>Action</th></tr></thead><tbody>${state.deadlines.map(d => `<tr><td>${esc(d.eventName)}</td><td>${fmtDate(d.deadlineDate)}</td><td>${badge(d.warningLevel || "Normal")}</td><td><button class="btn-outline delete-deadline" data-id="${d.id}">Delete</button></td></tr>`).join("") || `<tr><td colspan="4">No deadlines for selected series.</td></tr>`}</tbody></table></div><div class="card-box"><h2>Add Deadline</h2><div class="form-group"><label>Event name</label><input id="deadline-name" class="form-control" placeholder="Chapter review due"></div><div class="form-group"><label>Deadline date</label><input id="deadline-date" class="form-control" type="datetime-local"></div><button id="create-deadline" class="btn-publish">Create Deadline</button></div></div>`;
-      bindCommonPickers(adminDeadlines);
-      $$(".delete-deadline").forEach(btn => btn.addEventListener("click", async () => { try { await Api.deleteDeadline(btn.dataset.id); toast("Deadline deleted.", "success"); adminDeadlines(); } catch (err) { toast(err.message, "error"); } }));
-      $("#create-deadline")?.addEventListener("click", async () => { try { await Api.createDeadline(Api.getActiveSeriesId(), $("#deadline-name").value, $("#deadline-date").value); toast("Deadline created.", "success"); adminDeadlines(); } catch (err) { toast(err.message, "error"); } });
+      await renderRoleReadOnlySchedule(root, { role: "admin" });
+      setTimeout(() => {
+        const deadlineTab = document.querySelector(".readonly-schedule-tab[data-readonly-tab='deadlines']");
+        deadlineTab?.click();
+      }, 0);
     } catch (err) { errorBox(root, err); }
   }
 
@@ -1764,6 +2048,13 @@
     const userId = localStorage.getItem("userId");
     Api.connectNotifications?.(userId, (message) => toast(typeof message === "string" ? message : (message.message || "New notification"), "info"));
     handlers[page]?.();
+
+    // Same-page hash links such as tantou-dashboard.html#kanban and #schedule
+    // do not reload the document, so rerun the current page handler.
+    window.addEventListener("hashchange", () => {
+      handlers[page]?.();
+      setTimeout(syncShellAvatarWithProfile, 0);
+    });
 
     // Some handlers re-render page content. Keep avatar consistent afterwards.
     setTimeout(syncShellAvatarWithProfile, 0);
