@@ -278,6 +278,73 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
+    function readMangakaAnnotationStore() {
+        try {
+            const raw = JSON.parse(localStorage.getItem('mangakaSubmittedAnnotationsForTantou') || '{}');
+            return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+        } catch (_) { return {}; }
+    }
+
+    function writeMangakaAnnotationStore(store) {
+        try { localStorage.setItem('mangakaSubmittedAnnotationsForTantou', JSON.stringify(store || {})); }
+        catch (_) {}
+    }
+
+    function reviewAnnotationKey(context = {}) {
+        return [context.seriesId || '', context.chapterId || '', context.pageId || '', context.taskId || ''].join(':');
+    }
+
+    function collectVisibleReviewAnnotations(task = null, context = {}) {
+        const dots = Array.from(document.querySelectorAll('#assistant-img-wrapper .annotation-dot'));
+        const dotMap = new Map(dots.map(dot => [String(dot.dataset.annotationId || dot.textContent || '').trim(), {
+            annotationId: String(dot.dataset.annotationId || dot.textContent || '').trim(),
+            x: Number.parseFloat(dot.dataset.x || dot.style.left || '0') || 0,
+            y: Number.parseFloat(dot.dataset.y || dot.style.top || '0') || 0
+        }]));
+
+        const chatMessages = Array.from(document.querySelectorAll('#chat-box .chat-msg.mine'));
+        const items = chatMessages.map((msg, index) => {
+            const id = String(msg.dataset.annotationId || '').trim();
+            const dot = id ? dotMap.get(id) : null;
+            const text = msg.querySelector('.chat-bubble')?.textContent?.trim() || '';
+            return {
+                annotationId: id || `note-${index + 1}`,
+                text,
+                x: dot?.x ?? null,
+                y: dot?.y ?? null,
+                width: 8,
+                height: 8,
+                createdAt: new Date().toISOString()
+            };
+        }).filter(item => item.text || (item.x !== null && item.y !== null));
+
+        return {
+            key: reviewAnnotationKey(context),
+            taskId: context.taskId || '',
+            seriesId: context.seriesId || '',
+            chapterId: context.chapterId || '',
+            pageId: context.pageId || '',
+            pageNumber: context.pageNumber || '',
+            referenceUrl: context.referenceUrl || '',
+            submittedUrl: context.submittedUrl || '',
+            taskDescription: task?.description || '',
+            status: 'READY_FOR_TANTOU_RECHECK',
+            submittedAt: new Date().toISOString(),
+            annotations: items
+        };
+    }
+
+    function saveReviewAnnotationsForTantou(task = null, context = {}) {
+        const payload = collectVisibleReviewAnnotations(task, context);
+        if (!payload.annotations.length) return false;
+
+        const store = readMangakaAnnotationStore();
+        const key = payload.key || `${Date.now()}`;
+        store[key] = payload;
+        writeMangakaAnnotationStore(store);
+        return true;
+    }
+
     if (btnApprove) {
         btnApprove.addEventListener('click', () => {
             btnApprove.style.background = '#10b981';
@@ -371,6 +438,9 @@ document.addEventListener("DOMContentLoaded", () => {
             newDot.className = 'annotation-dot';
             newDot.style.left = xPercent.toFixed(2) + '%';
             newDot.style.top = yPercent.toFixed(2) + '%';
+            newDot.dataset.annotationId = String(annotationCounter);
+            newDot.dataset.x = xPercent.toFixed(2);
+            newDot.dataset.y = yPercent.toFixed(2);
             newDot.innerText = annotationCounter;
             assistantImgWrapper.appendChild(newDot);
 
@@ -386,18 +456,20 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!chatInput || !chatInput.value.trim() || !chatBox) return;
         let annotationTagHtml = '';
         let cleanText = chatInput.value;
+        let annotationId = '';
 
         if (cleanText.startsWith('[Annotation')) {
             const closingBracketIndex = cleanText.indexOf(']');
             if (closingBracketIndex !== -1) {
-                const annotationNum = cleanText.substring(12, closingBracketIndex);
+                const annotationNum = cleanText.substring(12, closingBracketIndex).trim();
+                annotationId = annotationNum;
                 annotationTagHtml = `<div class="chat-annotation-ref"><span style="background: #ef4444; color: white; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px;">${annotationNum}</span> Annotation</div>`;
                 cleanText = cleanText.substring(closingBracketIndex + 1).trim();
             }
         }
 
         const msgHtml = `
-            <div class="chat-msg mine" style="margin-top: 10px;">
+            <div class="chat-msg mine" data-annotation-id="${annotationId}" style="margin-top: 10px;">
                 <div class="chat-avatar">SF</div>
                 <div class="chat-msg-body">
                     <div class="chat-name"><span>Sensei</span> <span class="chat-time">Just now</span></div>
@@ -907,6 +979,139 @@ document.addEventListener("DOMContentLoaded", () => {
                 '';
         }
 
+        function feedbackIdOf(f, fallback = '') {
+            return f?.id ?? f?.feedbackId ?? f?.tantouFeedbackId ?? fallback;
+        }
+
+        function userIdOfReview(user = {}) {
+            return user.id ?? user.userId ?? user.user_id ?? user.accountId ?? '';
+        }
+
+        function userNameOfReview(user = {}) {
+            return user.fullName || user.full_name || user.name || user.username || user.email || `User #${userIdOfReview(user)}`;
+        }
+
+        function isAssistantUserForReview(user = {}) {
+            const roleText = String(user.roleName || user.role || user.type || user.role?.roleName || user.role?.name || '').toLowerCase();
+            const roleId = String(user.roleId ?? user.role_id ?? user.role?.id ?? '');
+            return roleId === '2' || roleText.includes('assistant');
+        }
+
+        async function loadAssistantsForTantouTask() {
+            const users = [];
+            try { users.push(...getArr(await window.MangaApi.assistants?.())); } catch (_) {}
+
+            if (!users.length) {
+                try {
+                    users.push(...getArr(await window.MangaApi.users?.()).filter(isAssistantUserForReview));
+                } catch (_) {}
+            }
+
+            const unique = new Map();
+            users.forEach(user => {
+                const id = userIdOfReview(user);
+                if (id) unique.set(String(id), user);
+            });
+            return Array.from(unique.values());
+        }
+
+        function rememberReviewTaskReference(taskId, payload = {}) {
+            if (!taskId) return;
+            try {
+                const map = JSON.parse(localStorage.getItem('taskReferenceMap') || '{}');
+                map[String(taskId)] = {
+                    ...(map[String(taskId)] || {}),
+                    ...payload,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem('taskReferenceMap', JSON.stringify(map));
+            } catch (_) {}
+        }
+
+        function rememberReviewTaskAssistant(taskId, assistantId, assistantName = '') {
+            if (!taskId || !assistantId) return;
+            try {
+                const map = JSON.parse(localStorage.getItem('taskAssistantMap') || '{}');
+                map[String(taskId)] = {
+                    assistantId: String(assistantId),
+                    assistantName: assistantName || `Assistant #${assistantId}`
+                };
+                localStorage.setItem('taskAssistantMap', JSON.stringify(map));
+            } catch (_) {}
+        }
+
+        function taskIdFromCreatedTask(task) {
+            if (!task) return '';
+            if (typeof task === 'number' || typeof task === 'string') return String(task);
+            return task.id ?? task.taskId ?? task.task_id ?? task.data?.id ?? task.data?.taskId ?? '';
+        }
+
+        function hitboxIdFromCreatedHitbox(hitbox) {
+            if (!hitbox) return '';
+            if (typeof hitbox === 'number' || typeof hitbox === 'string') return String(hitbox);
+            return hitbox.id ?? hitbox.hitboxId ?? hitbox.hitbox_id ?? hitbox.data?.id ?? hitbox.data?.hitboxId ?? '';
+        }
+
+        function buildTantouFeedbackTaskDescription(feedback, context = {}) {
+            const id = feedbackIdOf(feedback);
+            const text = String(feedback?.content || 'No feedback text.').trim();
+            const parts = [
+                id ? `Tantou Feedback #${id}` : 'Tantou Feedback',
+                context.seriesTitle ? `Series: ${context.seriesTitle}` : '',
+                context.chapterTitle ? `Chapter: ${context.chapterTitle}` : '',
+                context.pageLabel ? `Page: ${context.pageLabel}` : '',
+                '',
+                text,
+                '',
+                `Marked area: X ${feedbackX(feedback).toFixed(1)}%, Y ${feedbackY(feedback).toFixed(1)}%, W ${feedbackW(feedback).toFixed(1)}%, H ${feedbackH(feedback).toFixed(1)}%`
+            ];
+            return parts.filter((part, index) => part || index === 4 || index === 6).join('\n');
+        }
+
+        async function createAssistantTaskFromTantouFeedback(feedback, context = {}, assistantId = '', assistantName = '') {
+            if (!window.MangaApi?.createHitbox || !window.MangaApi?.assignTaskToHitbox) {
+                throw new Error('Backend task creation endpoints are not available.');
+            }
+
+            const pageId = context.pageId;
+            if (!pageId) throw new Error('No page is selected for this Tantou feedback.');
+
+            const box = {
+                x: feedbackX(feedback),
+                y: feedbackY(feedback),
+                width: feedbackW(feedback),
+                height: feedbackH(feedback)
+            };
+
+            const hitbox = await window.MangaApi.createHitbox(pageId, box);
+            const hitboxId = hitboxIdFromCreatedHitbox(hitbox);
+            if (!hitboxId) throw new Error('Backend created a hitbox but did not return a hitbox id.');
+
+            const description = buildTantouFeedbackTaskDescription(feedback, context);
+            const task = await window.MangaApi.assignTaskToHitbox(hitboxId, description);
+            const taskId = taskIdFromCreatedTask(task);
+
+            if (taskId && assistantId && window.MangaApi.assignTask) {
+                await window.MangaApi.assignTask(taskId, assistantId);
+                rememberReviewTaskAssistant(taskId, assistantId, assistantName);
+            }
+
+            if (taskId) {
+                rememberReviewTaskReference(taskId, {
+                    source: 'TANTOU_FEEDBACK',
+                    feedbackId: feedbackIdOf(feedback),
+                    pageId,
+                    chapterId: context.chapterId || '',
+                    seriesId: context.seriesId || '',
+                    imageUrl: context.imageUrl || '',
+                    pageNumber: context.pageNumber || '',
+                    hitbox: box
+                });
+            }
+
+            return { taskId, hitboxId };
+        }
+
         async function loadMangakaSeriesForFeedback() {
             const lists = [];
 
@@ -1119,6 +1324,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 const imageUrl = pageImageOf(selectedPage, canvas);
+                const assistantsForTask = await loadAssistantsForTantouTask();
+                const assistantOptions = assistantsForTask.map(user => {
+                    const id = userIdOfReview(user);
+                    return `<option value="${escReview(id)}">${escReview(userNameOfReview(user))}</option>`;
+                }).join('');
+                const taskCreateContext = {
+                    seriesId,
+                    chapterId,
+                    pageId,
+                    imageUrl,
+                    seriesTitle: selectedSeries?.title || selectedSeries?.name || '',
+                    chapterTitle: selectedChapter?.title || '',
+                    pageNumber: selectedPage?.pageNumber ?? selectedPage?.number ?? pageId ?? '',
+                    pageLabel: selectedPage?.pageNumber ?? selectedPage?.number ?? pageId ?? ''
+                };
 
                 draftImgContainer.innerHTML = imageUrl
                     ? `<div class="mangaka-tantou-image-wrap">
@@ -1150,8 +1370,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (chatCountBadge) chatCountBadge.textContent = String(feedbacks.length);
 
                 if (chatBox) {
-                    chatBox.innerHTML = feedbacks.length ? feedbacks.map((f, i) => `
-                        <div class="chat-msg mangaka-tantou-feedback-msg" data-feedback-id="${escReview(f.id || i)}">
+                    chatBox.innerHTML = feedbacks.length ? feedbacks.map((f, i) => {
+                        const feedbackId = feedbackIdOf(f, i);
+                        const taskPanel = f.isResolved
+                            ? `<div class="mangaka-feedback-task-panel disabled"><span class="muted-note">Resolved feedback does not need a new Assistant task.</span></div>`
+                            : `<div class="mangaka-feedback-task-panel">
+                                <label>Send this Tantou comment to Assistant</label>
+                                <div class="mangaka-feedback-task-row">
+                                    <select class="mangaka-feedback-assistant-select" data-feedback-index="${i}" ${assistantOptions ? '' : 'disabled'}>
+                                        ${assistantOptions || '<option value="">No Assistant accounts found</option>'}
+                                    </select>
+                                    <button type="button" class="btn-publish create-task-from-tantou-feedback" data-feedback-index="${i}" ${assistantOptions ? '' : 'disabled'}>
+                                        <i class="fa-solid fa-share"></i> Create Assistant Task
+                                    </button>
+                                </div>
+                            </div>`;
+
+                        return `
+                        <div class="chat-msg mangaka-tantou-feedback-msg" data-feedback-id="${escReview(feedbackId)}">
                             <div class="chat-avatar">TE</div>
                             <div class="chat-msg-body">
                                 <div class="chat-name">
@@ -1160,10 +1396,42 @@ document.addEventListener("DOMContentLoaded", () => {
                                 </div>
                                 <div class="chat-bubble">${escReview(f.content || 'No feedback text.')}</div>
                                 <div class="mangaka-feedback-meta">X ${feedbackX(f).toFixed(1)}% · Y ${feedbackY(f).toFixed(1)}% · W ${feedbackW(f).toFixed(1)}% · H ${feedbackH(f).toFixed(1)}%</div>
+                                ${taskPanel}
                             </div>
-                        </div>
-                    `).join('') : `<div class="empty-state-box">No Tantou feedback found for this page. Try a different page from the selectors above.</div>`;
+                        </div>`;
+                    }).join('') : `<div class="empty-state-box">No Tantou feedback found for this page. Try a different page from the selectors above.</div>`;
                 }
+
+                document.querySelectorAll('.create-task-from-tantou-feedback').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        const index = Number(button.dataset.feedbackIndex);
+                        const feedback = feedbacks[index];
+                        const select = document.querySelector(`.mangaka-feedback-assistant-select[data-feedback-index="${index}"]`);
+                        const assistantId = select?.value || '';
+                        const assistantName = select?.selectedOptions?.[0]?.textContent?.trim() || '';
+
+                        if (!feedback) return;
+                        if (!assistantId) {
+                            showToast('Choose an Assistant first.', true);
+                            return;
+                        }
+
+                        const oldText = button.innerHTML;
+                        button.disabled = true;
+                        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+
+                        try {
+                            const result = await createAssistantTaskFromTantouFeedback(feedback, taskCreateContext, assistantId, assistantName);
+                            button.innerHTML = '<i class="fa-solid fa-check"></i> Task Created';
+                            button.classList.add('created');
+                            showToast(`Assistant task created${result.taskId ? ` (#${result.taskId})` : ''}.`);
+                        } catch (error) {
+                            button.disabled = false;
+                            button.innerHTML = oldText;
+                            showToast(error.message || 'Could not create Assistant task.', true);
+                        }
+                    });
+                });
 
                 document.querySelectorAll('.mangaka-tantou-pin').forEach(pin => {
                     pin.addEventListener('click', () => {
@@ -1194,30 +1462,110 @@ document.addEventListener("DOMContentLoaded", () => {
                 : String(task?.status || 'REVIEWING').toUpperCase();
         }
 
+        function firstUsableReviewUrl(value) {
+            if (!value) return '';
+
+            if (typeof value === 'string') {
+                const text = value.trim();
+                if (!text) return '';
+
+                if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+                    try { return firstUsableReviewUrl(JSON.parse(text)); } catch (_) { return text; }
+                }
+
+                return text;
+            }
+
+            if (Array.isArray(value)) {
+                for (const item of value) {
+                    const url = firstUsableReviewUrl(item);
+                    if (url) return url;
+                }
+                return '';
+            }
+
+            if (typeof value === 'object') {
+                return firstUsableReviewUrl(
+                    value.referenceImageUrl ||
+                    value.pageImageUrl ||
+                    value.mangaPageImageUrl ||
+                    value.originalImageUrl ||
+                    value.draftImageUrl ||
+                    value.sourceImageUrl ||
+                    value.submittedImageUrl ||
+                    value.imageUrl ||
+                    value.url ||
+                    value.fileUrl ||
+                    value.resourceUrl ||
+                    value.secureUrl ||
+                    value.downloadUrl ||
+                    value.path ||
+                    value.image ||
+                    value.file ||
+                    value.data ||
+                    ''
+                );
+            }
+
+            return '';
+        }
+
+        function normalizeReviewMediaUrl(value) {
+            const url = firstUsableReviewUrl(value);
+            if (!url) return '';
+            if (/^(data:|blob:|https?:\/\/)/i.test(url)) return url;
+            return window.MangaApi?.resolveMediaUrl?.(url) || url;
+        }
+
+        function localTaskReferenceMapForReview() {
+            try { return JSON.parse(localStorage.getItem('taskReferenceMap') || '{}'); }
+            catch (_) { return {}; }
+        }
+
         function referenceImageOf(task) {
-            return task?.referenceImageUrl ||
-                task?.originalImageUrl ||
-                task?.pageImageUrl ||
-                task?.page?.imageUrl ||
-                task?.hitbox?.page?.imageUrl ||
-                task?.hitbox?.pageImageUrl ||
-                task?.hitbox?.imageUrl ||
-                '';
+            return normalizeReviewMediaUrl([
+                task?.referenceImageUrl,
+                task?.pageImageUrl,
+                task?.mangaPageImageUrl,
+                task?.originalImageUrl,
+                task?.draftImageUrl,
+                task?.sourceImageUrl,
+                task?.page?.imageUrl,
+                task?.page?.pageImageUrl,
+                task?.page?.fileUrl,
+                task?.mangaPage?.imageUrl,
+                task?.mangaPage?.pageImageUrl,
+                task?.mangaPage?.fileUrl,
+                task?.backendPage?.imageUrl,
+                task?.backendPage?.pageImageUrl,
+                task?.backendPage?.fileUrl,
+                task?.workspacePage?.imageUrl,
+                task?.workspacePage?.fileUrl,
+                task?.hitbox?.page?.imageUrl,
+                task?.hitbox?.page?.pageImageUrl,
+                task?.hitbox?.page?.fileUrl,
+                task?.hitbox?.mangaPage?.imageUrl,
+                task?.hitbox?.mangaPage?.fileUrl,
+                task?.hitbox?.backendPage?.imageUrl,
+                task?.hitbox?.pageImageUrl,
+                task?.hitbox?.imageUrl
+            ]);
         }
 
         function submittedImageOf(task) {
-            return task?.submittedImageUrl ||
-                task?.submissionImageUrl ||
-                task?.submittedWorkUrl ||
-                task?.submittedFileUrl ||
-                task?.submissionUrl ||
-                task?.submittedUrl ||
-                task?.resultImageUrl ||
-                task?.finalImageUrl ||
-                task?.outputImageUrl ||
-                task?.resourceUrl ||
-                task?.imageUrl ||
-                '';
+            return normalizeReviewMediaUrl([
+                task?.submittedImageUrl,
+                task?.submissionImageUrl,
+                task?.submittedWorkUrl,
+                task?.submittedFileUrl,
+                task?.submissionUrl,
+                task?.submittedUrl,
+                task?.resultImageUrl,
+                task?.finalImageUrl,
+                task?.outputImageUrl,
+                task?.resourceUrl,
+                task?.imageUrl
+            ]);
         }
 
         function taskIdOf(task) {
@@ -1240,20 +1588,186 @@ document.addEventListener("DOMContentLoaded", () => {
                 (hasSubmission && !['TODO', 'DOING', 'IN_PROGRESS'].includes(rawStatus));
         }
 
-        async function resolveReferenceImageForReview(task) {
-            let imageUrl = referenceImageOf(task);
-            const pageId = task?.pageId || task?.hitbox?.pageId || task?.hitbox?.page?.id;
+        function pageIdOfReviewTask(task) {
+            return task?.pageId ||
+                task?.mangaPageId ||
+                task?.backendPageId ||
+                task?.workspacePageId ||
+                task?.page?.id ||
+                task?.page?.pageId ||
+                task?.mangaPage?.id ||
+                task?.mangaPage?.pageId ||
+                task?.backendPage?.id ||
+                task?.workspacePage?.id ||
+                task?.hitbox?.pageId ||
+                task?.hitbox?.mangaPageId ||
+                task?.hitbox?.backendPageId ||
+                task?.hitbox?.page?.id ||
+                task?.hitbox?.page?.pageId ||
+                task?.hitbox?.mangaPage?.id ||
+                task?.hitbox?.backendPage?.id ||
+                '';
+        }
 
-            if (!imageUrl && pageId && window.MangaApi?.canvasInit) {
-                try {
-                    const canvas = await window.MangaApi.canvasInit(pageId);
-                    imageUrl = canvas?.imageUrl || '';
-                } catch (error) {
-                    console.warn('Could not load reference image:', error.message);
+        function chapterIdOfReviewTask(task) {
+            return task?.chapterId ||
+                task?.mangaChapterId ||
+                task?.chapter?.id ||
+                task?.chapter?.chapterId ||
+                task?.page?.chapterId ||
+                task?.page?.chapter?.id ||
+                task?.mangaPage?.chapterId ||
+                task?.hitbox?.page?.chapterId ||
+                task?.hitbox?.page?.chapter?.id ||
+                task?.hitbox?.mangaPage?.chapterId ||
+                '';
+        }
+
+        function seriesIdOfReviewTask(task) {
+            return task?.seriesId ||
+                task?.mangaSeriesId ||
+                task?.series?.id ||
+                task?.mangaSeries?.id ||
+                task?.chapter?.seriesId ||
+                task?.chapter?.mangaSeriesId ||
+                task?.page?.chapter?.seriesId ||
+                task?.page?.chapter?.mangaSeriesId ||
+                task?.page?.chapter?.mangaSeries?.id ||
+                task?.hitbox?.page?.chapter?.seriesId ||
+                task?.hitbox?.page?.chapter?.mangaSeriesId ||
+                task?.hitbox?.page?.chapter?.mangaSeries?.id ||
+                '';
+        }
+
+        function pageNumberOfReviewTask(task) {
+            return task?.pageNumber ||
+                task?.pageNo ||
+                task?.page?.pageNumber ||
+                task?.mangaPage?.pageNumber ||
+                task?.backendPage?.pageNumber ||
+                task?.hitbox?.page?.pageNumber ||
+                task?.hitbox?.mangaPage?.pageNumber ||
+                '';
+        }
+
+        async function imageFromCanvasForReview(pageId) {
+            if (!pageId || !window.MangaApi?.canvasInit) return '';
+
+            try {
+                const canvas = await window.MangaApi.canvasInit(pageId);
+                return normalizeReviewMediaUrl([
+                    canvas?.imageUrl,
+                    canvas?.pageImageUrl,
+                    canvas?.mangaPageImageUrl,
+                    canvas?.fileUrl,
+                    canvas?.url,
+                    canvas?.page?.imageUrl,
+                    canvas?.page?.fileUrl,
+                    canvas?.mangaPage?.imageUrl,
+                    canvas?.mangaPage?.fileUrl
+                ]);
+            } catch (error) {
+                console.warn('Could not load original review image from canvas:', error.message);
+                return '';
+            }
+        }
+
+        async function imageFromPagesForReview(chapterId, task) {
+            if (!chapterId || !window.MangaApi?.pages) return '';
+
+            try {
+                const pages = getArr(await window.MangaApi.pages(chapterId).catch(() => []));
+                const wantedPageId = String(pageIdOfReviewTask(task) || '');
+                const wantedPageNumber = String(pageNumberOfReviewTask(task) || '');
+
+                const selected =
+                    (wantedPageId && pages.find(page => String(page.id ?? page.pageId) === wantedPageId)) ||
+                    (wantedPageNumber && pages.find(page => String(page.pageNumber ?? page.number ?? page.pageNo) === wantedPageNumber)) ||
+                    pages.find(page => normalizeReviewMediaUrl(page)) ||
+                    pages[0];
+
+                if (!selected) return '';
+
+                const direct = normalizeReviewMediaUrl(selected);
+                if (direct) return direct;
+
+                return imageFromCanvasForReview(selected.id ?? selected.pageId);
+            } catch (error) {
+                console.warn('Could not load original review image from chapter pages:', error.message);
+                return '';
+            }
+        }
+
+        async function imageFromSeriesForReview(task) {
+            const knownSeriesId = seriesIdOfReviewTask(task);
+            const knownSeriesTitle = String(task?.seriesTitle || task?.mangaSeriesTitle || task?.series?.title || task?.mangaSeries?.title || '').trim().toLowerCase();
+
+            if (!window.MangaApi?.chapters) return '';
+
+            const seriesCandidates = [];
+
+            if (knownSeriesId) {
+                seriesCandidates.push({ id: knownSeriesId });
+            } else {
+                const seriesLists = [];
+                if (window.MangaApi.mySeries) {
+                    try { seriesLists.push(getArr(await window.MangaApi.mySeries())); } catch (_) {}
+                }
+                if (window.MangaApi.allSeries) {
+                    try { seriesLists.push(getArr(await window.MangaApi.allSeries())); } catch (_) {}
+                }
+
+                seriesLists.flat().filter(Boolean).forEach(series => {
+                    const title = String(series?.title || series?.name || '').trim().toLowerCase();
+                    if (!knownSeriesTitle || title === knownSeriesTitle) seriesCandidates.push(series);
+                });
+            }
+
+            const seen = new Set();
+
+            for (const series of seriesCandidates) {
+                const seriesId = series?.id ?? series?.seriesId;
+                if (!seriesId || seen.has(String(seriesId))) continue;
+                seen.add(String(seriesId));
+
+                const chapters = getArr(await window.MangaApi.chapters(seriesId).catch(() => []));
+                const knownChapterId = String(chapterIdOfReviewTask(task) || '');
+                const chapterCandidates = [
+                    ...chapters.filter(chapter => String(chapter.id ?? chapter.chapterId) === knownChapterId),
+                    ...chapters.filter(chapter => String(chapter.id ?? chapter.chapterId) !== knownChapterId)
+                ];
+
+                for (const chapter of chapterCandidates) {
+                    const chapterId = chapter?.id ?? chapter?.chapterId;
+                    const imageUrl = await imageFromPagesForReview(chapterId, task);
+                    if (imageUrl) return imageUrl;
                 }
             }
 
-            return imageUrl;
+            return '';
+        }
+
+        async function resolveReferenceImageForReview(task) {
+            const taskId = taskIdOf(task);
+            const localReference = taskId ? localTaskReferenceMapForReview()[String(taskId)] : null;
+
+            let imageUrl = referenceImageOf(task);
+            if (imageUrl) return imageUrl;
+
+            if (localReference?.imageUrl) return normalizeReviewMediaUrl(localReference.imageUrl);
+
+            const pageId = pageIdOfReviewTask(task) || localReference?.pageId;
+            imageUrl = await imageFromCanvasForReview(pageId);
+            if (imageUrl) return imageUrl;
+
+            const chapterId = chapterIdOfReviewTask(task) || localReference?.chapterId;
+            imageUrl = await imageFromPagesForReview(chapterId, task);
+            if (imageUrl) return imageUrl;
+
+            imageUrl = await imageFromSeriesForReview(task);
+            if (imageUrl) return imageUrl;
+
+            return '';
         }
 
         function showReviewEmpty(message) {
@@ -1459,6 +1973,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 const status = normalizeReviewStatus(task);
                 const referenceUrl = await resolveReferenceImageForReview(task);
                 const submittedUrl = submittedImageOf(task);
+                const taskId = taskIdOf(task);
+                const localReference = taskId ? localTaskReferenceMapForReview()[String(taskId)] : null;
+                task.__resolvedReviewContext = {
+                    taskId,
+                    seriesId: seriesIdOfReviewTask(task) || localReference?.seriesId || '',
+                    chapterId: chapterIdOfReviewTask(task) || localReference?.chapterId || '',
+                    pageId: pageIdOfReviewTask(task) || localReference?.pageId || '',
+                    pageNumber: pageNumberOfReviewTask(task) || localReference?.pageNumber || '',
+                    referenceUrl,
+                    submittedUrl
+                };
 
                 reviewPageTitle.innerHTML = `${escReview(task.seriesTitle || 'Assistant Submission')} &rsaquo; ${escReview(task.chapterNumber ? `Chapter ${task.chapterNumber}` : 'Task Review')} &rsaquo; Task #${escReview(taskIdOf(task))}`;
 
@@ -1470,7 +1995,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 draftImgContainer.innerHTML = referenceUrl
                     ? `<img src="${escReview(referenceUrl)}" class="review-main-img" alt="Original draft">`
-                    : `<div class="empty-state-box">No original draft image found.</div>`;
+                    : `<div class="empty-state-box">No original draft image found.<br><small>The frontend tried direct task fields, cached task reference, page lookup, and series/chapter page lookup.</small></div>`;
 
                 submissionImgWrapper.innerHTML = submittedUrl
                     ? `<img src="${escReview(submittedUrl)}" class="review-main-img" alt="Assistant submitted image">`
@@ -1540,7 +2065,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     btnApprove.disabled = true;
                     btnApprove.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Approving...';
                     await window.MangaApi.updateTaskStatus(taskId, 'APPROVED');
-                    await afterDecision('Submission approved. Choose another submission to review.', false);
+                    const savedAnnotations = saveReviewAnnotationsForTantou(loadedReviewTask, loadedReviewTask.__resolvedReviewContext || { taskId });
+                    await afterDecision(savedAnnotations ? 'Submission approved and annotations were sent to Tantou re-check.' : 'Submission approved. Choose another submission to review.', false);
                 } catch (error) {
                     btnApprove.disabled = false;
                     btnApprove.innerHTML = '<i class="fa-solid fa-check"></i> Approve';

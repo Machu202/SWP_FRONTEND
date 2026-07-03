@@ -359,11 +359,13 @@ const MangaApi = {
   allSeries: async (params = {}) => unwrapPage(await apiFetch(`/manga-series${objectToQuery(params)}`)),
   mySeries: async () => unwrapPage(await apiFetch("/manga-series/my-series")),
   series: (id) => apiFetch(`/manga-series/${id}`),
+  deleteSeries: (id) => apiFetch(`/manga-series/${id}`, { method: "DELETE" }),
   updateSeriesStatus: (id, newStatus) => apiFetch(`/manga-series/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
   adminDecision: (id, isApproved, tantouId) => apiFetch(`/manga-series/${id}/admin-decision${objectToQuery({ isApproved, tantouId })}`, { method: "PATCH" }),
 
   chapters: async (seriesId) => unwrapPage(await apiFetch(`/chapters/series/${seriesId}`)),
   chapter: (id) => apiFetch(`/chapters/${id}`),
+  deleteChapter: (id) => apiFetch(`/chapters/${id}`, { method: "DELETE" }),
   updateChapterStatus: (id, newStatus) => apiFetch(`/chapters/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
   createChapter: (payload) => apiFetch("/chapters", { method: "POST", body: payload }),
   pages: async (chapterId) => unwrapPage(await apiFetch(`/pages/chapter/${chapterId}`)),
@@ -378,15 +380,26 @@ const MangaApi = {
     fd.append("file", file);
     return apiForm(`/pages/${pageId}/image`, fd, { method: "PUT" });
   },
+  deletePage: (pageId) => apiFetch(`/pages/${pageId}`, { method: "DELETE" }),
   canvasInit: (pageId) => apiFetch(`/workspace/pages/${pageId}/canvas-init`),
   createHitbox: (pageId, box) => apiFetch(`/workspace/pages/${pageId}/hitboxes${objectToQuery({ x: box.x, y: box.y, width: box.width, height: box.height })}`, { method: "POST" }),
   assignTaskToHitbox: (hitboxId, description) => apiFetch(`/workspace/hitboxes/${hitboxId}/task`, { method: "POST", body: { description } }),
 
   tasks: async () => unwrapPage(await apiFetch("/tasks/my-tasks")),
   tasksBySeries: (seriesId) => apiFetch(`/tasks/series/${seriesId}`),
+  taskDetail: (taskId) => apiFetch(`/tasks/${taskId}`),
   taskById: async (taskId) => {
-    const tasks = await apiFetch("/tasks/my-tasks");
-    return (tasks || []).find(t => String(t.id) === String(taskId));
+    const tasks = unwrapPage(await apiFetch("/tasks/my-tasks"));
+    const fromList = (tasks || []).find(t => String(t.id ?? t.taskId) === String(taskId));
+
+    // Some task list DTOs do not include hitbox/page/image relations.
+    // Try the single-task endpoint and merge it when the backend provides it.
+    try {
+      const detail = await apiFetch(`/tasks/${taskId}`);
+      return { ...(fromList || {}), ...(detail || {}) };
+    } catch (_) {
+      return fromList;
+    }
   },
   updateTaskStatus: (taskId, newStatus) => apiFetch(`/tasks/${taskId}/status${objectToQuery({ newStatus: normalizeTaskStatus(newStatus) })}`, { method: "PATCH" }),
   assignTask: (taskId, assistantId) => apiFetch(`/tasks/${taskId}/assign${objectToQuery({ assistantId })}`, { method: "PATCH" }),

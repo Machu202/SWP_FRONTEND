@@ -5588,3 +5588,323 @@ textarea.form-control {
 .mangaka-avatar-dropdown-link.logout i {
   color: #ef4444;
 }
+
+
+/* ========================================= */
+/* --- ASSISTANT REFERENCE DOWNLOAD BUTTON --- */
+/* ========================================= */
+.assistant-reference-download {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 9px 13px;
+  background: rgba(17, 24, 39, 0.88);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.26);
+}
+
+.assistant-reference-download:hover {
+  background: #000;
+  transform: translateY(-1px);
+}
+
+.assistant-reference-download i {
+  font-size: 12px;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA TANTOU FEEDBACK TO TASK --- */
+/* ========================================= */
+.mangaka-feedback-task-panel {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.mangaka-feedback-task-panel label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #475569;
+}
+
+.mangaka-feedback-task-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mangaka-feedback-assistant-select {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid #d7dde8;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.create-task-from-tantou-feedback {
+  white-space: nowrap;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.create-task-from-tantou-feedback.created {
+  background: #16a34a !important;
+  cursor: default;
+}
+
+.mangaka-feedback-task-panel.disabled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA SUBMITTED ANNOTATIONS FOR TANTOU --- */
+/* ========================================= */
+.mangaka-submitted-annotation-region {
+  border: 2px solid #7c3aed !important;
+  background: rgba(124, 58, 237, 0.18) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.16);
+}
+.mangaka-submitted-annotation-region span {
+  background: #7c3aed !important;
+  color: #fff !important;
+  border-radius: 999px;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 900;
+}
+.mangaka-submitted-annotations-block {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+.mangaka-submitted-annotation-entry {
+  margin-top: 10px;
+  border: 1px solid #e9d5ff;
+  border-radius: 12px;
+  background: #faf5ff;
+  overflow: hidden;
+}
+.mangaka-submitted-annotation-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f3e8ff;
+  color: #581c87;
+  font-size: 12px;
+  font-weight: 900;
+}
+.mangaka-submitted-annotation-card {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid #e9d5ff;
+}
+.mangaka-submitted-annotation-card .annotation-feedback-index {
+  background: #7c3aed;
+  color: #fff;
+}
+
+
+/* ========================================= */
+/* --- TANTOU NO-BACKEND RECHECK QUEUE --- */
+/* ========================================= */
+.tantou-recheck-queue-card {
+  margin-bottom: 24px;
+  border-left: 4px solid #4f46e5;
+}
+
+.tantou-recheck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tantou-recheck-card {
+  align-items: center;
+}
+
+.tantou-recheck-card .list-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tantou-recheck-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.tantou-recheck-actions .btn-outline,
+.tantou-recheck-actions .btn-publish {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .tantou-recheck-card {
+    align-items: stretch;
+  }
+
+  .tantou-recheck-actions {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+}
+
+
+/* ========================================= */
+/* --- EDITORIAL BOARD LOGOUT BUTTON --- */
+/* ========================================= */
+.board-sidebar .board-logout-link {
+  color: #fca5a5;
+}
+
+.board-sidebar .board-logout-link:hover,
+.board-sidebar .board-logout-link.active {
+  color: #ffffff;
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.board-sidebar .board-logout-link i {
+  color: #ef4444;
+}
+
+
+/* ========================================= */
+/* --- MANGAKA DELETE SERIES/CHAPTER/PAGE --- */
+/* ========================================= */
+.series-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.series-card-title-row h3 {
+  margin: 0;
+  min-width: 0;
+}
+
+.danger-mini-btn,
+.danger-icon-btn {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #dc2626;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: .16s ease;
+}
+
+.danger-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.danger-icon-btn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+.danger-mini-btn:hover,
+.danger-icon-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+.delete-series-btn {
+  flex: 0 0 auto;
+}
+
+.mangaka-table-actions,
+.mangaka-tree-actions,
+.mangaka-tree-page-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mangaka-page-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mangaka-page-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 3px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tree-chapter-header .danger-mini-btn,
+.tree-page-item .danger-mini-btn {
+  position: relative;
+  z-index: 2;
+}
+
+.tree-page-item .mangaka-tree-page-actions {
+  margin-left: auto;
+}
+
+
+/* ========================================= */
+/* --- SCHEDULE VISIBILITY AND TASK DEADLINES --- */
+/* ========================================= */
+.assistant-task-deadlines-card {
+  margin-bottom: 16px;
+}
+
+.role-readonly-schedule-shell .readonly-schedule-note,
+.dashboard-schedule-shell .readonly-schedule-note {
+  margin-bottom: 14px;
+}
+
+.dashboard-schedule-table .btn-outline {
+  padding: 7px 10px;
+  font-size: 12px;
+}

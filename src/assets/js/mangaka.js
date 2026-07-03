@@ -92,6 +92,133 @@ document.addEventListener("DOMContentLoaded", () => {
         return Array.from(merged.values());
     }
 
+    function readLocalJson(key) {
+        try { return JSON.parse(localStorage.getItem(key) || "{}"); }
+        catch (_) { return {}; }
+    }
+
+    function normalizeIdentity(value = "") {
+        return String(value || "").trim().toLowerCase();
+    }
+
+    function currentMangakaIdentity() {
+        const cached = readLocalJson("profileCache");
+        const user = readLocalJson("user");
+        const authUser = readLocalJson("authUser");
+        const currentUser = readLocalJson("currentUser");
+
+        return {
+            id: normalizeIdentity(
+                localStorage.getItem("userId") ||
+                localStorage.getItem("id") ||
+                localStorage.getItem("currentUserId") ||
+                localStorage.getItem("authUserId") ||
+                localStorage.getItem("loggedInUserId") ||
+                localStorage.getItem("user_id") ||
+                cached.id || cached.userId || cached.user_id ||
+                user.id || user.userId || user.user_id ||
+                authUser.id || authUser.userId || authUser.user_id ||
+                currentUser.id || currentUser.userId || currentUser.user_id
+            ),
+            username: normalizeIdentity(
+                localStorage.getItem("username") ||
+                localStorage.getItem("userName") ||
+                cached.username || cached.userName ||
+                user.username || user.userName ||
+                authUser.username || authUser.userName ||
+                currentUser.username || currentUser.userName
+            ),
+            email: normalizeIdentity(
+                localStorage.getItem("email") ||
+                localStorage.getItem("userEmail") ||
+                cached.email ||
+                user.email ||
+                authUser.email ||
+                currentUser.email
+            ),
+            fullName: normalizeIdentity(
+                localStorage.getItem("fullName") ||
+                localStorage.getItem("name") ||
+                cached.fullName || cached.name ||
+                user.fullName || user.name ||
+                authUser.fullName || authUser.name ||
+                currentUser.fullName || currentUser.name
+            )
+        };
+    }
+
+    function seriesOwnerTokens(series = {}) {
+        const mangaka = series.mangaka || series.author || series.creator || series.owner || series.user || series.createdBy || {};
+        return {
+            id: normalizeIdentity(
+                series.manga_id ||
+                series.mangaId ||
+                series.mangaka_id ||
+                series.mangakaId ||
+                series.authorId ||
+                series.creatorId ||
+                series.ownerId ||
+                series.userId ||
+                series.createdById ||
+                mangaka.id ||
+                mangaka.userId ||
+                mangaka.user_id ||
+                mangaka.accountId
+            ),
+            username: normalizeIdentity(
+                series.mangakaUsername || series.mangaUsername || series.authorUsername || series.creatorUsername || series.ownerUsername || series.username ||
+                mangaka.username || mangaka.userName || mangaka.login
+            ),
+            email: normalizeIdentity(
+                series.mangakaEmail || series.mangaEmail || series.authorEmail || series.creatorEmail || series.ownerEmail || series.email ||
+                mangaka.email || mangaka.mail
+            ),
+            fullName: normalizeIdentity(
+                series.mangakaName || series.mangaName || series.authorName || series.creatorName || series.ownerName || series.fullName ||
+                mangaka.fullName || mangaka.name || mangaka.displayName
+            )
+        };
+    }
+
+    function ownerFieldsExist(owner = {}) {
+        return Boolean(owner.id || owner.username || owner.email || owner.fullName);
+    }
+
+    function isSeriesOwnedByCurrentMangaka(series = {}) {
+        const identity = currentMangakaIdentity();
+        const owner = seriesOwnerTokens(series);
+
+        if (identity.id && owner.id && identity.id === owner.id) return true;
+        if (identity.username && owner.username && identity.username === owner.username) return true;
+        if (identity.email && owner.email && identity.email === owner.email) return true;
+        if (identity.fullName && owner.fullName && identity.fullName === owner.fullName) return true;
+
+        // Only trust /my-series if backend does not expose owner fields.
+        if (series.__fromMySeries === true && !ownerFieldsExist(owner)) return true;
+        return false;
+    }
+
+    async function deleteMangakaSeries(series, refresh) {
+        const seriesId = series.id ?? series.seriesId;
+        const title = series.title || series.name || `Series #${seriesId}`;
+        if (!seriesId) return alert("Missing series id.");
+        if (!isSeriesOwnedByCurrentMangaka(series)) {
+            alert("You can only delete series created by the logged-in Mangaka.");
+            return;
+        }
+        if (!confirm(`Delete series "${title}"? This will only work if the backend allows deleting this series and its related data.`)) return;
+
+        try {
+            await window.MangaApi.deleteSeries(seriesId);
+            if (String(localStorage.getItem("activeSeriesId") || "") === String(seriesId)) {
+                ["activeSeriesId", "currentSeriesId", "activeSeriesTitle", "currentSeriesTitle"].forEach(key => localStorage.removeItem(key));
+            }
+            await refresh();
+        } catch (error) {
+            alert("Delete series failed: " + (error.message || error));
+        }
+    }
+
     const btnCreateSeries = document.getElementById("btn-create-series");
     if (btnCreateSeries) {
         btnCreateSeries.addEventListener("click", async (e) => {
@@ -322,6 +449,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     mySeriesList = window.MangaApi.mySeries
                         ? await window.MangaApi.mySeries()
                         : unwrap(await window.MangaApi.apiFetch("/manga-series/my-series"));
+                    mySeriesList = unwrap(mySeriesList).map(series => ({ ...series, __fromMySeries: true }));
                 } catch (error) {
                     console.warn("Could not load /manga-series/my-series", error);
                     mySeriesList = [];
@@ -331,6 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     allSeriesList = window.MangaApi.allSeries
                         ? await window.MangaApi.allSeries()
                         : unwrap(await window.MangaApi.apiFetch("/manga-series"));
+                    allSeriesList = unwrap(allSeriesList);
                 } catch (error) {
                     console.warn("Could not load /manga-series", error);
                     allSeriesList = [];
@@ -381,12 +510,21 @@ document.addEventListener("DOMContentLoaded", () => {
                             </div>
                         </div>
                         <div class="series-card-body">
-                            <h3>${series.title || "Untitled"} ${genreBadge}</h3>
+                            <div class="series-card-title-row">
+                                <h3>${series.title || "Untitled"} ${genreBadge}</h3>
+                                ${isSeriesOwnedByCurrentMangaka(series) ? `<button type="button" class="danger-mini-btn delete-series-btn" data-delete-series="${seriesId}" title="Delete this series"><i class="fa-solid fa-trash"></i></button>` : ""}
+                            </div>
                             <p>${description}</p>
                         </div>
                     `;
 
-card.addEventListener("click", () => {
+                    card.querySelector("[data-delete-series]")?.addEventListener("click", async (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        await deleteMangakaSeries(series, fetchAndRenderSeries);
+                    });
+
+                    card.addEventListener("click", () => {
                         localStorage.setItem("currentSeriesId", series.id); localStorage.setItem("activeSeriesId", series.id);
                         localStorage.setItem("currentSeriesTitle", series.title); localStorage.setItem("activeSeriesTitle", series.title);
                         const meta = seriesMetaOf(series);

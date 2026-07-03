@@ -75,14 +75,18 @@ document.addEventListener("DOMContentLoaded", () => {
       return p ? { pageId: p.id, imageUrl: p.imageUrl || p.fileUrl || p.url, hitboxes: [] } : null;
     });
 
-    if (!canvas?.imageUrl) {
+    const canvasImageUrl = pageImageOf(canvas);
+    state.currentCanvas = canvas;
+    state.currentPageImageUrl = canvasImageUrl;
+
+    if (!canvasImageUrl) {
       stage.innerHTML = `<div class="empty-state-box">This page has no image URL.</div>`;
       return;
     }
 
     stage.innerHTML = `
       <div class="hitbox-image-wrap" id="hitbox-wrap">
-        <img id="manga-page-img" src="${canvas.imageUrl}" alt="Manga page">
+        <img id="manga-page-img" src="${esc(canvasImageUrl)}" alt="Manga page">
         <div id="hitbox-layer"></div>
       </div>`;
 
@@ -141,7 +145,23 @@ document.addEventListener("DOMContentLoaded", () => {
       const hitboxId = hitbox?.id || hitbox?.hitboxId || hitbox;
       const task = await Api.assignTaskToHitbox(hitboxId, description);
       const taskId = task?.id || task?.taskId;
-      if (taskId && assistantId) await Api.assignTask(taskId, assistantId);
+      if (taskId && assistantId) {
+        await Api.assignTask(taskId, assistantId);
+        const assistantName = $("#assistant-select")?.selectedOptions?.[0]?.textContent?.trim() || "";
+        rememberTaskAssistant(taskId, assistantId, assistantName);
+      }
+
+      if (taskId) {
+        const selectedPage = state.pages.find((page) => String(page.id ?? page.pageId) === String(pageId));
+        rememberTaskReference(taskId, {
+          pageId,
+          chapterId: $("#chapter-select")?.value || "",
+          seriesId: $("#series-select")?.value || "",
+          imageUrl: state.currentPageImageUrl || pageImageOf(selectedPage) || pageImageOf(state.currentCanvas),
+          pageNumber: selectedPage?.pageNumber ?? selectedPage?.number ?? "",
+          hitbox: state.lastBox
+        });
+      }
       $("#workspace-log").innerHTML = `<div class="log-ok">✓ Hitbox task created successfully.</div>`;
       await renderPage();
     } catch (err) {

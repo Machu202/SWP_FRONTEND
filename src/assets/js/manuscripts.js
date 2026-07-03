@@ -45,6 +45,40 @@ document.addEventListener("DOMContentLoaded", () => {
     const chaptersList = document.getElementById("chapters-list");
     const btnOpenModal = document.getElementById("btn-open-modal");
 
+    async function deleteChapterFromManuscripts(chapter, refresh) {
+        const chapterId = chapter?.id ?? chapter?.chapterId;
+        const label = `Chapter ${chapter?.chapterNumber ?? chapter?.number ?? chapterId}`;
+        if (!chapterId) return alert("Missing chapter id.");
+        if (!confirm(`Delete ${label}? Related pages/tasks may be removed or blocked by the backend.`)) return;
+
+        try {
+            await window.MangaApi.deleteChapter(chapterId);
+            if (String(window.MangaApi.getActiveChapterId?.() || "") === String(chapterId)) {
+                ["activeChapterId", "currentChapterId"].forEach(key => localStorage.removeItem(key));
+            }
+            await refresh();
+        } catch (error) {
+            alert("Delete chapter failed: " + (error.message || error));
+        }
+    }
+
+    async function deletePageFromManuscripts(page, refresh) {
+        const pageId = page?.id ?? page?.pageId;
+        const label = `Page ${page?.pageNumber ?? page?.page_number ?? pageId}`;
+        if (!pageId) return alert("Missing page id.");
+        if (!confirm(`Delete ${label}? Related hitboxes/tasks may be removed or blocked by the backend.`)) return;
+
+        try {
+            await window.MangaApi.deletePage(pageId);
+            if (String(window.MangaApi.getActivePageId?.() || "") === String(pageId)) {
+                ["activePageId", "currentPageId"].forEach(key => localStorage.removeItem(key));
+            }
+            await refresh();
+        } catch (error) {
+            alert("Delete page failed: " + (error.message || error));
+        }
+    }
+
     function openChaptersAndPagesTab() {
         if (seriesId) {
             localStorage.setItem("activeSeriesId", String(seriesId));
@@ -144,11 +178,18 @@ document.addEventListener("DOMContentLoaded", () => {
                         <i class="fa-solid fa-folder" style="color: #6366f1; font-size: 18px; margin-right: 12px;"></i>
                         <span>Chapter ${chapter.chapterNumber} ${chapter.title ? `- ${chapter.title}` : ''}</span>
                     </div>
-                    <div style="font-size: 12px; color: #64748b;">
+                    <div class="mangaka-tree-actions" style="font-size: 12px; color: #64748b;">
                         <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 12px; margin-right: 10px;">${pages.length} Trang</span>
+                        <button type="button" class="danger-mini-btn mangaka-delete-chapter-btn" data-delete-chapter="${chapter.id ?? chapter.chapterId}"><i class="fa-solid fa-trash"></i> Delete Chapter</button>
                         <i class="fa-solid fa-chevron-down toggle-icon"></i>
                     </div>
                 `;
+
+                chapHeader.querySelector("[data-delete-chapter]")?.addEventListener("click", async (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    await deleteChapterFromManuscripts(chapter, fetchChapters);
+                });
 
                 // --- CONTAINER CHỨA CÁC TRANG (PAGES) ---
                 const pagesContainer = document.createElement("div");
@@ -165,10 +206,19 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <i class="fa-regular fa-file-image" style="color: #10b981; margin-right: 10px; font-size: 16px;"></i>
                                 Trang ${page.pageNumber || 'Không tên'}
                             </div>
-                            <div style="font-size: 11px; background: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 4px; font-weight: 600;">
-                                Mở Canvas <i class="fa-solid fa-arrow-right" style="margin-left: 5px;"></i>
+                            <div class="mangaka-tree-page-actions">
+                                <button type="button" class="danger-mini-btn mangaka-delete-page-btn" data-delete-page="${page.id ?? page.pageId}"><i class="fa-solid fa-trash"></i> Delete Page</button>
+                                <div style="font-size: 11px; background: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 4px; font-weight: 600;">
+                                    Mở Canvas <i class="fa-solid fa-arrow-right" style="margin-left: 5px;"></i>
+                                </div>
                             </div>
                         `;
+
+                        pageItem.querySelector("[data-delete-page]")?.addEventListener("click", async (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            await deletePageFromManuscripts(page, fetchChapters);
+                        });
 
                         // CLICK VÀO TRANG -> MỞ EDITOR (Vá lỗ hổng 2)
                         pageItem.addEventListener("click", () => {

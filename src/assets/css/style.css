@@ -298,3 +298,9 @@ body {
     background-color: #FFFFFF;
     cursor: pointer;
 }
+
+
+/* Login screen: Apple ID login removed */
+.social-login .btn-social:only-child {
+  width: 100%;
+}

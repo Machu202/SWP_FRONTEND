@@ -3,36 +3,408 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!window.MangaApi) return;
   const esc = (value = "") => String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   const statusOf = (task) => window.MangaApi.normalizeTaskStatus(task?.status || "TODO");
+  function assistantTaskDeadlineOf(task = {}) {
+    const direct = task.deadlineDate || task.deadlineDateStr || task.deadline || task.dueDate || task.due_date || task.taskDeadline || task.task_deadline;
+    if (direct) return direct;
+    const text = String([task.title, task.description, task.note, task.comment].filter(Boolean).join(" "));
+    const match = text.match(/(?:deadline|due)\s*[:：-]?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2}(?:[ T]\d{1,2}:\d{2})?)/i);
+    return match ? match[1].replace(/\//g, "-") : "";
+  }
+
+  function assistantTaskDeadlineRows(tasks = []) {
+    let localItems = [];
+    try { localItems = window.MangaApi.getScheduleItems?.() || JSON.parse(localStorage.getItem("studioScheduleItems") || "[]"); }
+    catch (_) { localItems = []; }
+
+    const taskIds = new Set(tasks.map(t => String(t.id ?? t.taskId)).filter(Boolean));
+    const fromTasks = tasks.map(task => {
+      const deadline = assistantTaskDeadlineOf(task);
+      if (!deadline) return null;
+      return { task, taskId: task.id ?? task.taskId, title: titleOf(task), deadline, status: statusOf(task) };
+    }).filter(Boolean);
+
+    const fromLocal = localItems
+      .filter(item => String(item.type || item.source || "").toUpperCase().includes("TASK_DEADLINE"))
+      .filter(item => taskIds.has(String(item.taskId || item.task_id || "")))
+      .map(item => ({
+        task: tasks.find(t => String(t.id ?? t.taskId) === String(item.taskId || item.task_id || "")) || {},
+        taskId: item.taskId || item.task_id || "",
+        title: item.title || item.eventName || item.description || `Task #${item.taskId || ""}`,
+        deadline: item.deadlineDateStr || item.deadlineDate || item.date || item.dueDate,
+        status: item.status || "OPEN"
+      }));
+
+    const seen = new Set();
+    return [...fromTasks, ...fromLocal].filter(row => {
+      const key = `${row.taskId}|${row.deadline}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  }
+
+  function formatAssistantDeadline(value) {
+    if (!value) return "ASAP";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
+    return date.toLocaleDateString();
+  }
+
+
   const titleOf = (task) => task?.title || task?.description || `Task #${task?.id || ""}`;
   const seriesTitleOf = (task) => task?.seriesTitle || task?.hitbox?.page?.chapter?.mangaSeries?.title || "Manga Series";
   const chapterNoOf = (task) => task?.chapterNumber || task?.hitbox?.page?.chapter?.chapterNumber || "?";
-  const pageUrlOf = (task) =>
-    task?.referenceImageUrl ||
-    task?.pageImageUrl ||
-    task?.imageUrl ||
-    task?.hitbox?.page?.imageUrl ||
-    task?.hitbox?.pageImageUrl ||
-    task?.submittedImageUrl ||
-    "";
-  async function resolveReferenceImage(task) {
-    let imageUrl = pageUrlOf(task);
-    if (imageUrl) return imageUrl;
+  function firstUsableUrl(value) {
+    if (!value) return "";
 
-    const pageId =
+    if (typeof value === "string") {
+      const text = value.trim();
+      if (!text) return "";
+
+      if ((text.startsWith("{") && text.endsWith("}")) || (text.startsWith("[") && text.endsWith("]"))) {
+        try { return firstUsableUrl(JSON.parse(text)); } catch (_) { return text; }
+      }
+
+      return text;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const url = firstUsableUrl(item);
+        if (url) return url;
+      }
+      return "";
+    }
+
+    if (typeof value === "object") {
+      return firstUsableUrl(
+        value.referenceImageUrl ||
+        value.pageImageUrl ||
+        value.mangaPageImageUrl ||
+        value.originalImageUrl ||
+        value.draftImageUrl ||
+        value.imageUrl ||
+        value.url ||
+        value.fileUrl ||
+        value.resourceUrl ||
+        value.secureUrl ||
+        value.downloadUrl ||
+        value.path ||
+        value.image ||
+        value.file ||
+        value.data ||
+        ""
+      );
+    }
+
+    return "";
+  }
+
+  function mediaUrl(value) {
+    const url = firstUsableUrl(value);
+    if (!url) return "";
+    if (/^(data:|blob:|https?:\/\/)/i.test(url)) return url;
+    return window.MangaApi?.resolveMediaUrl?.(url) || url;
+  }
+
+  function safeFileName(value = "mangaka-reference") {
+    return String(value || "mangaka-reference")
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, "-")
+      .slice(0, 80) || "mangaka-reference";
+  }
+
+  function extensionFromUrl(url = "") {
+    const clean = String(url).split("?")[0].split("#")[0];
+    const match = clean.match(/\.([a-z0-9]{2,5})$/i);
+    return match ? match[1].toLowerCase() : "png";
+  }
+
+  function referenceDownloadFileName(task = {}, imageUrl = "") {
+    const base = [
+      seriesTitleOf(task),
+      `chapter-${chapterNoOf(task)}`,
+      `task-${task?.id ?? task?.taskId ?? "reference"}`
+    ].filter(Boolean).join("-");
+    return `${safeFileName(base)}.${extensionFromUrl(imageUrl)}`;
+  }
+
+  async function downloadImageFromUrl(url, filename = "mangaka-reference.png") {
+    if (!url) return;
+
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    } catch (error) {
+      console.warn("Blob download failed, falling back to direct image link:", error.message);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.target = "_blank";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+  }
+
+  window.downloadAssistantReferenceImage = (encodedUrl, encodedFilename) => {
+    const url = decodeURIComponent(encodedUrl || "");
+    const filename = decodeURIComponent(encodedFilename || "mangaka-reference.png");
+    downloadImageFromUrl(url, filename);
+  };
+
+  function localTaskReferenceMap() {
+    try { return JSON.parse(localStorage.getItem("taskReferenceMap") || "{}"); }
+    catch (_) { return {}; }
+  }
+
+  function pageUrlOf(task) {
+    return mediaUrl([
+      task?.referenceImageUrl,
+      task?.pageImageUrl,
+      task?.mangaPageImageUrl,
+      task?.originalImageUrl,
+      task?.draftImageUrl,
+      task?.sourceImageUrl,
+      task?.page?.imageUrl,
+      task?.page?.pageImageUrl,
+      task?.page?.fileUrl,
+      task?.mangaPage?.imageUrl,
+      task?.mangaPage?.pageImageUrl,
+      task?.mangaPage?.fileUrl,
+      task?.backendPage?.imageUrl,
+      task?.workspacePage?.imageUrl,
+      task?.hitbox?.page?.imageUrl,
+      task?.hitbox?.page?.pageImageUrl,
+      task?.hitbox?.page?.fileUrl,
+      task?.hitbox?.mangaPage?.imageUrl,
+      task?.hitbox?.mangaPage?.fileUrl,
+      task?.hitbox?.backendPage?.imageUrl,
+      task?.hitbox?.pageImageUrl,
+      task?.hitbox?.imageUrl
+    ]);
+  }
+
+  function pageIdOf(task) {
+    return (
       task?.pageId ||
+      task?.mangaPageId ||
+      task?.backendPageId ||
+      task?.workspacePageId ||
+      task?.page?.id ||
+      task?.page?.pageId ||
+      task?.mangaPage?.id ||
+      task?.mangaPage?.pageId ||
+      task?.backendPage?.id ||
+      task?.workspacePage?.id ||
       task?.hitbox?.pageId ||
-      task?.hitbox?.page?.id;
+      task?.hitbox?.mangaPageId ||
+      task?.hitbox?.backendPageId ||
+      task?.hitbox?.page?.id ||
+      task?.hitbox?.page?.pageId ||
+      task?.hitbox?.mangaPage?.id ||
+      task?.hitbox?.backendPage?.id ||
+      ""
+    );
+  }
 
-    if (pageId && window.MangaApi?.canvasInit) {
+  function chapterIdOf(task) {
+    return (
+      task?.chapterId ||
+      task?.mangaChapterId ||
+      task?.chapter?.id ||
+      task?.chapter?.chapterId ||
+      task?.page?.chapterId ||
+      task?.page?.chapter?.id ||
+      task?.mangaPage?.chapterId ||
+      task?.hitbox?.page?.chapterId ||
+      task?.hitbox?.page?.chapter?.id ||
+      task?.hitbox?.mangaPage?.chapterId ||
+      ""
+    );
+  }
+
+  function pageNumberOf(task) {
+    return (
+      task?.pageNumber ||
+      task?.pageNo ||
+      task?.page?.pageNumber ||
+      task?.mangaPage?.pageNumber ||
+      task?.backendPage?.pageNumber ||
+      task?.hitbox?.page?.pageNumber ||
+      task?.hitbox?.mangaPage?.pageNumber ||
+      ""
+    );
+  }
+
+  function seriesIdOf(task) {
+    return (
+      task?.seriesId ||
+      task?.mangaSeriesId ||
+      task?.series?.id ||
+      task?.mangaSeries?.id ||
+      task?.chapter?.seriesId ||
+      task?.chapter?.mangaSeriesId ||
+      task?.page?.chapter?.seriesId ||
+      task?.page?.chapter?.mangaSeriesId ||
+      task?.page?.chapter?.mangaSeries?.id ||
+      task?.hitbox?.page?.chapter?.seriesId ||
+      task?.hitbox?.page?.chapter?.mangaSeriesId ||
+      task?.hitbox?.page?.chapter?.mangaSeries?.id ||
+      ""
+    );
+  }
+
+  function seriesTitleKey(task) {
+    return String(
+      task?.seriesTitle ||
+      task?.mangaSeriesTitle ||
+      task?.series?.title ||
+      task?.series?.name ||
+      task?.mangaSeries?.title ||
+      task?.mangaSeries?.name ||
+      ""
+    ).trim().toLowerCase();
+  }
+
+  function taskIdOf(task) {
+    return task?.id ?? task?.taskId ?? "";
+  }
+
+  async function imageFromCanvasPage(pageId) {
+    if (!pageId || !window.MangaApi?.canvasInit) return "";
+    try {
+      const canvas = await window.MangaApi.canvasInit(pageId);
+      return mediaUrl([
+        canvas?.imageUrl,
+        canvas?.pageImageUrl,
+        canvas?.mangaPageImageUrl,
+        canvas?.fileUrl,
+        canvas?.url,
+        canvas?.page?.imageUrl,
+        canvas?.page?.fileUrl,
+        canvas?.mangaPage?.imageUrl,
+        canvas?.mangaPage?.fileUrl
+      ]);
+    } catch (err) {
+      console.warn("Could not load canvas reference image:", err.message);
+      return "";
+    }
+  }
+
+  async function imageFromChapterPage(task) {
+    const chapterId = chapterIdOf(task);
+    if (!chapterId || !window.MangaApi?.pages) return "";
+
+    try {
+      const pages = await window.MangaApi.pages(chapterId);
+      const list = Array.isArray(pages) ? pages : (pages?.content || []);
+      const wantedPageNumber = String(pageNumberOf(task) || "");
+      const selected =
+        (wantedPageNumber && list.find((page) => String(page.pageNumber ?? page.number ?? page.pageNo) === wantedPageNumber)) ||
+        list.find((page) => mediaUrl(page)) ||
+        list[0];
+
+      if (!selected) return "";
+
+      const direct = mediaUrl(selected);
+      if (direct) return direct;
+
+      const selectedPageId = selected.id ?? selected.pageId;
+      return imageFromCanvasPage(selectedPageId);
+    } catch (err) {
+      console.warn("Could not resolve chapter page reference:", err.message);
+      return "";
+    }
+  }
+
+  async function imageFromSeriesPage(task) {
+    if (!window.MangaApi?.chapters || !window.MangaApi?.pages) return "";
+
+    const knownSeriesId = seriesIdOf(task);
+    const knownSeriesTitle = seriesTitleKey(task);
+    const seriesCandidates = [];
+
+    if (knownSeriesId) {
+      seriesCandidates.push({ id: knownSeriesId });
+    } else if (knownSeriesTitle && (window.MangaApi.mySeries || window.MangaApi.allSeries)) {
+      const lists = [];
+
       try {
-        const canvas = await window.MangaApi.canvasInit(pageId);
-        imageUrl = canvas?.imageUrl || "";
-      } catch (err) {
-        console.warn("Could not resolve task reference image:", err.message);
+        if (window.MangaApi.mySeries) lists.push(await window.MangaApi.mySeries());
+      } catch (_) {}
+
+      try {
+        if (window.MangaApi.allSeries) lists.push(await window.MangaApi.allSeries());
+      } catch (_) {}
+
+      lists.flatMap(item => Array.isArray(item) ? item : (item?.content || [])).forEach((series) => {
+        const title = String(series?.title || series?.name || "").trim().toLowerCase();
+        if (title && title === knownSeriesTitle) seriesCandidates.push(series);
+      });
+    }
+
+    const seen = new Set();
+
+    for (const series of seriesCandidates) {
+      const seriesId = series?.id ?? series?.seriesId;
+      if (!seriesId || seen.has(String(seriesId))) continue;
+      seen.add(String(seriesId));
+
+      let chapters = [];
+      try { chapters = await window.MangaApi.chapters(seriesId); } catch (_) { chapters = []; }
+      const chapterList = Array.isArray(chapters) ? chapters : (chapters?.content || []);
+      const wantedChapterId = String(chapterIdOf(task) || "");
+
+      const orderedChapters = [
+        ...chapterList.filter(chapter => String(chapter.id ?? chapter.chapterId) === wantedChapterId),
+        ...chapterList.filter(chapter => String(chapter.id ?? chapter.chapterId) !== wantedChapterId)
+      ];
+
+      for (const chapter of orderedChapters) {
+        const chapterId = chapter?.id ?? chapter?.chapterId;
+        if (!chapterId) continue;
+
+        const imageUrl = await imageFromChapterPage({ ...task, chapterId });
+        if (imageUrl) return imageUrl;
       }
     }
 
-    return imageUrl;
+    return "";
+  }
+
+  async function resolveReferenceImage(task) {
+    const taskId = taskIdOf(task);
+    const localReference = taskId ? localTaskReferenceMap()[String(taskId)] : null;
+
+    let imageUrl = pageUrlOf(task);
+    if (imageUrl) return imageUrl;
+
+    if (localReference?.imageUrl) return mediaUrl(localReference.imageUrl);
+
+    const pageId = pageIdOf(task) || localReference?.pageId;
+    imageUrl = await imageFromCanvasPage(pageId);
+    if (imageUrl) return imageUrl;
+
+    imageUrl = await imageFromChapterPage({ ...task, chapterId: chapterIdOf(task) || localReference?.chapterId });
+    if (imageUrl) return imageUrl;
+
+    imageUrl = await imageFromSeriesPage({ ...task, seriesId: seriesIdOf(task) || localReference?.seriesId });
+    if (imageUrl) return imageUrl;
+
+    return "";
   }
 
   function firstNumber(...values) {
@@ -70,9 +442,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderReferenceWithFixBox(imageUrl, task) {
     const box = hitboxOf(task);
     const detail = esc(task?.description || "No fix details were provided by Mangaka.");
+    const fileName = referenceDownloadFileName(task, imageUrl);
+    const downloadButton = `<button type="button" class="assistant-reference-download" onclick="window.downloadAssistantReferenceImage('${encodeURIComponent(imageUrl)}','${encodeURIComponent(fileName)}')">
+        <i class="fa-solid fa-download"></i> Download Reference
+      </button>`;
 
     if (!box) {
       return `<div class="assistant-reference-wrap no-hitbox">
+        ${downloadButton}
         <img src="${esc(imageUrl)}" class="ref-img" alt="Reference manga page from Mangaka">
         <div class="assistant-fix-callout">
           <strong><i class="fa-solid fa-clipboard-list"></i> What Mangaka needs fixed</strong>
@@ -83,6 +460,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     return `<div class="assistant-reference-wrap">
+      ${downloadButton}
       <img src="${esc(imageUrl)}" class="ref-img" alt="Reference manga page from Mangaka">
       <div class="assistant-reference-hitbox" style="left:${box.x}%;top:${box.y}%;width:${box.width}%;height:${box.height}%;">
         <span>Fix this area</span>
@@ -95,8 +473,32 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>`;
   }
 
-  async function loadTasks() { try { return await window.MangaApi.tasks(); } catch (err) { console.warn("Assistant tasks unavailable:", err.message); return []; } }
-  async function findTask(taskId) { const tasks = await loadTasks(); return tasks.find(t => String(t.id) === String(taskId)); }
+  async function loadTasks() {
+    try {
+      const tasks = await window.MangaApi.tasks();
+      return Array.isArray(tasks) ? tasks : (tasks?.content || []);
+    } catch (err) {
+      console.warn("Assistant tasks unavailable:", err.message);
+      return [];
+    }
+  }
+
+  async function findTask(taskId) {
+    const tasks = await loadTasks();
+    const fromList = tasks.find(t => String(t.id ?? t.taskId) === String(taskId));
+
+    // Task list data may be shortened. The detail endpoint often contains the page/hitbox relation.
+    if (window.MangaApi.taskDetail) {
+      try {
+        const detail = await window.MangaApi.taskDetail(taskId);
+        return { ...(fromList || {}), ...(detail || {}) };
+      } catch (err) {
+        console.warn("Task detail endpoint did not return extra reference data:", err.message);
+      }
+    }
+
+    return fromList;
+  }
   const astDashboardList = document.getElementById("ast-dashboard-task-list");
   if (astDashboardList) {
     (async () => {
@@ -116,7 +518,10 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="ast-task-info"><div class="ast-task-title">${esc(titleOf(task))} <span class="badge-tag" style="background:#f59e0b;">${esc(statusOf(task))}</span></div><div class="ast-task-sub">Project: ${esc(seriesTitleOf(task))}</div><div class="ast-task-meta"><span style="color:#6b7280;">Chapter ${esc(chapterNoOf(task))}</span><span class="assistant-inline-upload-label"><i class="fa-solid fa-cloud-arrow-up"></i> Open Upload</span></div></div>
         </a>`).join("") : `<div class="empty-state-box"><p>No assigned tasks returned by backend.</p></div>`;
       const deadlines = document.getElementById("ast-deadlines-list");
-      if (deadlines) deadlines.innerHTML = activeTasks.slice(0, 3).map(t => `<div class="ast-deadline-item"><div class="date-box"><div class="date-month">TASK</div><div class="date-day">${t.id}</div></div><div><div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:4px;">${esc(titleOf(t))}</div><div style="font-size:11px;color:#ef4444;font-weight:600;">${esc(statusOf(t))}</div></div></div>`).join("") || `<div class="empty-activity">No upcoming task deadlines.</div>`;
+      if (deadlines) {
+        const deadlineRows = assistantTaskDeadlineRows(activeTasks).slice(0, 4);
+        deadlines.innerHTML = deadlineRows.map(row => `<div class="ast-deadline-item" onclick="localStorage.setItem('currentTaskId','${esc(row.taskId)}'); location.href='task-detail.html';" style="cursor:pointer;"><div class="date-box"><div class="date-month">DUE</div><div class="date-day">${esc(formatAssistantDeadline(row.deadline))}</div></div><div><div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:4px;">${esc(row.title)}</div><div style="font-size:11px;color:#ef4444;font-weight:600;">${esc(row.status)}</div></div></div>`).join("") || `<div class="empty-activity">No upcoming task deadlines.</div>`;
+      }
     })();
   }
   const taskTitle = document.getElementById("task-title");
@@ -151,10 +556,21 @@ document.addEventListener("DOMContentLoaded", () => {
         ref.style.background = "transparent";
         ref.style.border = "none";
       } else if (ref) {
+        const attemptedPageId = pageIdOf(task) || localTaskReferenceMap()[String(task.id ?? task.taskId)]?.pageId || "";
+        console.warn("No Assistant reference image could be resolved. Task data:", {
+          taskId: task.id ?? task.taskId,
+          seriesId: seriesIdOf(task),
+          chapterId: chapterIdOf(task),
+          pageId: pageIdOf(task),
+          pageNumber: pageNumberOf(task),
+          hasLocalReference: Boolean(localTaskReferenceMap()[String(task.id ?? task.taskId)])
+        }, task);
+
         ref.innerHTML = `<div class="assistant-ref-missing">
           <i class="fa-solid fa-triangle-exclamation"></i>
           <strong>No reference image received.</strong>
-          <span>This usually means the backend task response does not include <code>referenceImageUrl</code> or <code>pageId</code>.</span>
+          <span>The task was loaded, but the backend task response did not expose a usable page image URL${attemptedPageId ? ` for page <code>${esc(attemptedPageId)}</code>` : ""}.</span>
+          <small>Frontend tried task image fields, local task reference cache, task detail lookup, canvas page lookup, chapter page lookup, and series lookup. If this still appears, the task was created/sent without a page reference.</small>
         </div>`;
       }
 

@@ -386,3 +386,9 @@ body {
 .eye-icon {
     z-index: 2;
 }
+
+
+/* Login screen: Apple ID login removed */
+.social-login .btn-social:only-child {
+  width: 100%;
+}

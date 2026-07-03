@@ -126,6 +126,130 @@
       return "Normal";
     }
 
+    function readAssistantLocalJson(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+      catch (_) { return fallback; }
+    }
+
+    function currentAssistantId() {
+      const profile = readAssistantLocalJson("profileCache", {});
+      return String(
+        localStorage.getItem("userId") ||
+        localStorage.getItem("id") ||
+        profile.id ||
+        profile.userId ||
+        profile.user_id ||
+        ""
+      );
+    }
+
+    function taskIdOf(task = {}) {
+      return task.id ?? task.taskId ?? task.task_id ?? "";
+    }
+
+    function taskSeriesIdOf(task = {}) {
+      return task.seriesId ||
+        task.mangaSeriesId ||
+        task.series_id ||
+        task.manga_series_id ||
+        task.series?.id ||
+        task.mangaSeries?.id ||
+        task.chapter?.seriesId ||
+        task.chapter?.mangaSeriesId ||
+        task.hitbox?.page?.chapter?.seriesId ||
+        task.hitbox?.page?.chapter?.mangaSeriesId ||
+        "";
+    }
+
+    function taskDeadlineOf(task = {}) {
+      const direct = task.deadlineDate ||
+        task.deadlineDateStr ||
+        task.deadline ||
+        task.dueDate ||
+        task.due_date ||
+        task.taskDeadline ||
+        task.task_deadline ||
+        task.scheduledDeadline ||
+        task.scheduled_deadline;
+
+      if (direct) return direct;
+
+      const text = String([task.title, task.description, task.note, task.comment].filter(Boolean).join(" "));
+      const match = text.match(/(?:deadline|due)\s*[:：-]?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2}(?:[ T]\d{1,2}:\d{2})?)/i);
+      return match ? match[1].replace(/\//g, "-") : "";
+    }
+
+    function taskAssistantIdOf(task = {}) {
+      return String(
+        task.assistantId ||
+        task.assistant_id ||
+        task.assignedToId ||
+        task.assigned_to_id ||
+        task.assistant?.id ||
+        task.assignedTo?.id ||
+        ""
+      );
+    }
+
+    function localTaskDeadlineItems(tasks = []) {
+      const taskIds = new Set(tasks.map(t => String(taskIdOf(t))).filter(Boolean));
+      const myId = currentAssistantId();
+
+      return readAssistantLocalJson("studioScheduleItems", [])
+        .filter(item => String(item.type || item.source || "").toUpperCase().includes("TASK_DEADLINE"))
+        .filter(item => {
+          const itemTaskId = String(item.taskId || item.task_id || "");
+          const itemAssistantId = String(item.assistantId || item.assistant_id || "");
+          return (itemTaskId && taskIds.has(itemTaskId)) || (myId && itemAssistantId && itemAssistantId === myId);
+        });
+    }
+
+    function taskDeadlineRows(tasks = [], activeSeriesId = "") {
+      const fromTasks = tasks
+        .map(task => {
+          const deadline = taskDeadlineOf(task);
+          if (!deadline) return null;
+          return {
+            id: `task-${taskIdOf(task)}`,
+            type: "TASK_DEADLINE",
+            source: "TASK",
+            taskId: taskIdOf(task),
+            seriesId: taskSeriesIdOf(task),
+            eventName: titleOfTask(task),
+            title: titleOfTask(task),
+            deadlineDateStr: deadline,
+            date: deadline,
+            status: task.status || "OPEN"
+          };
+        })
+        .filter(Boolean);
+
+      const fromLocal = localTaskDeadlineItems(tasks).map(item => ({
+        ...item,
+        eventName: item.eventName || item.title || item.description || `Task #${item.taskId || ""}`,
+        deadlineDateStr: item.deadlineDateStr || item.deadlineDate || item.date || item.dueDate,
+        status: item.status || "OPEN"
+      }));
+
+      const rows = [...fromTasks, ...fromLocal].filter(row => {
+        if (!activeSeriesId) return true;
+        const rowSeries = String(row.seriesId || row.mangaSeriesId || "");
+        return !rowSeries || rowSeries === String(activeSeriesId);
+      });
+
+      const seen = new Set();
+      return rows.filter(row => {
+        const key = [row.taskId || row.id || "", row.deadlineDateStr || row.deadlineDate || row.date || "", row.eventName || row.title || ""].join("|");
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function titleOfTask(task = {}) {
+      return task.title || task.description || `Task #${taskIdOf(task) || "—"}`;
+    }
+
     function seriesIdOf(series = {}) {
       return series.id ?? series.seriesId ?? series.mangaSeriesId ?? "";
     }
@@ -142,22 +266,33 @@
         console.warn("Assistant could not load global series list.", error.message);
       }
 
-      if (!series.length) {
-        try {
-          const tasks = getArray(await Api.tasks?.());
-          const map = new Map();
-          tasks.forEach(task => {
-            const id = task.seriesId || task.mangaSeriesId || task.series?.id || task.mangaSeries?.id;
-            if (!id) return;
-            map.set(String(id), {
-              id,
-              title: task.seriesTitle || task.mangaSeriesTitle || task.series?.title || task.mangaSeries?.title || `Series #${id}`
-            });
+      try {
+        const tasks = getArray(await Api.tasks?.());
+        const map = new Map(series.map(s => [String(seriesIdOf(s)), s]));
+
+        tasks.forEach(task => {
+          const id = taskSeriesIdOf(task);
+          if (!id) return;
+          map.set(String(id), {
+            ...(map.get(String(id)) || {}),
+            id,
+            title: task.seriesTitle || task.mangaSeriesTitle || task.series?.title || task.mangaSeries?.title || `Series #${id}`
           });
-          series = Array.from(map.values());
-        } catch (error) {
-          console.warn("Assistant could not infer series from tasks.", error.message);
-        }
+        });
+
+        localTaskDeadlineItems(tasks).forEach(item => {
+          const id = item.seriesId || item.mangaSeriesId;
+          if (!id) return;
+          map.set(String(id), {
+            ...(map.get(String(id)) || {}),
+            id,
+            title: item.seriesTitle || item.mangaSeriesTitle || `Series #${id}`
+          });
+        });
+
+        series = Array.from(map.values());
+      } catch (error) {
+        console.warn("Assistant could not infer series from tasks/local deadlines.", error.message);
       }
 
       return series;
@@ -190,10 +325,14 @@
         const seriesId = seriesIdOf(activeSeries);
         Api.setActiveSeriesId?.(seriesId);
 
-        const [schedules, deadlines] = await Promise.all([
+        const [schedules, deadlines, assistantTasks] = await Promise.all([
           Api.schedules?.(seriesId).catch(() => []) || [],
-          Api.deadlines?.(seriesId).catch(() => []) || []
+          Api.deadlines?.(seriesId).catch(() => []) || [],
+          Api.tasks?.().catch(() => []) || []
         ]);
+
+        const myTaskDeadlines = taskDeadlineRows(getArray(assistantTasks), seriesId);
+        const mergedDeadlines = [...getArray(deadlines), ...myTaskDeadlines];
 
         root.innerHTML = `
           <div class="toolbar-row">
@@ -218,11 +357,19 @@
             </div>
           </div>
           <div id="readonly-deadlines-panel" class="readonly-schedule-panel">
+            <div class="card-box assistant-task-deadlines-card">
+              <div class="section-title-row"><h2>My Task Deadlines</h2><span class="schedule-count">${myTaskDeadlines.length} tasks</span></div>
+              <p class="muted-note">These are created when Mangaka sends a task to Assistant with a deadline.</p>
+              <table class="data-table dashboard-schedule-table">
+                <thead><tr><th>Task</th><th>Deadline</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>${myTaskDeadlines.map(d => `<tr><td>${esc(d.eventName || d.title || "Task deadline")}</td><td>${esc(fmtScheduleDate(d.deadlineDate || d.deadlineDateStr || d.date))}</td><td>${scheduleBadge(d.status || "OPEN")}</td><td>${d.taskId ? `<a class="btn-outline" href="task-detail.html" onclick="localStorage.setItem('currentTaskId','${esc(d.taskId)}')">Open task</a>` : `<span class="schedule-badge neutral">View only</span>`}</td></tr>`).join("") || `<tr><td colspan="4">No assigned task deadlines for selected series.</td></tr>`}</tbody>
+              </table>
+            </div>
             <div class="card-box">
-              <div class="section-title-row"><h2>Deadline Monitor</h2><span class="schedule-count">${deadlines.length} deadlines</span></div>
+              <div class="section-title-row"><h2>Deadline Monitor</h2><span class="schedule-count">${mergedDeadlines.length} deadlines</span></div>
               <table class="data-table dashboard-schedule-table">
                 <thead><tr><th>Task/Event</th><th>Deadline</th><th>Risk</th><th>Permission</th></tr></thead>
-                <tbody>${deadlines.map(d => `<tr><td>${esc(d.eventName || d.title || "Untitled deadline")}</td><td>${esc(fmtScheduleDate(d.deadlineDate || d.deadlineDateStr || d.date))}</td><td>${scheduleBadge(scheduleRisk(d))}</td><td><span class="schedule-badge neutral">View only</span></td></tr>`).join("") || `<tr><td colspan="4">No deadlines for selected series.</td></tr>`}</tbody>
+                <tbody>${mergedDeadlines.map(d => `<tr><td>${esc(d.eventName || d.title || "Untitled deadline")}</td><td>${esc(fmtScheduleDate(d.deadlineDate || d.deadlineDateStr || d.date))}</td><td>${scheduleBadge(scheduleRisk(d))}</td><td><span class="schedule-badge neutral">View only</span></td></tr>`).join("") || `<tr><td colspan="4">No deadlines for selected series.</td></tr>`}</tbody>
               </table>
             </div>
           </div>

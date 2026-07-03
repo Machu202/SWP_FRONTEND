@@ -26,6 +26,91 @@
     const getArray = (value) => Array.isArray(value) ? value : (value?.content || []);
     const pct = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 
+
+    let assistantDirectory = {};
+
+    function userIdOf(user = {}) {
+      return user.id ?? user.userId ?? user.accountId ?? "";
+    }
+
+    function userNameOf(user = {}) {
+      return user.fullName || user.name || user.username || user.email || "";
+    }
+
+    async function loadAssistantDirectory() {
+      const users = [];
+      try { users.push(...getArray(await Api.assistants?.())); } catch (_) {}
+      if (!users.length) {
+        try { users.push(...getArray(await Api.users?.())); } catch (_) {}
+      }
+
+      assistantDirectory = {};
+      users.forEach((user) => {
+        const id = userIdOf(user);
+        const name = userNameOf(user);
+        if (id && name) assistantDirectory[String(id)] = name;
+      });
+    }
+
+    function localAssistantMap() {
+      try { return JSON.parse(localStorage.getItem("taskAssistantMap") || "{}"); }
+      catch (_) { return {}; }
+    }
+
+    function rememberTaskAssistant(taskId, assistantId, assistantName = "") {
+      if (!taskId || !assistantId) return;
+      const map = localAssistantMap();
+      map[String(taskId)] = {
+        assistantId: String(assistantId),
+        assistantName: assistantName || assistantDirectory[String(assistantId)] || `Assistant #${assistantId}`
+      };
+      localStorage.setItem("taskAssistantMap", JSON.stringify(map));
+    }
+
+    function nestedUserName(value) {
+      if (!value) return "";
+      if (typeof value === "string") return value;
+      return value.fullName || value.name || value.username || value.email || "";
+    }
+
+    function assistantIdOf(task = {}) {
+      return (
+        task.assistantId ??
+        task.assigneeId ??
+        task.assignedToId ??
+        task.assignedUserId ??
+        task.assistant?.id ??
+        task.assignee?.id ??
+        task.assignedTo?.id ??
+        task.assignedUser?.id ??
+        ""
+      );
+    }
+
+    function assistantNameOf(task = {}) {
+      const direct =
+        task.assigneeName ||
+        task.assistantName ||
+        task.assignedToName ||
+        task.assignedUserName ||
+        nestedUserName(task.assistant) ||
+        nestedUserName(task.assignee) ||
+        nestedUserName(task.assignedTo) ||
+        nestedUserName(task.assignedUser);
+
+      if (direct && !/^unassigned$/i.test(String(direct).trim())) return direct;
+
+      const taskId = task.id ?? task.taskId;
+      const id = assistantIdOf(task);
+      const local = localAssistantMap();
+
+      if (taskId && local[String(taskId)]?.assistantName) return local[String(taskId)].assistantName;
+      if (id && assistantDirectory[String(id)]) return assistantDirectory[String(id)];
+      if (id) return `Assistant #${id}`;
+      return "Unassigned";
+    }
+
+
     function setActive(panelName) {
       document.querySelectorAll("[data-dashboard-panel]").forEach((link) => {
         const isActive = link.dataset.dashboardPanel === panelName;
@@ -122,47 +207,125 @@
       return String(value || "").trim().toLowerCase();
     }
 
-    function currentMangakaIdentity() {
-      let cached = {};
+    function readLocalJson(key) {
       try {
-        cached = JSON.parse(localStorage.getItem("profileCache") || "{}");
+        return JSON.parse(localStorage.getItem(key) || "{}");
       } catch (_) {
-        cached = {};
+        return {};
       }
+    }
+
+    function currentMangakaIdentity() {
+      const cached = readLocalJson("profileCache");
+      const user = readLocalJson("user");
+      const authUser = readLocalJson("authUser");
+      const currentUser = readLocalJson("currentUser");
 
       return {
-        id: normalizeIdentity(localStorage.getItem("userId") || localStorage.getItem("id") || cached.id || cached.userId),
-        username: normalizeIdentity(localStorage.getItem("username") || localStorage.getItem("userName") || cached.username || cached.userName),
-        email: normalizeIdentity(localStorage.getItem("email") || localStorage.getItem("userEmail") || cached.email),
-        fullName: normalizeIdentity(localStorage.getItem("fullName") || localStorage.getItem("name") || cached.fullName || cached.name)
+        id: normalizeIdentity(
+          localStorage.getItem("userId") ||
+          localStorage.getItem("id") ||
+          localStorage.getItem("currentUserId") ||
+          localStorage.getItem("authUserId") ||
+          localStorage.getItem("loggedInUserId") ||
+          localStorage.getItem("user_id") ||
+          cached.id || cached.userId || cached.user_id ||
+          user.id || user.userId || user.user_id ||
+          authUser.id || authUser.userId || authUser.user_id ||
+          currentUser.id || currentUser.userId || currentUser.user_id
+        ),
+        username: normalizeIdentity(
+          localStorage.getItem("username") ||
+          localStorage.getItem("userName") ||
+          cached.username || cached.userName ||
+          user.username || user.userName ||
+          authUser.username || authUser.userName ||
+          currentUser.username || currentUser.userName
+        ),
+        email: normalizeIdentity(
+          localStorage.getItem("email") ||
+          localStorage.getItem("userEmail") ||
+          cached.email ||
+          user.email ||
+          authUser.email ||
+          currentUser.email
+        ),
+        fullName: normalizeIdentity(
+          localStorage.getItem("fullName") ||
+          localStorage.getItem("name") ||
+          cached.fullName || cached.name ||
+          user.fullName || user.name ||
+          authUser.fullName || authUser.name ||
+          currentUser.fullName || currentUser.name
+        )
       };
+    }
+
+    async function ensureMangakaIdentityLoaded() {
+      const identity = currentMangakaIdentity();
+      if (identity.id) return identity;
+
+      try {
+        const profile = await Api.profile?.();
+        if (profile && typeof profile === "object") {
+          localStorage.setItem("profileCache", JSON.stringify({
+            ...JSON.parse(localStorage.getItem("profileCache") || "{}"),
+            ...profile
+          }));
+
+          const profileId = profile.id ?? profile.userId ?? profile.user_id ?? profile.accountId;
+          if (profileId) localStorage.setItem("userId", String(profileId));
+          if (profile.username || profile.userName) localStorage.setItem("username", profile.username || profile.userName);
+          if (profile.email) localStorage.setItem("email", profile.email);
+          if (profile.fullName || profile.name) localStorage.setItem("fullName", profile.fullName || profile.name);
+        }
+      } catch (error) {
+        console.warn("Could not refresh Mangaka profile identity for ownership filtering.", error.message);
+      }
+
+      return currentMangakaIdentity();
     }
 
     function seriesOwnerTokens(series = {}) {
       const mangaka = series.mangaka || series.author || series.creator || series.owner || series.user || series.createdBy || {};
+
       return {
         id: normalizeIdentity(
-          series.mangakaId || series.authorId || series.creatorId || series.ownerId || series.userId || series.createdById ||
-          mangaka.id || mangaka.userId || mangaka.accountId
+          // Supabase column shown in your table: manga_id = User.id of the Mangaka.
+          series.manga_id ||
+          series.mangaId ||
+          series.mangaka_id ||
+          series.mangakaId ||
+          series.authorId ||
+          series.creatorId ||
+          series.ownerId ||
+          series.userId ||
+          series.createdById ||
+          mangaka.id ||
+          mangaka.userId ||
+          mangaka.user_id ||
+          mangaka.accountId
         ),
         username: normalizeIdentity(
-          series.mangakaUsername || series.authorUsername || series.creatorUsername || series.ownerUsername || series.username ||
+          series.mangakaUsername || series.mangaUsername || series.authorUsername || series.creatorUsername || series.ownerUsername || series.username ||
           mangaka.username || mangaka.userName || mangaka.login
         ),
         email: normalizeIdentity(
-          series.mangakaEmail || series.authorEmail || series.creatorEmail || series.ownerEmail || series.email ||
+          series.mangakaEmail || series.mangaEmail || series.authorEmail || series.creatorEmail || series.ownerEmail || series.email ||
           mangaka.email || mangaka.mail
         ),
         fullName: normalizeIdentity(
-          series.mangakaName || series.authorName || series.creatorName || series.ownerName || series.fullName ||
+          series.mangakaName || series.mangaName || series.authorName || series.creatorName || series.ownerName || series.fullName ||
           mangaka.fullName || mangaka.name || mangaka.displayName
         )
       };
     }
 
-    function isSeriesOwnedByCurrentMangaka(series = {}) {
-      if (series.__fromMySeries === true) return true;
+    function ownerFieldsExist(owner = {}) {
+      return Boolean(owner.id || owner.username || owner.email || owner.fullName);
+    }
 
+    function isSeriesOwnedByCurrentMangaka(series = {}) {
       const identity = currentMangakaIdentity();
       const owner = seriesOwnerTokens(series);
 
@@ -171,12 +334,74 @@
       if (identity.email && owner.email && identity.email === owner.email) return true;
       if (identity.fullName && owner.fullName && identity.fullName === owner.fullName) return true;
 
-      // If the series came from /manga-series without owner fields, do not show it on the Mangaka dashboard.
-      // The full catalog remains visible in the Series tab.
+      // Only trust /my-series when the backend does not expose ownership fields.
+      // If owner fields exist and they do not match, do not show it.
+      if (series.__fromMySeries === true && !ownerFieldsExist(owner)) return true;
+
+      // DB rule from your Supabase screenshot:
+      // manga_series.manga_id must equal the logged-in User.id.
+      // Anything else stays out of Mangaka Dashboard / Chapters / Canvas / Schedule.
       return false;
     }
 
+    async function deleteMangakaOwnedSeries(series, refreshCallback) {
+      const id = series?.id ?? series?.seriesId;
+      const title = series?.title || series?.name || `Series #${id}`;
+      if (!id) return alert("Missing series id.");
+      if (!isSeriesOwnedByCurrentMangaka(series)) {
+        alert("You can only delete series created by the logged-in Mangaka.");
+        return;
+      }
+      if (!confirm(`Delete series "${title}"? This will also remove it from Mangaka work areas if the backend accepts the deletion.`)) return;
+
+      try {
+        await Api.deleteSeries(id);
+        if (String(Api.getActiveSeriesId?.() || "") === String(id)) {
+          ["activeSeriesId", "currentSeriesId", "activeSeriesTitle", "currentSeriesTitle"].forEach(key => localStorage.removeItem(key));
+        }
+        await refreshCallback?.();
+      } catch (error) {
+        alert("Delete series failed: " + (error.message || error));
+      }
+    }
+
+    async function deleteChapterAndRefresh(chapter, refreshCallback) {
+      const id = chapter?.id ?? chapter?.chapterId;
+      const label = `Chapter ${chapter?.chapterNumber ?? chapter?.number ?? id}`;
+      if (!id) return alert("Missing chapter id.");
+      if (!confirm(`Delete ${label}? Related pages/tasks may be removed or blocked by the backend.`)) return;
+
+      try {
+        await Api.deleteChapter(id);
+        if (String(Api.getActiveChapterId?.() || "") === String(id)) {
+          ["activeChapterId", "currentChapterId"].forEach(key => localStorage.removeItem(key));
+        }
+        await refreshCallback?.();
+      } catch (error) {
+        alert("Delete chapter failed: " + (error.message || error));
+      }
+    }
+
+    async function deletePageAndRefresh(page, refreshCallback) {
+      const id = page?.id ?? page?.pageId;
+      const label = `Page ${page?.pageNumber ?? page?.page_number ?? id}`;
+      if (!id) return alert("Missing page id.");
+      if (!confirm(`Delete ${label}? Related hitboxes/tasks may be removed or blocked by the backend.`)) return;
+
+      try {
+        await Api.deletePage(id);
+        if (String(Api.getActivePageId?.() || "") === String(id)) {
+          ["activePageId", "currentPageId"].forEach(key => localStorage.removeItem(key));
+        }
+        await refreshCallback?.();
+      } catch (error) {
+        alert("Delete page failed: " + (error.message || error));
+      }
+    }
+
     async function loadMangakaSeriesList() {
+      await ensureMangakaIdentityLoaded();
+
       let mySeries = [];
       let allSeries = [];
 
@@ -194,10 +419,26 @@
         allSeries = [];
       }
 
-      // Mangaka dashboard and work panels must only show the logged-in Mangaka's own series.
-      // The full catalog/all series list stays available only in the separate Series tab.
+      // DB rule from your Supabase table:
+      // manga_series.manga_id must equal the logged-in User.id.
+      // When /manga-series exposes owner fields, it is the trusted source.
       const ownedFromAll = allSeries.filter(isSeriesOwnedByCurrentMangaka);
-      return mergeSeriesLists(ownedFromAll, mySeries).map(({ __fromMySeries, ...series }) => series);
+      const mySeriesWithMatchingOwner = mySeries.filter(isSeriesOwnedByCurrentMangaka);
+      const allSeriesExposeOwner = allSeries.some((series) => ownerFieldsExist(seriesOwnerTokens(series)));
+
+      let owned;
+      if (ownedFromAll.length || allSeriesExposeOwner) {
+        owned = mergeSeriesLists(ownedFromAll, mySeriesWithMatchingOwner);
+      } else {
+        // Fallback only when the backend does not expose owner fields anywhere.
+        // This keeps old /my-series compatible, but avoids taking every all-series row.
+        owned = mySeries.filter((series) => {
+          const owner = seriesOwnerTokens(series);
+          return isSeriesOwnedByCurrentMangaka(series) || (series.__fromMySeries === true && !ownerFieldsExist(owner));
+        });
+      }
+
+      return owned.map(({ __fromMySeries, ...series }) => series);
     }
 
     function cleanSeriesDescription(raw = "") {
@@ -241,6 +482,41 @@
         ""
       ) || "Chưa có mô tả chi tiết...";
     }
+
+
+    function pageImageOf(value = {}) {
+      if (!value) return "";
+      if (typeof value === "string") return value;
+      return (
+        value.imageUrl ||
+        value.pageImageUrl ||
+        value.mangaPageImageUrl ||
+        value.originalImageUrl ||
+        value.fileUrl ||
+        value.url ||
+        value.secureUrl ||
+        value.downloadUrl ||
+        value.path ||
+        ""
+      );
+    }
+
+    function localTaskReferenceMap() {
+      try { return JSON.parse(localStorage.getItem("taskReferenceMap") || "{}"); }
+      catch (_) { return {}; }
+    }
+
+    function rememberTaskReference(taskId, payload = {}) {
+      if (!taskId) return;
+      const map = localTaskReferenceMap();
+      map[String(taskId)] = {
+        ...map[String(taskId)],
+        ...payload,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem("taskReferenceMap", JSON.stringify(map));
+    }
+
 
     function firstUsableUrl(value) {
       if (!value) return "";
@@ -349,16 +625,19 @@
         : seriesPlaceholder(title);
 
       return `
-        <button type="button" class="dashboard-series-card series-card-real" data-series-id="${esc(id)}">
+        <div role="button" tabindex="0" class="dashboard-series-card series-card-real" data-series-id="${esc(id)}">
           <div class="series-cover-box">
             ${coverHtml}
             <div class="series-status-pill"><i class="fa-solid fa-circle"></i> ${esc(status)}</div>
           </div>
           <div class="series-card-body">
-            <h3>${esc(title)} ${genre ? `<span class="series-genre-badge">${esc(genre)}</span>` : ""}</h3>
+            <div class="series-card-title-row">
+              <h3>${esc(title)} ${genre ? `<span class="series-genre-badge">${esc(genre)}</span>` : ""}</h3>
+              <button type="button" class="danger-mini-btn delete-series-btn" data-delete-series="${esc(id)}" title="Delete this series"><i class="fa-solid fa-trash"></i></button>
+            </div>
             <p>${esc(description)}</p>
           </div>
-        </button>
+        </div>
       `;
     }
 
@@ -383,7 +662,8 @@
         container.innerHTML = series.map(dashboardSeriesCard).join("");
 
         container.querySelectorAll("[data-series-id]").forEach(card => {
-          card.addEventListener("click", () => {
+          card.addEventListener("click", (event) => {
+            if (event.target.closest("[data-delete-series]")) return;
             const selected = series.find(item => String(item.id ?? item.seriesId) === String(card.dataset.seriesId));
             if (!selected) return;
 
@@ -404,6 +684,22 @@
             });
 
             window.location.href = "manuscripts.html";
+          });
+
+          card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              card.click();
+            }
+          });
+        });
+
+        container.querySelectorAll("[data-delete-series]").forEach(btn => {
+          btn.addEventListener("click", async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const selected = series.find(item => String(item.id ?? item.seriesId) === String(btn.dataset.deleteSeries));
+            await deleteMangakaOwnedSeries(selected, renderDashboardSeries);
           });
         });
       } catch (error) {
@@ -542,15 +838,25 @@
           chaptersTable.innerHTML = items.length
             ? `<table class="data-table"><thead><tr><th>Chapter</th><th>Title</th><th>Pages</th><th>Script</th><th>Status</th><th>Action</th></tr></thead><tbody>${items.map((c) => {
                 const id = c.id ?? c.chapterId;
-                const pageCount = getArray(c.pages).length;
+                const pages = getArray(c.pages);
+                const pageCount = pages.length;
                 const chapterScript = c.script || c.scriptText || c.content || Api.getChapterScript?.(id) || "";
+                const pageChips = pages.length
+                  ? `<div class="mangaka-page-chip-list">${pages.map((p) => {
+                      const pageId = p.id ?? p.pageId;
+                      return `<span class="mangaka-page-chip">Page ${esc(p.pageNumber ?? p.page_number ?? pageId ?? "?")} <button type="button" class="danger-icon-btn" data-delete-page="${esc(pageId)}" data-page-label="Page ${esc(p.pageNumber ?? p.page_number ?? pageId ?? "?")}"><i class="fa-solid fa-xmark"></i></button></span>`;
+                    }).join("")}</div>`
+                  : `<span class="muted-note">No pages</span>`;
                 return `<tr>
                   <td><strong>Ch. ${c.chapterNumber ?? c.number ?? "?"}</strong></td>
                   <td>${esc(c.title || "Untitled")}</td>
-                  <td><span class="status-tag progress">${pageCount} page${pageCount === 1 ? "" : "s"}</span></td>
+                  <td><span class="status-tag progress">${pageCount} page${pageCount === 1 ? "" : "s"}</span>${pageChips}</td>
                   <td>${chapterScript ? `<button class="btn-outline mini-btn" data-view-script="${id}"><i class="fa-solid fa-scroll"></i> View Script</button>` : `<span class="muted-note">No script</span>`}</td>
                   <td><span class="status-tag progress">${esc(c.status || "DRAFT")}</span></td>
-                  <td><button class="btn-outline mini-btn" data-open-canvas="${id}">Open Canvas</button></td>
+                  <td class="mangaka-table-actions">
+                    <button class="btn-outline mini-btn" data-open-canvas="${id}">Open Canvas</button>
+                    <button class="danger-mini-btn" data-delete-chapter="${id}"><i class="fa-solid fa-trash"></i> Delete</button>
+                  </td>
                 </tr>`;
               }).join("")}</tbody></table>`
             : `<div class="empty-state-box">No chapters yet. Create the first chapter above.</div>`;
@@ -570,6 +876,17 @@
             const firstPage = getArray(chapter?.pages)[0];
             if (firstPage?.id) Api.setActivePageId(firstPage.id);
             showPanel("canvas");
+          }));
+
+          $$("[data-delete-chapter]").forEach((btn) => btn.addEventListener("click", async () => {
+            const chapter = items.find((c) => String(c.id ?? c.chapterId) === String(btn.dataset.deleteChapter));
+            await deleteChapterAndRefresh(chapter, loadChapters);
+          }));
+
+          $$("[data-delete-page]").forEach((btn) => btn.addEventListener("click", async () => {
+            const pageId = btn.dataset.deletePage;
+            const page = items.flatMap((c) => getArray(c.pages)).find((p) => String(p.id ?? p.pageId) === String(pageId)) || { id: pageId, pageNumber: btn.dataset.pageLabel || pageId };
+            await deletePageAndRefresh(page, loadChapters);
           }));
         } catch (error) {
           chaptersTable.innerHTML = errorBox(error);
@@ -640,7 +957,13 @@
         </div>
         <div class="inline-workspace-split">
           <div class="card-box">
-            <div class="section-title-row"><h3>Canvas</h3><span class="muted-note">Drag on the image to draw a hitbox</span></div>
+            <div class="section-title-row">
+              <h3>Canvas</h3>
+              <div class="section-actions">
+                <span class="muted-note">Drag on the image to draw a hitbox</span>
+                <button id="btn-cancel-draw" class="btn-outline" type="button" style="display:none; padding:4px 8px; font-size:12px; border-color:#ef4444; color:#ef4444;">✖ Cancel Draw</button>
+              </div>
+            </div>
             <div id="inline-canvas-stage" class="hitbox-stage"><div class="empty-state-box">Select a page to start.</div></div>
           </div>
           <div class="card-box">
@@ -692,13 +1015,13 @@
 
       async function loadSeries() {
         state.series = await loadMangakaSeriesList();
-        $("#inline-canvas-series").innerHTML = state.series.map((s) => `<option value="${s.id}">${esc(s.title || s.name || `Series #${s.id}`)}</option>`).join("") || `<option value="">No series</option>`;
+        $("#inline-canvas-series").innerHTML = state.series.map((s) => `<option value="${s.id ?? s.seriesId}">${esc(s.title || s.name || `Series #${s.id ?? s.seriesId}`)}</option>`).join("") || `<option value="">No series</option>`;
         const activeSeriesId = Api.getActiveSeriesId();
-        if (activeSeriesId && state.series.some((s) => String(s.id) === String(activeSeriesId))) {
+        if (activeSeriesId && state.series.some((s) => String(s.id ?? s.seriesId) === String(activeSeriesId))) {
           $("#inline-canvas-series").value = activeSeriesId;
         } else if (state.series[0]) {
-          $("#inline-canvas-series").value = String(state.series[0].id);
-          Api.setActiveSeriesId(state.series[0].id);
+          $("#inline-canvas-series").value = String(state.series[0].id ?? state.series[0].seriesId);
+          Api.setActiveSeriesId(state.series[0].id ?? state.series[0].seriesId);
         }
         await loadChapters();
       }
@@ -707,8 +1030,16 @@
         const seriesId = $("#inline-canvas-series").value;
         Api.setActiveSeriesId(seriesId);
         state.chapters = seriesId ? await enrichChaptersWithPages(await Api.chapters(seriesId).catch(() => [])) : [];
-        $("#inline-canvas-chapter").innerHTML = state.chapters.map((c) => `<option value="${c.id}">Ch. ${c.chapterNumber ?? "?"} — ${esc(c.title || "Untitled")}</option>`).join("") || `<option value="">No chapters</option>`;
-        if (Api.getActiveChapterId()) $("#inline-canvas-chapter").value = Api.getActiveChapterId();
+        $("#inline-canvas-chapter").innerHTML = state.chapters.map((c) => `<option value="${c.id ?? c.chapterId}">Ch. ${c.chapterNumber ?? c.chapter_number ?? "?"} — ${esc(c.title || "Untitled")}</option>`).join("") || `<option value="">No chapters</option>`;
+        const activeChapterId = Api.getActiveChapterId();
+        if (activeChapterId && state.chapters.some((c) => String(c.id ?? c.chapterId) === String(activeChapterId))) {
+          $("#inline-canvas-chapter").value = activeChapterId;
+        } else if (state.chapters[0]) {
+          const firstChapterId = state.chapters[0].id ?? state.chapters[0].chapterId;
+          $("#inline-canvas-chapter").value = String(firstChapterId);
+          Api.setActiveChapterId(firstChapterId);
+        }
+        updateChapterScriptHint();
         await loadPages();
       }
 
@@ -716,8 +1047,15 @@
         const chapterId = $("#inline-canvas-chapter").value;
         Api.setActiveChapterId(chapterId);
         state.pages = chapterId ? getArray(await Api.pages(chapterId).catch(() => [])) : [];
-        $("#inline-canvas-page").innerHTML = state.pages.map((p) => `<option value="${p.id}">Page ${p.pageNumber ?? p.id}</option>`).join("") || `<option value="">No pages</option>`;
-        if (Api.getActivePageId()) $("#inline-canvas-page").value = Api.getActivePageId();
+        $("#inline-canvas-page").innerHTML = state.pages.map((p) => `<option value="${p.id ?? p.pageId}">Page ${p.pageNumber ?? p.page_number ?? p.id ?? p.pageId}</option>`).join("") || `<option value="">No pages</option>`;
+        const activePageId = Api.getActivePageId();
+        if (activePageId && state.pages.some((p) => String(p.id ?? p.pageId) === String(activePageId))) {
+          $("#inline-canvas-page").value = activePageId;
+        } else if (state.pages[0]) {
+          const firstPageId = state.pages[0].id ?? state.pages[0].pageId;
+          $("#inline-canvas-page").value = String(firstPageId);
+          Api.setActivePageId(firstPageId);
+        }
         await renderPage();
       }
 
@@ -736,6 +1074,84 @@
         return el;
       }
 
+      function resetDrawnBox(layer = $("#inline-hitbox-layer")) {
+        layer?.querySelector(".drawn-hitbox")?.remove();
+        state.lastBox = null;
+        ["#inline-box-x", "#inline-box-y", "#inline-box-w", "#inline-box-h"].forEach((selector) => {
+          const input = $(selector);
+          if (input) input.value = "";
+        });
+        const cancelButton = $("#btn-cancel-draw");
+        if (cancelButton) cancelButton.style.display = "none";
+      }
+
+      function hitboxIdOf(hitbox = {}) {
+        return hitbox.id ?? hitbox.hitboxId ?? hitbox.hitbox_id ?? "";
+      }
+
+      function taskIdFromHitbox(hitbox = {}) {
+        return hitbox.taskId ?? hitbox.task_id ?? hitbox.task?.id ?? hitbox.task?.taskId ?? "";
+      }
+
+      async function deleteSavedHitbox(hitbox = {}) {
+        const hitboxId = hitboxIdOf(hitbox);
+        const taskId = taskIdFromHitbox(hitbox);
+
+        const attempts = [];
+        if (hitboxId) {
+          attempts.push(`/workspace/hitboxes/${hitboxId}`);
+          attempts.push(`/hitboxes/${hitboxId}`);
+        }
+        if (taskId) {
+          attempts.push(`/tasks/${taskId}`);
+        }
+
+        let lastError = null;
+        for (const path of attempts) {
+          try {
+            await Api.apiFetch(path, { method: "DELETE" });
+            return true;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+
+        throw lastError || new Error("No delete endpoint was available for this hitbox.");
+      }
+
+      function attachSavedHitboxDeleteButton(el, hitbox) {
+        const hitboxId = hitboxIdOf(hitbox);
+        const taskId = taskIdFromHitbox(hitbox);
+        if (!hitboxId && !taskId) return el;
+
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.innerHTML = "✖";
+        delBtn.className = "delete-hitbox-btn";
+        delBtn.title = "Delete this hitbox";
+        delBtn.style.cssText = "position:absolute; top:-12px; right:-12px; background:#ef4444; color:white; width:24px; height:24px; border:0; border-radius:50%; text-align:center; line-height:24px; cursor:pointer; pointer-events:auto; font-size:12px; z-index:20; box-shadow:0 2px 4px rgba(0,0,0,0.3);";
+
+        delBtn.addEventListener("click", async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (!confirm("Delete this hitbox/task? This action depends on backend delete support.")) return;
+
+          const log = $("#inline-workspace-log");
+          try {
+            await deleteSavedHitbox(hitbox);
+            el.remove();
+            if (log) log.innerHTML = `<div class="log-ok">✓ Hitbox deleted.</div>`;
+          } catch (error) {
+            if (log) log.innerHTML = `<div class="log-error">✕ Delete failed: ${esc(error.message)}</div>`;
+            else alert("Delete failed: " + error.message);
+          }
+        });
+
+        el.appendChild(delBtn);
+        return el;
+      }
+
       function setBox(box) {
         state.lastBox = box;
         $("#inline-box-x").value = box.x.toFixed(2);
@@ -747,8 +1163,13 @@
       async function renderPage() {
         const pageId = $("#inline-canvas-page").value;
         const stage = $("#inline-canvas-stage");
+        const cancelButton = $("#btn-cancel-draw");
         Api.setActivePageId(pageId);
         state.lastBox = null;
+        if (cancelButton) {
+          cancelButton.style.display = "none";
+          cancelButton.onclick = () => resetDrawnBox();
+        }
 
         if (!pageId) {
           stage.innerHTML = `<div class="empty-state-box">No pages uploaded for this chapter.</div>`;
@@ -760,27 +1181,36 @@
           return p ? { imageUrl: p.imageUrl || p.fileUrl || p.url, hitboxes: [] } : null;
         });
 
-        if (!canvas?.imageUrl) {
+        const canvasImageUrl = pageImageOf(canvas);
+        state.currentCanvas = canvas;
+        state.currentPageImageUrl = canvasImageUrl;
+
+        if (!canvasImageUrl) {
           stage.innerHTML = `<div class="empty-state-box">This page has no image URL.</div>`;
           return;
         }
 
-        stage.innerHTML = `<div class="hitbox-image-wrap" id="inline-hitbox-wrap"><img src="${esc(canvas.imageUrl)}" alt="Manga page"><div id="inline-hitbox-layer"></div></div>`;
+        stage.innerHTML = `<div class="hitbox-image-wrap" id="inline-hitbox-wrap"><img src="${esc(canvasImageUrl)}" alt="Manga page"><div id="inline-hitbox-layer"></div></div>`;
         const layer = $("#inline-hitbox-layer");
 
-        getArray(canvas.hitboxes).forEach((h) => layer.appendChild(drawBox({
-          x: pct(h.x ?? h.xCoord),
-          y: pct(h.y ?? h.yCoord),
-          width: pct(h.width ?? 10),
-          height: pct(h.height ?? 10),
-        }, "saved-hitbox")));
+        getArray(canvas.hitboxes).forEach((h) => {
+          const saved = drawBox({
+            x: pct(h.x ?? h.xCoord ?? h.x_coord),
+            y: pct(h.y ?? h.yCoord ?? h.y_coord),
+            width: pct(h.width ?? 10),
+            height: pct(h.height ?? 10),
+          }, "saved-hitbox");
+          layer.appendChild(attachSavedHitboxDeleteButton(saved, h));
+        });
 
         let start = null;
         const wrap = $("#inline-hitbox-wrap");
         wrap.addEventListener("pointerdown", (event) => {
+          if (event.target?.classList?.contains("delete-hitbox-btn")) return;
           const rect = wrap.getBoundingClientRect();
           start = { x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100 };
           layer.querySelector(".drawn-hitbox")?.remove();
+          if (cancelButton) cancelButton.style.display = "inline-flex";
           wrap.setPointerCapture?.(event.pointerId);
         });
         wrap.addEventListener("pointermove", (event) => {
@@ -801,7 +1231,7 @@
       }
 
       $("#inline-canvas-series").addEventListener("change", loadChapters);
-      $("#inline-canvas-chapter").addEventListener("change", loadPages);
+      $("#inline-canvas-chapter").addEventListener("change", () => { updateChapterScriptHint(); loadPages(); });
       $("#inline-canvas-page").addEventListener("change", renderPage);
       $("#inline-load-page").addEventListener("click", renderPage);
 
@@ -830,7 +1260,26 @@
           const hitboxId = hitbox?.id || hitbox?.hitboxId || hitbox;
           const task = await Api.assignTaskToHitbox(hitboxId, taskDescription);
           const taskId = task?.id || task?.taskId;
-          if (taskId && assistantId) await Api.assignTask(taskId, assistantId);
+          if (taskId && assistantId) {
+            await Api.assignTask(taskId, assistantId);
+            const selectedAssistant = $("#inline-assistant-select")?.selectedOptions?.[0]?.textContent?.trim() || "";
+            rememberTaskAssistant(taskId, assistantId, selectedAssistant);
+          }
+
+          if (taskId) {
+            const selectedPage = state.pages.find((page) => String(page.id ?? page.pageId) === String(pageId));
+            const selectedSeries = state.series.find((series) => String(series.id ?? series.seriesId) === String($("#inline-canvas-series")?.value || ""));
+            rememberTaskReference(taskId, {
+              pageId,
+              chapterId,
+              seriesId: $("#inline-canvas-series")?.value || "",
+              imageUrl: state.currentPageImageUrl || pageImageOf(selectedPage) || pageImageOf(state.currentCanvas),
+              pageNumber: selectedPage?.pageNumber ?? selectedPage?.number ?? "",
+              seriesTitle: selectedSeries?.title || selectedSeries?.name || "",
+              chapterTitle: chapter?.title || "",
+              hitbox: state.lastBox
+            });
+          }
 
           if (deadlineDate) {
             const seriesId = $("#inline-canvas-series")?.value || Api.getActiveSeriesId?.();
@@ -864,6 +1313,7 @@
           }
 
           log.innerHTML = `<div class="log-ok">✓ Hitbox task created successfully${deadlineDate ? " with scheduled deadline." : "."}</div>`;
+          resetDrawnBox();
           await renderPage();
         } catch (error) {
           log.innerHTML = `<div class="log-error">✕ ${esc(error.message)}</div>`;
@@ -950,6 +1400,34 @@
       saveLocalDeadlines(seriesId, getLocalDeadlines(seriesId).filter(item => String(item.id) !== String(id)));
     }
 
+    function getSharedScheduleItems() {
+      try { return Api.getScheduleItems?.() || []; }
+      catch (_) { return []; }
+    }
+
+    function sharedItemsForSeries(seriesId, types = []) {
+      const allowed = new Set(types);
+      return getSharedScheduleItems().filter((item) => {
+        if (String(item.seriesId || item.mangaSeriesId || "") !== String(seriesId)) return false;
+        return !allowed.size || allowed.has(String(item.type || item.source || "").toUpperCase());
+      });
+    }
+
+    function dedupeScheduleRows(rows = []) {
+      const seen = new Set();
+      return rows.filter((row) => {
+        const key = [
+          row.id || row.scheduleId || row.eventId || "",
+          row.type || row.source || "",
+          row.publishDate || row.deadlineDate || row.deadlineDateStr || row.date || "",
+          row.frequency || row.eventName || row.title || ""
+        ].join("|");
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
     function fmtScheduleDate(value) {
       if (!value) return "—";
       const date = new Date(value);
@@ -1010,7 +1488,13 @@
         console.warn("Could not load backend schedules.", error.message);
       }
 
-      scheduleState.schedules = [...schedules, ...getLocalSchedules(seriesId)];
+      const sharedSchedules = sharedItemsForSeries(seriesId, ["PUBLISHING_SCHEDULE", "MANGAKA_SCHEDULE", "LOCAL_SCHEDULE"]).map((item) => ({
+        ...item,
+        publishDate: item.publishDate || item.date || item.scheduledDate,
+        frequency: item.frequency || item.repeatType || "Weekly"
+      }));
+
+      scheduleState.schedules = dedupeScheduleRows([...schedules, ...getLocalSchedules(seriesId), ...sharedSchedules]);
     }
 
     async function loadDashboardDeadlines(scheduleState) {
@@ -1027,7 +1511,14 @@
         console.warn("Could not load backend deadlines.", error.message);
       }
 
-      scheduleState.deadlines = [...deadlines, ...getLocalDeadlines(seriesId)];
+      const sharedDeadlines = sharedItemsForSeries(seriesId, ["DEADLINE", "TASK_DEADLINE", "MANGAKA_DEADLINE", "LOCAL_DEADLINE"]).map((item) => ({
+        ...item,
+        eventName: item.eventName || item.title || item.description || "Task deadline",
+        deadlineDateStr: item.deadlineDateStr || item.deadlineDate || item.date || item.dueDate,
+        status: item.status || "OPEN"
+      }));
+
+      scheduleState.deadlines = dedupeScheduleRows([...deadlines, ...getLocalDeadlines(seriesId), ...sharedDeadlines]);
     }
 
     function filterScheduleRows(rows, scheduleState) {
@@ -1178,7 +1669,19 @@
         scheduleToast("Schedule saved.", "success");
       } catch (error) {
         console.warn("Backend schedule create failed; saving local schedule.", error.message);
+        const activeSeries = scheduleState.series.find(s => String(scheduleSeriesId(s)) === String(seriesId));
         addLocalSchedule(seriesId, { publishDate, frequency, status: "OPEN" });
+        Api.addScheduleItem?.({
+          type: "PUBLISHING_SCHEDULE",
+          source: "MANGAKA_SCHEDULE",
+          title: `Publishing schedule: ${activeSeries ? scheduleSeriesTitle(activeSeries) : `Series #${seriesId}`}`,
+          publishDate,
+          date: publishDate,
+          frequency,
+          seriesId,
+          seriesTitle: activeSeries ? scheduleSeriesTitle(activeSeries) : `Series #${seriesId}`,
+          status: "OPEN"
+        });
         scheduleToast("Backend rejected schedule, so it was saved locally for this browser.", "info");
       }
 
@@ -1200,7 +1703,20 @@
         scheduleToast("Deadline saved.", "success");
       } catch (error) {
         console.warn("Backend deadline create failed; saving local deadline.", error.message);
+        const activeSeries = scheduleState.series.find(s => String(scheduleSeriesId(s)) === String(seriesId));
         addLocalDeadline(seriesId, { eventName, deadlineDateStr: deadlineDate, status: "OPEN" });
+        Api.addScheduleItem?.({
+          type: "DEADLINE",
+          source: "MANGAKA_DEADLINE",
+          title: eventName,
+          eventName,
+          deadlineDate,
+          deadlineDateStr: deadlineDate,
+          date: deadlineDate,
+          seriesId,
+          seriesTitle: activeSeries ? scheduleSeriesTitle(activeSeries) : `Series #${seriesId}`,
+          status: "OPEN"
+        });
         scheduleToast("Backend rejected deadline, so it was saved locally for this browser.", "info");
       }
 
@@ -1324,7 +1840,7 @@
         return `<div class="kanban-card backend-task-card ${canReview ? "mangaka-review-card" : ""}" draggable="${canReview ? "false" : "true"}" data-id="${id}" data-review="${canReview}">
           <strong>${esc(task.title || task.description || `Task #${id}`)}</strong>
           <p>${esc(task.description || "")}</p>
-          <small>${esc(task.assigneeName || task.assistantName || "Unassigned")} · ${esc(status)}</small>
+          <small>${esc(assistantNameOf(task))} · ${esc(status)}</small>
           ${canReview
             ? `<button type="button" class="mangaka-review-submission-btn" data-task-id="${id}">
                 <i class="fa-solid fa-eye"></i> Review Submitted Image
@@ -1340,6 +1856,7 @@
         });
 
         try {
+          await loadAssistantDirectory();
           const tasks = getArray(await Api.tasks());
           statuses.forEach((status) => {
             const items = tasks.filter((task) => normalize(task.status) === status);

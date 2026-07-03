@@ -31,6 +31,60 @@
     return "";
   };
   const badge = (text) => `<span class="status-tag ${statusClass(text)}">${esc(text || "—")}</span>`;
+
+  function localAssistantMap() {
+    try { return JSON.parse(localStorage.getItem("taskAssistantMap") || "{}"); }
+    catch (_) { return {}; }
+  }
+
+  function nestedUserName(value) {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    return value.fullName || value.name || value.username || value.email || "";
+  }
+
+  function assistantIdOf(task = {}) {
+    return (
+      task.assistantId ??
+      task.assigneeId ??
+      task.assignedToId ??
+      task.assignedUserId ??
+      task.assistant?.id ??
+      task.assignee?.id ??
+      task.assignedTo?.id ??
+      task.assignedUser?.id ??
+      ""
+    );
+  }
+
+  function assistantNameOf(task = {}) {
+    const direct =
+      task.assigneeName ||
+      task.assistantName ||
+      task.assignedToName ||
+      task.assignedUserName ||
+      nestedUserName(task.assistant) ||
+      nestedUserName(task.assignee) ||
+      nestedUserName(task.assignedTo) ||
+      nestedUserName(task.assignedUser);
+
+    if (direct && !/^unassigned$/i.test(String(direct).trim())) return direct;
+
+    const taskId = task.id ?? task.taskId;
+    const id = assistantIdOf(task);
+    const local = localAssistantMap();
+
+    if (taskId && local[String(taskId)]?.assistantName) return local[String(taskId)].assistantName;
+
+    const matchedUser = (state.users || []).find((user) => String(user.id ?? user.userId) === String(id));
+    const matchedName = matchedUser?.fullName || matchedUser?.name || matchedUser?.username || matchedUser?.email;
+    if (matchedName) return matchedName;
+
+    if (id) return `Assistant #${id}`;
+    return "Unassigned";
+  }
+
+
   const toast = (message, type = "info") => window.showToast ? window.showToast(message, type) : alert(message);
 
   function withApiTimeout(promise, label = "backend request", ms = 8000) {
@@ -282,6 +336,194 @@
     ].some(isMangakaApprovedStatus);
   }
 
+  function chapterIdOf(chapter = {}) {
+    return chapter.id ?? chapter.chapterId ?? chapter.mangaChapterId;
+  }
+
+  function chapterStatusOf(chapter = {}) {
+    return chapter.publishStatus ||
+      chapter.publish_status ||
+      chapter.status ||
+      chapter.chapterStatus ||
+      chapter.reviewStatus ||
+      chapter.approvalStatus ||
+      chapter.mangakaApprovalStatus ||
+      "";
+  }
+
+  function isTantouReviewableChapter(chapter = {}) {
+    if (!chapter) return false;
+
+    if (chapter.isApproved === true ||
+        chapter.approved === true ||
+        chapter.mangakaApproved === true ||
+        chapter.readyForTantou === true) {
+      return true;
+    }
+
+    return [
+      chapterStatusOf(chapter),
+      chapter.publishStatus,
+      chapter.publish_status,
+      chapter.status,
+      chapter.chapterStatus,
+      chapter.reviewStatus,
+      chapter.approvalStatus,
+      chapter.mangakaApprovalStatus
+    ].some(isMangakaApprovedStatus);
+  }
+
+  async function chaptersForTantouSeries(series = {}) {
+    const sid = seriesIdOf(series);
+    if (!sid || !Api.chapters) return [];
+    try {
+      const chapters = await withApiTimeout(Api.chapters(sid), `/chapters/series/${sid}`, 8000).catch(() => []);
+      return Array.isArray(chapters) ? chapters : (chapters?.content || []);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function taskStatusOf(task = {}) {
+    return normalizeStatusText(task.status || task.taskStatus || task.reviewStatus || task.approvalStatus || "");
+  }
+
+  function isMangakaApprovedTask(task = {}) {
+    return task?.isApproved === true ||
+      task?.approved === true ||
+      [
+        taskStatusOf(task),
+        task.status,
+        task.taskStatus,
+        task.reviewStatus,
+        task.approvalStatus
+      ].some(isMangakaApprovedStatus);
+  }
+
+  function taskHitboxId(task = {}) {
+    return task.hitboxId ||
+      task.hitbox_id ||
+      task.hitbox?.id ||
+      task.hitbox?.hitboxId ||
+      "";
+  }
+
+  function taskChapterId(task = {}) {
+    return task.chapterId ||
+      task.chapter_id ||
+      task.mangaChapterId ||
+      task.chapter?.id ||
+      task.chapter?.chapterId ||
+      task.page?.chapterId ||
+      task.page?.chapter_id ||
+      task.page?.chapter?.id ||
+      task.mangaPage?.chapterId ||
+      task.hitbox?.page?.chapterId ||
+      task.hitbox?.page?.chapter_id ||
+      task.hitbox?.page?.chapter?.id ||
+      "";
+  }
+
+  function taskPageId(task = {}) {
+    return task.pageId ||
+      task.page_id ||
+      task.mangaPageId ||
+      task.page?.id ||
+      task.page?.pageId ||
+      task.mangaPage?.id ||
+      task.hitbox?.pageId ||
+      task.hitbox?.page_id ||
+      task.hitbox?.page?.id ||
+      task.hitbox?.page?.pageId ||
+      "";
+  }
+
+  async function tasksForTantouSeries(series = {}) {
+    const sid = seriesIdOf(series);
+    if (!sid || !Api.tasksBySeries) return [];
+    try {
+      const tasks = await withApiTimeout(Api.tasksBySeries(sid), `/tasks/series/${sid}`, 8000).catch(() => []);
+      return Array.isArray(tasks) ? tasks : (tasks?.content || []);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  async function inferApprovedChapterIdsFromTasks(series = {}, chapters = []) {
+    const seriesTasks = await tasksForTantouSeries(series);
+    const approvedTasks = seriesTasks.filter(isMangakaApprovedTask);
+    const updatedTantouFeedbackTasks = seriesTasks.filter(isUpdatedTantouFeedbackTask);
+    const gateTasks = [...approvedTasks, ...updatedTantouFeedbackTasks];
+
+    const approvedChapterIds = new Set();
+    const approvedPageIds = new Set();
+    const approvedHitboxIds = new Set();
+
+    gateTasks.forEach(task => {
+      const chapterId = taskChapterId(task);
+      const pageId = taskPageId(task);
+      const hitboxId = taskHitboxId(task);
+
+      if (chapterId) approvedChapterIds.add(String(chapterId));
+      if (pageId) approvedPageIds.add(String(pageId));
+      if (hitboxId) approvedHitboxIds.add(String(hitboxId));
+    });
+
+    // If task only exposes pageId, map pageId -> chapter by loading pages for each chapter.
+    if (approvedPageIds.size && !approvedChapterIds.size && Api.pages) {
+      for (const chapter of chapters) {
+        const chapterId = chapterIdOf(chapter);
+        if (!chapterId) continue;
+
+        const pages = await Api.pages(chapterId).catch(() => []);
+        const pageList = Array.isArray(pages) ? pages : (pages?.content || []);
+
+        if (pageList.some(page => approvedPageIds.has(String(page.id ?? page.pageId)))) {
+          approvedChapterIds.add(String(chapterId));
+        }
+      }
+    }
+
+    // Last fallback:
+    // Some backend task DTOs only expose task.hitbox_id. The page/image already works in review
+    // because another endpoint resolves the hitbox. If we cannot map it to a specific chapter here,
+    // do not make the dashboard empty: allow the active series and then filter pages later where possible.
+    return {
+      approvedTasks,
+      updatedTantouFeedbackTasks,
+      approvedChapterIds: [...approvedChapterIds],
+      hasApprovedTask: approvedTasks.length > 0,
+      hasUpdatedTantouFeedbackTask: updatedTantouFeedbackTasks.length > 0,
+      hasUnmappedApprovedHitboxTask: gateTasks.length > 0 && approvedChapterIds.size === 0 && approvedHitboxIds.size > 0
+    };
+  }
+
+  async function decorateSeriesWithApprovedChapters(series = {}) {
+    const chapters = await chaptersForTantouSeries(series);
+    const statusApprovedChapters = chapters.filter(isTantouReviewableChapter);
+    const statusApprovedChapterIds = statusApprovedChapters
+      .map(chapterIdOf)
+      .filter(id => id !== undefined && id !== null && id !== "")
+      .map(String);
+
+    const taskApproval = await inferApprovedChapterIdsFromTasks(series, chapters);
+    const approvedChapterIds = [...new Set([
+      ...statusApprovedChapterIds,
+      ...taskApproval.approvedChapterIds
+    ])];
+
+    return {
+      ...series,
+      __tantouAllChapters: chapters,
+      __tantouApprovedChapterIds: approvedChapterIds,
+      __tantouHasApprovedChapter: approvedChapterIds.length > 0,
+      __tantouHasApprovedTask: taskApproval.hasApprovedTask,
+      __tantouHasUpdatedTantouFeedbackTask: taskApproval.hasUpdatedTantouFeedbackTask,
+      __tantouUpdatedFeedbackTaskCount: taskApproval.updatedTantouFeedbackTasks?.length || 0,
+      __tantouHasUnmappedApprovedHitboxTask: taskApproval.hasUnmappedApprovedHitboxTask
+    };
+  }
+
   function seriesIdOf(series = {}) {
     return series.id ?? series.seriesId ?? series.mangaSeriesId;
   }
@@ -315,7 +557,8 @@
         }
       }
 
-      // Also load the full list as fallback and filter client-side.
+      // Also load the full list so Tantou can see a DRAFT series when one of its chapters
+      // has been Mangaka-approved. The filter below still prevents random DRAFT series.
       try {
         const result = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
         if (Array.isArray(result) && result.length) lists.push(result);
@@ -324,9 +567,23 @@
       }
     }
 
-    const merged = mergeSeriesById(...lists)
-      .map(applyTantouReturnOverride)
-      .filter(isTantouReviewableSeries);
+    const candidates = mergeSeriesById(...lists).map(applyTantouReturnOverride);
+
+    const decorated = await Promise.all(
+      candidates.map(series => decorateSeriesWithApprovedChapters(series))
+    );
+
+    const merged = decorated.filter(series => {
+      if (getTantouSeriesReturn(seriesIdOf(series))?.returnedToMangaka) return false;
+
+      // Strict Tantou gate:
+      // Tantou may only work on series that contain a Mangaka-approved chapter
+      // OR an APPROVED task that proves a page has passed Mangaka review.
+      // Series-level APPROVED alone is not enough.
+      return series.__tantouHasApprovedChapter === true ||
+        series.__tantouHasApprovedTask === true ||
+        series.__tantouHasUpdatedTantouFeedbackTask === true;
+    });
 
     // Ensure Tantou cannot stay on a stale DRAFT/non-approved series selected by another screen.
     if (merged.length && !merged.some(series => String(seriesIdOf(series)) === String(Api.getActiveSeriesId()))) {
@@ -394,6 +651,63 @@
     return fallback;
   }
 
+  function getMangakaSubmittedAnnotationStore() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("mangakaSubmittedAnnotationsForTantou") || "{}");
+      return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    } catch (_) { return {}; }
+  }
+
+  function mangakaSubmittedAnnotationsForPage(pageId = "", chapterId = "", seriesId = "") {
+    const pid = String(pageId || "");
+    const cid = String(chapterId || "");
+    const sid = String(seriesId || "");
+
+    return Object.values(getMangakaSubmittedAnnotationStore())
+      .filter(Boolean)
+      .filter(entry => {
+        if (pid && String(entry.pageId || "") === pid) return true;
+        if (cid && String(entry.chapterId || "") === cid) return true;
+        if (sid && String(entry.seriesId || "") === sid) return true;
+        return false;
+      })
+      .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+  }
+
+  function renderMangakaSubmittedAnnotationPins(annotationEntries = []) {
+    return annotationEntries.flatMap(entry => (entry.annotations || []).map((note, index) => {
+      if (note.x === null || note.y === null || note.x === undefined || note.y === undefined) return "";
+      const x = clampPercent(Number(note.x) || 0, 0, 100);
+      const y = clampPercent(Number(note.y) || 0, 0, 100);
+      const w = Math.max(4, Math.min(20, Number(note.width) || 8));
+      const h = Math.max(4, Math.min(20, Number(note.height) || 8));
+      return `<button type="button" class="annotation-preview-region mangaka-submitted-annotation-region" data-mangaka-annotation="${esc(entry.taskId || index)}-${index}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%;" title="${esc(note.text || 'Mangaka annotation')}"><span>MG</span></button>`;
+    })).join("");
+  }
+
+  function renderMangakaSubmittedAnnotationCards(annotationEntries = []) {
+    if (!annotationEntries.length) return "";
+
+    return `<div class="mangaka-submitted-annotations-block">
+      <div class="section-title-row"><h3>Mangaka Submitted Annotations</h3><span class="status-tag progress">${annotationEntries.reduce((sum, entry) => sum + (entry.annotations || []).length, 0)}</span></div>
+      ${annotationEntries.map(entry => `
+        <div class="mangaka-submitted-annotation-entry">
+          <div class="mangaka-submitted-annotation-head">
+            <strong>Task #${esc(entry.taskId || "—")}</strong>
+            <span>${fmtDate(entry.submittedAt)}</span>
+          </div>
+          ${(entry.annotations || []).map((note, index) => `
+            <div class="mangaka-submitted-annotation-card">
+              <div class="annotation-feedback-index">MG</div>
+              <div class="annotation-feedback-body">
+                <div class="annotation-feedback-top"><strong>${esc(note.annotationId || `Note ${index + 1}`)}</strong><span>${note.x !== null && note.y !== null ? `X ${Number(note.x).toFixed(1)}% · Y ${Number(note.y).toFixed(1)}%` : 'General note'}</span></div>
+                <p>${esc(note.text || "No note text.")}</p>
+              </div>
+            </div>`).join("")}
+        </div>`).join("")}
+    </div>`;
+  }
+
 
   function shell(title, subtitle, actionHtml = "") {
     const content = $(".content-padding");
@@ -449,18 +763,68 @@
 
   async function hydrateSeriesContext() {
     await loadSeries();
+
+    state.chapters = [];
+    state.pages = [];
+
     let seriesId = Api.getActiveSeriesId();
     if (!state.series.some(s => String(seriesIdOf(s)) === String(seriesId)) && state.series[0]) {
       seriesId = seriesIdOf(state.series[0]);
       Api.setActiveSeriesId(seriesId);
+      localStorage.removeItem("activeChapterId");
+      localStorage.removeItem("activePageId");
     }
+
     if (seriesId) {
-      state.chapters = await Api.chapters(seriesId).catch(() => []);
-      if (state.chapters.length && !Api.getActiveChapterId()) Api.setActiveChapterId(state.chapters[0].id);
-      let chapterId = Api.getActiveChapterId() || state.chapters[0]?.id || "";
+      const activeSeries = state.series.find(s => String(seriesIdOf(s)) === String(seriesId)) || state.series[0] || {};
+      const loadedChapters = activeSeries.__tantouAllChapters?.length
+        ? activeSeries.__tantouAllChapters
+        : await Api.chapters(seriesId).catch(() => []);
+
+      // Strict Tantou chapter/page gate:
+      // Tantou can only choose chapters approved by Mangaka.
+      // Pages are loaded only from the selected approved chapter, so draft chapter pages stay hidden.
+      if (isTantouPage()) {
+        const approvedIds = activeSeries.__tantouApprovedChapterIds?.length
+          ? activeSeries.__tantouApprovedChapterIds.map(String)
+          : loadedChapters.filter(isTantouReviewableChapter).map(chapterIdOf).filter(id => id !== undefined && id !== null && id !== "").map(String);
+
+        const allowed = new Set(approvedIds);
+
+        if (allowed.size) {
+          state.chapters = loadedChapters.filter(ch => allowed.has(String(chapterIdOf(ch))));
+        } else if (activeSeries.__tantouHasUnmappedApprovedHitboxTask || activeSeries.__tantouHasApprovedTask || activeSeries.__tantouHasUpdatedTantouFeedbackTask) {
+          // Recovery path for the current backend DTO:
+          // task.status is APPROVED but task only exposes hitbox_id, not chapter_id/page_id.
+          // Showing chapters here is safer than showing an empty Tantou dashboard, while random
+          // non-approved series are still blocked by loadTantouApprovedSeries().
+          state.chapters = loadedChapters;
+        } else {
+          state.chapters = [];
+        }
+      } else {
+        state.chapters = loadedChapters;
+      }
+
+      let chapterId = Api.getActiveChapterId();
+      if (state.chapters.length && !state.chapters.some(ch => String(chapterIdOf(ch)) === String(chapterId))) {
+        chapterId = chapterIdOf(state.chapters[0]);
+        Api.setActiveChapterId(chapterId);
+        localStorage.removeItem("activePageId");
+      } else if (!state.chapters.length) {
+        localStorage.removeItem("activeChapterId");
+        localStorage.removeItem("activePageId");
+        chapterId = "";
+      }
+
       if (chapterId) {
         state.pages = await Api.pages(chapterId).catch(() => []);
-        if (state.pages.length && !Api.getActivePageId()) Api.setActivePageId(state.pages[0].id);
+        const pageId = Api.getActivePageId();
+        if (state.pages.length && !state.pages.some(page => String(page.id ?? page.pageId) === String(pageId))) {
+          Api.setActivePageId(state.pages[0].id ?? state.pages[0].pageId);
+        } else if (!state.pages.length) {
+          localStorage.removeItem("activePageId");
+        }
       }
     }
   }
@@ -496,6 +860,177 @@
     return Api.normalizeTaskStatus ? Api.normalizeTaskStatus(status) : String(status || "TODO").toUpperCase();
   }
 
+  function taskSubmissionUrl(task = {}) {
+    return task.submittedImageUrl ||
+      task.submitted_image_url ||
+      task.submissionUrl ||
+      task.submission_url ||
+      task.finishedImageUrl ||
+      task.finished_image_url ||
+      task.outputImageUrl ||
+      task.output_image_url ||
+      task.resultImageUrl ||
+      task.result_image_url ||
+      task.resource?.fileUrl ||
+      task.resource?.file_url ||
+      "";
+  }
+
+  function taskDescriptionText(task = {}) {
+    return String([
+      task.description,
+      task.title,
+      task.note,
+      task.comment,
+      task.taskDescription,
+      task.task_description
+    ].filter(Boolean).join("\n"));
+  }
+
+  function taskReferenceMeta(task = {}) {
+    const id = taskIdOf(task);
+    if (!id) return null;
+
+    try {
+      const map = JSON.parse(localStorage.getItem("taskReferenceMap") || "{}");
+      return map[String(id)] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function tantouFeedbackIdFromTask(task = {}) {
+    const local = taskReferenceMeta(task);
+    if (local?.feedbackId) return String(local.feedbackId);
+
+    const text = taskDescriptionText(task);
+    const match = text.match(/tantou\s+feedback\s*#?\s*(\d+)/i);
+    return match ? match[1] : "";
+  }
+
+  function isTaskFromTantouFeedback(task = {}) {
+    const local = taskReferenceMeta(task);
+    if (local?.source === "TANTOU_FEEDBACK") return true;
+    return /tantou\s+feedback/i.test(taskDescriptionText(task));
+  }
+
+  function isUpdatedTantouFeedbackTask(task = {}) {
+    if (!isTaskFromTantouFeedback(task)) return false;
+
+    const status = normalizeTaskStatus(task.status || task.taskStatus || task.state || task.reviewStatus);
+    const submitted = taskSubmissionUrl(task);
+
+    // REVIEWING = Assistant submitted and waiting for Mangaka review.
+    // APPROVED = Mangaka approved the Assistant fix and Tantou should re-check.
+    return Boolean(submitted) && ["REVIEWING", "APPROVED"].includes(status);
+  }
+
+  function recheckStatusLabel(task = {}) {
+    const status = normalizeTaskStatus(task.status || task.taskStatus || task.state || task.reviewStatus);
+    if (status === "APPROVED") return "Ready for Tantou re-check";
+    if (status === "REVIEWING") return "Assistant submitted";
+    return status || "Updated";
+  }
+
+  function taskChapterPageLabel(task = {}) {
+    const chapter = task.chapterNumber || task.chapter_number || task.chapter?.chapterNumber || task.chapter?.chapter_number || "";
+    const pageNo = task.pageNumber || task.page_number || task.page?.pageNumber || task.page?.page_number || "";
+    const parts = [];
+    if (chapter) parts.push(`Ch. ${chapter}`);
+    if (pageNo) parts.push(`Page ${pageNo}`);
+    return parts.join(" · ");
+  }
+
+  async function loadTantouRecheckQueue() {
+    const all = [];
+
+    for (const series of state.series || []) {
+      const sid = seriesIdOf(series);
+      if (!sid) continue;
+
+      const tasks = await tasksForTantouSeries(series).catch(() => []);
+      tasks.forEach(task => {
+        if (!isUpdatedTantouFeedbackTask(task)) return;
+
+        all.push({
+          ...task,
+          __seriesId: sid,
+          __seriesTitle: series.title || series.name || task.seriesTitle || task.mangaSeriesTitle || "",
+          __seriesGenre: series.genre || "",
+          __chapterId: taskChapterId(task),
+          __pageId: taskPageId(task),
+          __feedbackId: tantouFeedbackIdFromTask(task),
+          __submittedUrl: taskSubmissionUrl(task)
+        });
+      });
+    }
+
+    const byKey = new Map();
+    all.forEach(task => {
+      const key = String(taskIdOf(task) || `${task.__seriesId}:${task.__feedbackId}:${task.__submittedUrl}`);
+      if (key) byKey.set(key, task);
+    });
+
+    return Array.from(byKey.values()).sort((a, b) => {
+      const at = new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at || 0).getTime();
+      const bt = new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at || 0).getTime();
+      return bt - at;
+    });
+  }
+
+  function renderTantouRecheckQueue(tasks = []) {
+    return `
+      <div class="card-box tantou-recheck-queue-card">
+        <div class="section-title-row">
+          <div>
+            <h2>Updated Fixes / Re-check Queue</h2>
+            <p class="muted-note">No-backend tracking: detected from task status, submitted image, and "Tantou Feedback #..." in the task description.</p>
+          </div>
+          <span class="schedule-count">${tasks.length} update${tasks.length === 1 ? "" : "s"}</span>
+        </div>
+
+        ${tasks.length ? `<div class="tantou-recheck-list">
+          ${tasks.map(task => {
+            const id = taskIdOf(task);
+            const feedbackId = task.__feedbackId || "—";
+            const imageUrl = task.__submittedUrl || taskSubmissionUrl(task);
+            const statusLabel = recheckStatusLabel(task);
+            const pageLabel = taskChapterPageLabel(task);
+            return `<div class="list-card tantou-recheck-card">
+              <div class="list-card-content">
+                <h2 class="list-card-title">${esc(task.__seriesTitle || task.seriesTitle || "Updated submission")}</h2>
+                <p class="list-card-meta">
+                  ${badge(statusLabel)}
+                  <span>Feedback #${esc(feedbackId)}</span>
+                  <span>Task #${esc(id || "—")}</span>
+                  <span>${esc(assistantNameOf(task))}</span>
+                  ${pageLabel ? `<span>${esc(pageLabel)}</span>` : ""}
+                </p>
+                <p class="muted-note">${esc(taskDescriptionText(task).replace(/\s+/g, " ").slice(0, 180))}${taskDescriptionText(task).length > 180 ? "..." : ""}</p>
+              </div>
+              <div class="tantou-recheck-actions">
+                ${imageUrl ? `<a class="btn-outline" href="${esc(imageUrl)}" target="_blank" rel="noopener"><i class="fa-solid fa-image"></i> View updated image</a>` : ""}
+                <button type="button" class="btn-publish tantou-open-recheck" data-series-id="${esc(task.__seriesId || "")}" data-chapter-id="${esc(task.__chapterId || "")}" data-page-id="${esc(task.__pageId || "")}">
+                  <i class="fa-solid fa-magnifying-glass"></i> Re-check
+                </button>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>` : `<div class="empty-state-box">No updated Tantou-feedback fixes yet.</div>`}
+      </div>`;
+  }
+
+  function bindTantouRecheckQueueActions() {
+    $$(".tantou-open-recheck").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.seriesId) Api.setActiveSeriesId(btn.dataset.seriesId);
+        if (btn.dataset.chapterId) Api.setActiveChapterId(btn.dataset.chapterId);
+        if (btn.dataset.pageId) Api.setActivePageId(btn.dataset.pageId);
+        location.href = "tantou-feedback.html";
+      });
+    });
+  }
+
 
   function renderTantouKanbanPreview(tasks = []) {
     const statuses = ["TODO", "DOING", "REVIEWING", "APPROVED"];
@@ -520,7 +1055,7 @@
                 ${items.slice(0, 4).map(task => `
                   <div class="tantou-kanban-preview-card">
                     <strong>${esc(taskTitleOf(task))}</strong>
-                    <small>${esc(task.assigneeName || task.assistantName || "Unassigned")} · ${esc(normalizeTaskStatus(task.status))}</small>
+                    <small>${esc(assistantNameOf(task))} · ${esc(normalizeTaskStatus(task.status))}</small>
                   </div>
                 `).join("") || `<div class="empty-column">No ${esc(label.toLowerCase())} tasks</div>`}
               </div>
@@ -547,11 +1082,11 @@
                 ${items.map(task => {
                   const id = taskIdOf(task);
                   const title = taskTitleOf(task);
-                  const submitted = task.submittedImageUrl || task.submissionUrl || "";
+                  const submitted = taskSubmissionUrl(task);
                   return `<div class="kanban-card backend-task-card" draggable="true" data-id="${esc(id)}">
                     <strong>${esc(title)}</strong>
                     <p>${esc(task.description || "")}</p>
-                    <small>${esc(task.assigneeName || task.assistantName || "Unassigned")} · ${esc(normalizeTaskStatus(task.status))}</small>
+                    <small>${esc(assistantNameOf(task))} · ${esc(normalizeTaskStatus(task.status))}</small>
                     ${submitted ? `<a class="btn-outline mini-btn tantou-open-submission" href="${esc(submitted)}" target="_blank" rel="noopener"><i class="fa-solid fa-image"></i> Open submission</a>` : ""}
                   </div>`;
                 }).join("") || `<div class="empty-column">Drop tasks here</div>`}
@@ -620,6 +1155,98 @@
     if (days <= 2) return "High";
     if (days <= 7) return "Medium";
     return "Normal";
+  }
+
+  function readLocalScheduleJson(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+    catch (_) { return fallback; }
+  }
+
+  function localStudioScheduleItems() {
+    try { return Api.getScheduleItems?.() || readLocalScheduleJson("studioScheduleItems", []); }
+    catch (_) { return readLocalScheduleJson("studioScheduleItems", []); }
+  }
+
+  function normalizeScheduleSeriesId(value = {}) {
+    return String(value.seriesId || value.mangaSeriesId || value.manga_series_id || value.series?.id || value.mangaSeries?.id || "");
+  }
+
+  function localRowsForScheduleSeries(seriesId, activeSeries = {}) {
+    const localSchedules = readLocalScheduleJson(`mangakaScheduleLocal:${seriesId}`, []).map(item => ({
+      ...item,
+      source: item.source || "LOCAL_SCHEDULE",
+      publishDate: item.publishDate || item.date || item.scheduledDate,
+      frequency: item.frequency || item.repeatType || "Weekly"
+    }));
+
+    const localDeadlines = readLocalScheduleJson(`mangakaDeadlineLocal:${seriesId}`, []).map(item => ({
+      ...item,
+      source: item.source || "LOCAL_DEADLINE",
+      eventName: item.eventName || item.title || "Deadline",
+      deadlineDateStr: item.deadlineDateStr || item.deadlineDate || item.date,
+      status: item.status || "OPEN"
+    }));
+
+    const shared = localStudioScheduleItems()
+      .filter(item => normalizeScheduleSeriesId(item) === String(seriesId))
+      .map(item => ({
+        ...item,
+        seriesTitle: item.seriesTitle || activeSeries?.title || activeSeries?.name || `Series #${seriesId}`
+      }));
+
+    const sharedSchedules = shared
+      .filter(item => /SCHEDULE|PUBLISH/i.test(String(item.type || item.source || "")))
+      .map(item => ({
+        ...item,
+        publishDate: item.publishDate || item.scheduledDate || item.date,
+        frequency: item.frequency || item.repeatType || "Weekly"
+      }));
+
+    const sharedDeadlines = shared
+      .filter(item => /DEADLINE|TASK/i.test(String(item.type || item.source || "")))
+      .map(item => ({
+        ...item,
+        eventName: item.eventName || item.title || item.description || "Task deadline",
+        deadlineDateStr: item.deadlineDateStr || item.deadlineDate || item.dueDate || item.date,
+        status: item.status || "OPEN"
+      }));
+
+    return {
+      schedules: dedupeScheduleItems([...localSchedules, ...sharedSchedules]),
+      deadlines: dedupeScheduleItems([...localDeadlines, ...sharedDeadlines])
+    };
+  }
+
+  function dedupeScheduleItems(rows = []) {
+    const seen = new Set();
+    return rows.filter(row => {
+      const key = [
+        row.id || row.scheduleId || row.eventId || row.taskId || "",
+        row.type || row.source || "",
+        row.publishDate || row.deadlineDate || row.deadlineDateStr || row.date || row.dueDate || "",
+        row.frequency || row.eventName || row.title || ""
+      ].join("|").toLowerCase();
+
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function localScheduleSeriesFromItems() {
+    const byId = new Map();
+
+    localStudioScheduleItems().forEach(item => {
+      const id = normalizeScheduleSeriesId(item);
+      if (!id) return;
+      byId.set(String(id), {
+        id,
+        title: item.seriesTitle || item.mangaSeriesTitle || item.series?.title || item.mangaSeries?.title || `Series #${id}`,
+        genre: item.seriesGenre || item.genre || ""
+      });
+    });
+
+    return Array.from(byId.values());
   }
 
   function renderReadOnlyScheduleTables(schedules = [], deadlines = [], activeSeries = null) {
@@ -740,7 +1367,8 @@
       }
     }
 
-    state.series = mergeSeriesById(...lists);
+    const localSeries = localScheduleSeriesFromItems();
+    state.series = mergeSeriesById(...lists, localSeries);
 
     const activeId = Api.getActiveSeriesId();
     if (state.series.length && !state.series.some(series => String(seriesIdOf(series)) === String(activeId))) {
@@ -775,10 +1403,14 @@
       return;
     }
 
-    const [schedules, deadlines] = await Promise.all([
+    const [backendSchedules, backendDeadlines] = await Promise.all([
       withApiTimeout(Api.schedules(seriesId), `/schedules/${seriesId}`).catch(() => []),
       withApiTimeout(Api.deadlines(seriesId), `/deadlines/${seriesId}`).catch(() => [])
     ]);
+
+    const localRows = localRowsForScheduleSeries(seriesId, activeSeries);
+    const schedules = dedupeScheduleItems([...(backendSchedules || []), ...localRows.schedules]);
+    const deadlines = dedupeScheduleItems([...(backendDeadlines || []), ...localRows.deadlines]);
 
     root.innerHTML = `
       <div class="toolbar-row">
@@ -828,7 +1460,9 @@
         </div>`;
         return;
       }
+      state.users = await Api.users?.().catch(() => []) || [];
       state.tasks = (await Api.tasks().catch(() => [])).filter(taskBelongsToApprovedTantouSeries);
+      const recheckTasks = await loadTantouRecheckQueue();
 
       const dashboardNav = $$(".tantou-nav .nav-item");
       dashboardNav.forEach(link => {
@@ -852,7 +1486,10 @@
           <div class="stat-card"><div class="stat-value">${openFeedbacks.length}</div><div class="stat-label">Open Feedback</div></div>
           <div class="stat-card"><div class="stat-value">${reviewing}</div><div class="stat-label">In Review</div></div>
           <div class="stat-card"><div class="stat-value">${ready}</div><div class="stat-label">Ready / Approved</div></div>
+          <div class="stat-card"><div class="stat-value">${recheckTasks.length}</div><div class="stat-label">Updated Fixes</div></div>
         </div>
+
+        ${renderTantouRecheckQueue(recheckTasks)}
 
         ${renderTantouKanbanPreview(state.tasks)}
 
@@ -861,9 +1498,15 @@
             <h2>Approved Series Queue</h2>
             <span class="schedule-count">${state.series.length} series</span>
           </div>
-          ${state.series.map(s => `<div class="list-card"><div class="list-card-content"><h2 class="list-card-title">${esc(s.title)}</h2><p class="list-card-meta">${esc(s.genre || "No genre")} • ${badge(s.status)} • Mangaka: ${esc(s.mangakaName || "—")}</p></div><button class="btn-icon-only set-series" data-id="${s.id}" title="Open chapter review"><i class="fa-solid fa-arrow-right"></i></button></div>`).join("") || `<div class="empty-state-box">No manga series returned by backend.</div>`}
+          ${state.series.map(s => {
+            const reviewLabel = s.__tantouApprovedChapterIds?.length
+              ? `Chapter approved (${s.__tantouApprovedChapterIds.length})`
+              : `Approved task`;
+            return `<div class="list-card"><div class="list-card-content"><h2 class="list-card-title">${esc(s.title)}</h2><p class="list-card-meta">${esc(s.genre || "No genre")} • ${badge(reviewLabel)} • Mangaka: ${esc(s.mangakaName || s.mangaka?.fullName || s.mangaka?.username || "—")}</p></div><button class="btn-icon-only set-series" data-id="${seriesIdOf(s)}" title="Open chapter review"><i class="fa-solid fa-arrow-right"></i></button></div>`;
+          }).join("") || `<div class="empty-state-box">No manga series returned by backend.</div>`}
         </div>`;
       $$(".set-series").forEach(btn => btn.addEventListener("click", () => { Api.setActiveSeriesId(btn.dataset.id); location.href = "tantou-review.html"; }));
+      bindTantouRecheckQueueActions();
       bindCommonPickers(tantouDashboard);
     } catch (err) { errorBox(root, err); }
   }
@@ -890,6 +1533,7 @@
       }
 
       state.feedbacks = pageId ? await Api.feedbacks(pageId).catch(() => []) : [];
+      const mangakaSubmittedAnnotations = mangakaSubmittedAnnotationsForPage(pageId, Api.getActiveChapterId(), Api.getActiveSeriesId());
 
       const openFeedbacks = state.feedbacks.filter(f => !f.isResolved);
       const resolvedFeedbacks = state.feedbacks.filter(f => f.isResolved);
@@ -913,6 +1557,7 @@
                   <span>${i + 1}</span>
                 </button>`;
             }).join("")}
+            ${renderMangakaSubmittedAnnotationPins(mangakaSubmittedAnnotations)}
           </div>
         </div>` : `<div class="empty-state-box">No page image selected. Choose a series, chapter, and page above.</div>`;
 
@@ -965,6 +1610,7 @@
               <span class="status-tag progress">${state.feedbacks.length}</span>
             </div>
             <div class="annotation-feedback-list">${feedbackCards}</div>
+            ${renderMangakaSubmittedAnnotationCards(mangakaSubmittedAnnotations)}
           </div>
         </div>`;
 
@@ -1019,6 +1665,7 @@
         return p ? { pageId: p.id, imageUrl: p.imageUrl, originalWidth: p.width || 1000, originalHeight: p.height || 1400, hitboxes: [] } : null;
       });
       state.feedbacks = pageId ? await Api.feedbacks(pageId).catch(() => []) : [];
+      const mangakaSubmittedAnnotations = mangakaSubmittedAnnotationsForPage(pageId, Api.getActiveChapterId(), Api.getActiveSeriesId());
 
       const firstFeedback = state.feedbacks[0] || {};
       const initialX = pctValue(firstFeedback, ["xCoord", "x", "xPercent"], 12);
@@ -1040,6 +1687,7 @@
                     <button type="button" class="annotation-dot saved-annotation-dot" data-x="${x}" data-y="${y}" data-w="${w}" data-h="${h}" data-content="${esc(f.content)}" style="left:${x}%;top:${y}%;" title="${esc(f.content)}">${i + 1}</button>
                   `;
                 }).join("")}
+                ${renderMangakaSubmittedAnnotationPins(mangakaSubmittedAnnotations)}
                 <div id="draft-feedback-region" class="tantou-feedback-region active-feedback-region" style="left:${initialX}%;top:${initialY}%;width:${initialW}%;height:${initialH}%;" title="Current feedback area"></div>
                 <button type="button" id="draft-feedback-dot" class="annotation-dot active-annotation-dot" style="left:${initialX}%;top:${initialY}%;" title="Current feedback cursor">${draftLabel}</button>
               </div>` : `<div class="empty-state-box">Upload pages through Mangaka Batch Upload before review.</div>`;
@@ -1055,7 +1703,8 @@
           <div class="review-col">
             <div class="review-col-header"><span>Feedback Thread</span><span id="chat-count-badge" class="status-tag progress">${state.feedbacks.length}</span></div>
             <div id="chat-box" class="chat-area compact-chat">
-              ${state.feedbacks.map(f => `<div class="chat-msg"><div class="chat-avatar">TE</div><div class="chat-msg-body"><div class="chat-name">Tantou Editor <span class="chat-time">${fmtDate(f.createdAt)}</span></div><div class="chat-bubble">${esc(f.content)}</div></div></div>`).join("") || `<div class="empty-state-box">No feedback yet.</div>`}
+              ${state.feedbacks.map(f => `<div class="chat-msg"><div class="chat-avatar">TE</div><div class="chat-msg-body"><div class="chat-name">Tantou Editor <span class="chat-time">${fmtDate(f.createdAt)}</span></div><div class="chat-bubble">${esc(f.content)}</div></div></div>`).join("") || `<div class="empty-state-box">No Tantou feedback yet.</div>`}
+              ${renderMangakaSubmittedAnnotationCards(mangakaSubmittedAnnotations)}
             </div>
             <form id="feedback-form" class="feedback-form">
               <div class="form-row"><div class="form-group"><label>X %</label><input class="form-control" id="fb-x" type="number" min="0" max="100" step="0.01" value="${initialX}"></div><div class="form-group"><label>Y %</label><input class="form-control" id="fb-y" type="number" min="0" max="100" step="0.01" value="${initialY}"></div></div>
@@ -1199,12 +1848,14 @@
         </div>`;
         return;
       }
+      const recheckTasks = await loadTantouRecheckQueue();
       const pageCards = await Promise.all(state.pages.map(async p => {
         const fb = await Api.feedbacks(p.id).catch(() => []);
         return `<div class="list-card"><div class="list-card-img">${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="Page ${p.pageNumber}">` : `<i class="fa-solid fa-image"></i>`}</div><div class="list-card-content"><h2 class="list-card-title">Page ${esc(p.pageNumber || p.id)}</h2><p class="list-card-meta">${fb.length} feedback item(s), ${fb.filter(x => x.isResolved).length} resolved</p></div><button class="btn-icon-only choose-page" data-id="${p.id}"><i class="fa-solid fa-arrow-right"></i></button></div>`;
       }));
-      root.innerHTML = `<div class="toolbar-row">${seriesPicker()}${chapterPicker()}${pagePicker()}</div><div class="card-box">${pageCards.join("") || `<div class="empty-state-box">No pages available for selected chapter.</div>`}<button id="prepare-report" class="btn-publish"><i class="fa-solid fa-file-lines"></i> Prepare for Editorial Report</button></div>`;
+      root.innerHTML = `<div class="toolbar-row">${seriesPicker()}${chapterPicker()}${pagePicker()}</div>${renderTantouRecheckQueue(recheckTasks)}<div class="card-box">${pageCards.join("") || `<div class="empty-state-box">No pages available for selected chapter.</div>`}<button id="prepare-report" class="btn-publish"><i class="fa-solid fa-file-lines"></i> Prepare for Editorial Report</button></div>`;
       bindCommonPickers(tantouRevision);
+      bindTantouRecheckQueueActions();
       $$(".choose-page").forEach(btn => btn.addEventListener("click", () => { Api.setActivePageId(btn.dataset.id); location.href = "tantou-feedback.html"; }));
       $("#prepare-report")?.addEventListener("click", () => {
         const seriesId = Api.getActiveSeriesId();
