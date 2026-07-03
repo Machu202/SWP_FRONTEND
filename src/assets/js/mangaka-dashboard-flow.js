@@ -399,9 +399,34 @@
       }
     }
 
-    async function loadMangakaSeriesList() {
-      await ensureMangakaIdentityLoaded();
+    function seriesWorkStatus(series = {}) {
+      return String(series.status || series.seriesStatus || series.publishStatus || series.approvalStatus || "DRAFT").trim().toUpperCase();
+    }
 
+    function isSeriesApprovedForMangakaWork(series = {}) {
+      return seriesWorkStatus(series) === "APPROVED";
+    }
+
+    function seriesApprovalLockMessage(series = {}) {
+      const title = series?.title || series?.name || "this series";
+      const status = seriesWorkStatus(series);
+      return `${title} is currently ${status}. Chapters, page uploads, hitboxes, and Assistant tasks are locked until Admin finalizes it as APPROVED.`;
+    }
+
+    function renderSeriesApprovalLock(series = {}) {
+      if (isSeriesApprovedForMangakaWork(series)) return "";
+      return `<div class="approval-lock-box"><i class="fa-solid fa-lock"></i><div><strong>Series not approved yet.</strong><p>${esc(seriesApprovalLockMessage(series))}</p></div></div>`;
+    }
+
+    function setFeatureFormDisabled(form, disabled) {
+      if (!form) return;
+      form.querySelectorAll("input, textarea, select, button").forEach((el) => {
+        el.disabled = Boolean(disabled);
+      });
+      form.classList.toggle("is-locked", Boolean(disabled));
+    }
+
+    async function loadMangakaSeriesList() {
       let mySeries = [];
       let allSeries = [];
 
@@ -419,26 +444,11 @@
         allSeries = [];
       }
 
-      // DB rule from your Supabase table:
-      // manga_series.manga_id must equal the logged-in User.id.
-      // When /manga-series exposes owner fields, it is the trusted source.
+      // Reverted only the Mangaka series-list visibility logic to the earlier working behavior.
+      // /my-series stays included so owned series appear again.
+      // /manga-series rows are still added only when their owner fields match the logged-in Mangaka.
       const ownedFromAll = allSeries.filter(isSeriesOwnedByCurrentMangaka);
-      const mySeriesWithMatchingOwner = mySeries.filter(isSeriesOwnedByCurrentMangaka);
-      const allSeriesExposeOwner = allSeries.some((series) => ownerFieldsExist(seriesOwnerTokens(series)));
-
-      let owned;
-      if (ownedFromAll.length || allSeriesExposeOwner) {
-        owned = mergeSeriesLists(ownedFromAll, mySeriesWithMatchingOwner);
-      } else {
-        // Fallback only when the backend does not expose owner fields anywhere.
-        // This keeps old /my-series compatible, but avoids taking every all-series row.
-        owned = mySeries.filter((series) => {
-          const owner = seriesOwnerTokens(series);
-          return isSeriesOwnedByCurrentMangaka(series) || (series.__fromMySeries === true && !ownerFieldsExist(owner));
-        });
-      }
-
-      return owned.map(({ __fromMySeries, ...series }) => series);
+      return mergeSeriesLists(ownedFromAll, mySeries).map(({ __fromMySeries, ...series }) => series);
     }
 
     function cleanSeriesDescription(raw = "") {
@@ -759,6 +769,7 @@
           <div class="card-box">
             <h3>Select Series</h3>
             <div class="form-group"><label>Manga Series</label><select id="inline-series-select" class="form-control"></select></div>
+            <div id="chapter-series-lock-note"></div>
             <form id="inline-chapter-form" class="feature-form">
               <h3>Create New Chapter</h3>
               <div class="form-row">
@@ -796,18 +807,35 @@
       const chaptersTable = $("#inline-chapters-table");
       const chapterCount = $("#inline-chapter-count");
       const uploadLog = $("#inline-upload-log");
+      let chapterSeries = [];
+
+      function selectedChapterSeries() {
+        const seriesId = seriesSelect.value || Api.getActiveSeriesId();
+        return chapterSeries.find((s) => String(s.id ?? s.seriesId) === String(seriesId)) || null;
+      }
+
+      function applyChapterWorkLock() {
+        const selected = selectedChapterSeries();
+        const locked = selected && !isSeriesApprovedForMangakaWork(selected);
+        const note = $("#chapter-series-lock-note");
+        if (note) note.innerHTML = selected ? renderSeriesApprovalLock(selected) : "";
+        setFeatureFormDisabled($("#inline-chapter-form"), locked);
+        setFeatureFormDisabled($("#inline-page-upload-form"), locked);
+        return !locked;
+      }
 
       async function loadSeries() {
         seriesSelect.innerHTML = `<option>Loading...</option>`;
         try {
           const items = await loadMangakaSeriesList();
+          chapterSeries = items;
           if (!items.length) {
             seriesSelect.innerHTML = `<option value="">No series found</option>`;
             chapterSelect.innerHTML = `<option value="">Create a series first</option>`;
             chaptersTable.innerHTML = `<div class="empty-state-box">No series found. Create a series first.</div>`;
             return;
           }
-          seriesSelect.innerHTML = items.map((s) => `<option value="${s.id}">${esc(s.title || s.name || `Series #${s.id}`)}</option>`).join("");
+          seriesSelect.innerHTML = items.map((s) => `<option value="${s.id ?? s.seriesId}">${esc(s.title || s.name || `Series #${s.id ?? s.seriesId}`)} (${esc(seriesWorkStatus(s))})</option>`).join("");
           const activeSeriesId = Api.getActiveSeriesId();
           if (activeSeriesId && items.some((s) => String(s.id) === String(activeSeriesId))) {
             seriesSelect.value = activeSeriesId;
@@ -827,6 +855,7 @@
         const seriesId = seriesSelect.value || Api.getActiveSeriesId();
         if (!seriesId) return;
         Api.setActiveSeriesId(seriesId);
+        const workAllowed = applyChapterWorkLock();
         chaptersTable.innerHTML = loading("Loading chapters...");
         chapterSelect.innerHTML = `<option>Loading...</option>`;
         try {
@@ -854,7 +883,7 @@
                   <td>${chapterScript ? `<button class="btn-outline mini-btn" data-view-script="${id}"><i class="fa-solid fa-scroll"></i> View Script</button>` : `<span class="muted-note">No script</span>`}</td>
                   <td><span class="status-tag progress">${esc(c.status || "DRAFT")}</span></td>
                   <td class="mangaka-table-actions">
-                    <button class="btn-outline mini-btn" data-open-canvas="${id}">Open Canvas</button>
+                    <button class="btn-outline mini-btn" data-open-canvas="${id}" ${workAllowed ? "" : "disabled title='Series must be APPROVED before opening Canvas task tools'"}>Open Canvas</button>
                     <button class="danger-mini-btn" data-delete-chapter="${id}"><i class="fa-solid fa-trash"></i> Delete</button>
                   </td>
                 </tr>`;
@@ -901,6 +930,8 @@
         event.preventDefault();
         const seriesId = seriesSelect.value;
         if (!seriesId) return alert("Select a series first.");
+        const selected = selectedChapterSeries();
+        if (selected && !isSeriesApprovedForMangakaWork(selected)) return alert(seriesApprovalLockMessage(selected));
         try {
           const scriptText = $("#inline-chapter-script")?.value.trim() || "";
           const createdChapter = await Api.createChapter({
@@ -926,6 +957,8 @@
         const chapterId = chapterSelect.value;
         const files = Array.from($("#inline-page-files").files || []);
         let pageNumber = Number($("#inline-start-page-number").value || 1);
+        const selected = selectedChapterSeries();
+        if (selected && !isSeriesApprovedForMangakaWork(selected)) return alert(seriesApprovalLockMessage(selected));
         if (!chapterId) return alert("Select a chapter first.");
         if (!files.length) return alert("Choose image files first.");
 
@@ -955,6 +988,7 @@
           <select id="inline-canvas-page" class="form-control"></select>
           <button id="inline-load-page" class="btn-publish">Load Page</button>
         </div>
+        <div id="inline-canvas-lock-note"></div>
         <div class="inline-workspace-split">
           <div class="card-box">
             <div class="section-title-row">
@@ -1001,6 +1035,36 @@
 
       const state = { series: [], chapters: [], pages: [], lastBox: null };
 
+      function selectedCanvasSeries() {
+        const seriesId = $("#inline-canvas-series")?.value || Api.getActiveSeriesId();
+        return state.series.find((s) => String(s.id ?? s.seriesId) === String(seriesId)) || null;
+      }
+
+      function canvasWorkAllowed() {
+        const selected = selectedCanvasSeries();
+        return Boolean(selected && isSeriesApprovedForMangakaWork(selected));
+      }
+
+      function applyCanvasWorkLock() {
+        const selected = selectedCanvasSeries();
+        const locked = selected && !isSeriesApprovedForMangakaWork(selected);
+        const note = $("#inline-canvas-lock-note");
+        if (note) note.innerHTML = selected ? renderSeriesApprovalLock(selected) : "";
+        setFeatureFormDisabled($("#inline-hitbox-task-form"), locked);
+        const loadButton = $("#inline-load-page");
+        if (loadButton) loadButton.disabled = false;
+        return !locked;
+      }
+
+      function requireCanvasWorkAllowed() {
+        const selected = selectedCanvasSeries();
+        if (selected && !isSeriesApprovedForMangakaWork(selected)) {
+          alert(seriesApprovalLockMessage(selected));
+          return false;
+        }
+        return true;
+      }
+
       function updateChapterScriptHint() {
         const chapterId = $("#inline-canvas-chapter")?.value;
         const chapter = state.chapters.find((c) => String(c.id ?? c.chapterId) === String(chapterId));
@@ -1015,7 +1079,7 @@
 
       async function loadSeries() {
         state.series = await loadMangakaSeriesList();
-        $("#inline-canvas-series").innerHTML = state.series.map((s) => `<option value="${s.id ?? s.seriesId}">${esc(s.title || s.name || `Series #${s.id ?? s.seriesId}`)}</option>`).join("") || `<option value="">No series</option>`;
+        $("#inline-canvas-series").innerHTML = state.series.map((s) => `<option value="${s.id ?? s.seriesId}">${esc(s.title || s.name || `Series #${s.id ?? s.seriesId}`)} (${esc(seriesWorkStatus(s))})</option>`).join("") || `<option value="">No series</option>`;
         const activeSeriesId = Api.getActiveSeriesId();
         if (activeSeriesId && state.series.some((s) => String(s.id ?? s.seriesId) === String(activeSeriesId))) {
           $("#inline-canvas-series").value = activeSeriesId;
@@ -1029,6 +1093,7 @@
       async function loadChapters() {
         const seriesId = $("#inline-canvas-series").value;
         Api.setActiveSeriesId(seriesId);
+        applyCanvasWorkLock();
         state.chapters = seriesId ? await enrichChaptersWithPages(await Api.chapters(seriesId).catch(() => [])) : [];
         $("#inline-canvas-chapter").innerHTML = state.chapters.map((c) => `<option value="${c.id ?? c.chapterId}">Ch. ${c.chapterNumber ?? c.chapter_number ?? "?"} — ${esc(c.title || "Untitled")}</option>`).join("") || `<option value="">No chapters</option>`;
         const activeChapterId = Api.getActiveChapterId();
@@ -1166,6 +1231,7 @@
         const cancelButton = $("#btn-cancel-draw");
         Api.setActivePageId(pageId);
         state.lastBox = null;
+        const canEditCanvas = applyCanvasWorkLock();
         if (cancelButton) {
           cancelButton.style.display = "none";
           cancelButton.onclick = () => resetDrawnBox();
@@ -1200,8 +1266,16 @@
             width: pct(h.width ?? 10),
             height: pct(h.height ?? 10),
           }, "saved-hitbox");
-          layer.appendChild(attachSavedHitboxDeleteButton(saved, h));
+          layer.appendChild(canEditCanvas ? attachSavedHitboxDeleteButton(saved, h) : saved);
         });
+
+        if (!canEditCanvas) {
+          const lockedNotice = document.createElement("div");
+          lockedNotice.className = "canvas-readonly-lock";
+          lockedNotice.innerHTML = `<i class="fa-solid fa-lock"></i> Series must be APPROVED before drawing hitboxes or assigning Assistant tasks.`;
+          layer.appendChild(lockedNotice);
+          return;
+        }
 
         let start = null;
         const wrap = $("#inline-hitbox-wrap");
@@ -1242,6 +1316,7 @@
         const description = $("#inline-task-desc").value.trim();
         const log = $("#inline-workspace-log");
 
+        if (!requireCanvasWorkAllowed()) return;
         if (!pageId || !state.lastBox) return alert("Draw a hitbox first.");
         if (!description) return alert("Enter task description.");
 
