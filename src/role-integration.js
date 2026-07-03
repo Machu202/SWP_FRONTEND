@@ -543,6 +543,263 @@
     return Array.from(merged.values());
   }
 
+
+  function getTantouSeriesReviewStore() {
+    try {
+      return JSON.parse(localStorage.getItem("tantouSeriesReviewDecisions") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveTantouSeriesReviewDecision(seriesId, data = {}) {
+    if (!seriesId) return null;
+
+    const store = getTantouSeriesReviewStore();
+    store[String(seriesId)] = {
+      ...(store[String(seriesId)] || {}),
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: "Tantou Editor",
+      ...data
+    };
+    localStorage.setItem("tantouSeriesReviewDecisions", JSON.stringify(store));
+    return store[String(seriesId)];
+  }
+
+  function getTantouSeriesReviewDecision(seriesId) {
+    if (!seriesId) return null;
+    return getTantouSeriesReviewStore()[String(seriesId)] || null;
+  }
+
+  function applyTantouSeriesReviewDecision(series = {}) {
+    const review = getTantouSeriesReviewDecision(seriesIdOf(series));
+    if (!review) return series;
+
+    return {
+      ...series,
+      tantouSeriesReview: review,
+      tantouSeriesReviewStatus: review.status,
+      tantouSeriesReviewNote: review.note,
+      status: review.backendStatus || review.status || series.status
+    };
+  }
+
+  function getMangakaDraftSeriesStore() {
+    try {
+      return JSON.parse(localStorage.getItem("mangakaDraftSeriesForTantouReview") || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function localMangakaDraftSeriesForTantouReview() {
+    return Object.values(getMangakaDraftSeriesStore()).filter(Boolean);
+  }
+
+  function isSeriesWaitingForTantouSeriesReview(series = {}) {
+    const id = seriesIdOf(series);
+    const review = getTantouSeriesReviewDecision(id);
+    if (review?.status === "REJECTED_BY_TANTOU" || review?.status === "TANTOU_REJECTED") return false;
+    if (review?.submittedToBoard || review?.status === "TANTOU_APPROVED") return false;
+    if (getTantouBoardSubmission(id)?.submittedToBoard) return false;
+    if (getBoardDecision(id)) return false;
+
+    const status = normalizeStatusText(series.status || series.seriesStatus || series.reviewStatus || series.publishStatus || "DRAFT");
+    return status === "DRAFT" || status === "PENDING_TANTOU" || status === "SERIES_REVIEW";
+  }
+
+  async function loadTantouSeriesReviewQueue() {
+    const lists = [];
+
+    try {
+      const draftResult = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries({ status: "DRAFT" })) : await Api.allSeries({ status: "DRAFT" });
+      if (Array.isArray(draftResult) && draftResult.length) lists.push(draftResult);
+    } catch (error) {
+      console.warn("Could not load /manga-series?status=DRAFT for Tantou Series Review", error.message);
+    }
+
+    try {
+      const allResult = Api.unwrapPage ? Api.unwrapPage(await Api.allSeries()) : await Api.allSeries();
+      if (Array.isArray(allResult) && allResult.length) lists.push(allResult);
+    } catch (error) {
+      console.warn("Could not load all series for Tantou Series Review", error.message);
+    }
+
+    const localDrafts = localMangakaDraftSeriesForTantouReview();
+    if (localDrafts.length) lists.push(localDrafts);
+
+    const queue = mergeSeriesById(...lists)
+      .map(applyTantouReturnOverride)
+      .map(applyTantouSeriesReviewDecision)
+      .filter(isSeriesWaitingForTantouSeriesReview)
+      .sort((a, b) => String(b.createdAt || b.created_at || "").localeCompare(String(a.createdAt || a.created_at || "")));
+
+    if (queue.length && !queue.some(series => String(seriesIdOf(series)) === String(Api.getActiveSeriesId()))) {
+      Api.setActiveSeriesId(seriesIdOf(queue[0]));
+      localStorage.removeItem("activeChapterId");
+      localStorage.removeItem("activePageId");
+    }
+
+    return queue;
+  }
+
+  async function approveSeriesForEditorialBoard(series, note = "") {
+    const id = seriesIdOf(series);
+    if (!id) throw new Error("No selected series.");
+
+    const cleanNote = String(note || "Approved by Tantou Editor for Editorial Board vote.").trim();
+
+    saveTantouSeriesReviewDecision(id, {
+      status: "TANTOU_APPROVED",
+      backendStatus: "REVIEWING",
+      note: cleanNote,
+      seriesTitle: series.title || series.name || "",
+      submittedToBoard: true
+    });
+
+    saveTantouBoardSubmission(id, {
+      note: cleanNote,
+      recommendation: "CONTINUE",
+      recommendationLabel: boardDecisionLabel("CONTINUE"),
+      seriesTitle: series.title || series.name || "",
+      status: "REVIEWING",
+      backendStatus: "REVIEWING"
+    });
+
+    // Backend supports DRAFT -> REVIEWING. REVIEWING is the Board voting queue.
+    await Api.updateSeriesStatus(id, "REVIEWING");
+    return true;
+  }
+
+  async function rejectDraftSeriesFromTantou(series, note = "") {
+    const id = seriesIdOf(series);
+    if (!id) throw new Error("No selected series.");
+
+    const cleanNote = String(note || "Rejected by Tantou Editor. Please revise the series proposal.").trim();
+    let backendUpdated = false;
+    let backendMessage = "";
+
+    try {
+      // Backend valid path is DRAFT -> REVIEWING -> REJECTED.
+      const status = normalizeStatusText(series.status || "DRAFT");
+      if (status === "DRAFT") await Api.updateSeriesStatus(id, "REVIEWING");
+      await Api.updateSeriesStatus(id, "REJECTED");
+      backendUpdated = true;
+      backendMessage = "Backend status updated to REJECTED.";
+    } catch (error) {
+      backendMessage = error?.message || String(error);
+      console.warn("Backend rejected Tantou series rejection; local review status was saved.", backendMessage);
+    }
+
+    saveTantouSeriesReviewDecision(id, {
+      status: "REJECTED_BY_TANTOU",
+      backendStatus: backendUpdated ? "REJECTED" : series.status || "DRAFT",
+      note: cleanNote,
+      seriesTitle: series.title || series.name || "",
+      backendUpdated,
+      backendMessage
+    });
+
+    saveTantouSeriesReturn(id, {
+      note: cleanNote,
+      backendUpdated,
+      backendMessage,
+      previousStatus: series.status || series.seriesStatus || "DRAFT",
+      seriesTitle: series.title || series.name || ""
+    });
+
+    return { backendUpdated, backendMessage };
+  }
+
+  async function renderTantouSeriesReview(root) {
+    const queue = await loadTantouSeriesReviewQueue();
+
+    if (!queue.length) {
+      root.innerHTML = `
+        <div class="board-filter-note"><i class="fa-solid fa-lock"></i> Series Review only shows new DRAFT series created by Mangaka.</div>
+        <div class="card-box empty-state-box">
+          <h2>No DRAFT series waiting for Tantou review.</h2>
+          <p>When Mangaka creates a new series, it appears here before Editorial Board voting.</p>
+        </div>`;
+      return;
+    }
+
+    const activeId = Api.getActiveSeriesId();
+    const selected = queue.find(series => String(seriesIdOf(series)) === String(activeId)) || queue[0];
+    const selectedId = seriesIdOf(selected);
+    Api.setActiveSeriesId(selectedId);
+    const chapters = await Api.chapters(selectedId).catch(() => []);
+
+    root.innerHTML = `
+      <div class="board-filter-note"><i class="fa-solid fa-route"></i> Workflow: Mangaka creates DRAFT → Tantou Series Review → Editorial Board Series Vote → Admin Final Decision → APPROVED/REJECTED.</div>
+      <div class="toolbar-row">
+        <select id="tantou-series-review-select" class="form-control compact-control">
+          ${queue.map(series => `<option value="${esc(seriesIdOf(series))}" ${String(seriesIdOf(series)) === String(selectedId) ? "selected" : ""}>#${esc(seriesIdOf(series))} — ${esc(series.title || series.name || "Untitled")} (${esc(series.status || "DRAFT")})</option>`).join("")}
+        </select>
+        <button id="refresh-series-review" class="btn-outline"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+      <div class="series-review-layout">
+        <div class="card-box series-review-overview-card">
+          <div class="section-title-row">
+            <div>
+              <h2>${esc(selected.title || selected.name || "Untitled series")}</h2>
+              <p class="muted-note">Mangaka: ${esc(selected.mangakaName || selected.mangaka?.fullName || selected.mangakaUsername || "—")}</p>
+            </div>
+            ${badge(selected.status || "DRAFT")}
+          </div>
+          <p>${esc(selected.summary || selected.description || "No series summary provided.")}</p>
+          <table class="data-table"><tbody>
+            <tr><th>Genre</th><td>${esc(selected.genre || "—")}</td></tr>
+            <tr><th>Created</th><td>${esc(fmtDate(selected.createdAt || selected.created_at))}</td></tr>
+            <tr><th>Current Gate</th><td>${badge("Tantou Series Review")}</td></tr>
+          </tbody></table>
+          <h3 style="margin-top:18px;">Chapters submitted with proposal</h3>
+          <table class="data-table"><thead><tr><th>Chapter</th><th>Title</th><th>Status</th></tr></thead><tbody>
+            ${(Array.isArray(chapters) ? chapters : (chapters?.content || [])).map(ch => `<tr><td>${esc(ch.chapterNumber ?? ch.number ?? ch.id ?? "—")}</td><td>${esc(ch.title || "Untitled")}</td><td>${badge(ch.publishStatus || ch.status || "DRAFT")}</td></tr>`).join("") || `<tr><td colspan="3">No chapters yet. Tantou can still approve the series metadata to Board vote.</td></tr>`}
+          </tbody></table>
+        </div>
+        <div class="card-box series-review-decision-card">
+          <h2>Series Review Decision</h2>
+          <p class="muted-note">Approving sends the series to the Editorial Board <strong>Series Vote</strong> tab by moving backend status to <strong>REVIEWING</strong>. Rejecting sends it back to Mangaka.</p>
+          <div class="form-group"><label>Tantou Notes</label><textarea id="tantou-series-review-note" class="form-control" rows="6" placeholder="Write review notes for Board/Mangaka...">Series metadata reviewed by Tantou Editor.</textarea></div>
+          <div class="report-action-row">
+            <button id="tantou-reject-series" class="btn-outline danger-action" type="button"><i class="fa-solid fa-xmark"></i> Reject / Send Back to Mangaka</button>
+            <button id="tantou-approve-series-board" class="btn-publish" type="button"><i class="fa-solid fa-paper-plane"></i> Approve to Editorial Board</button>
+          </div>
+          <p class="muted-note">Final APPROVED status is applied only by Admin after Board vote.</p>
+        </div>
+      </div>`;
+
+    $("#tantou-series-review-select")?.addEventListener("change", (event) => {
+      Api.setActiveSeriesId(event.target.value);
+      renderTantouSeriesReview(root);
+    });
+    $("#refresh-series-review")?.addEventListener("click", () => renderTantouSeriesReview(root));
+    $("#tantou-approve-series-board")?.addEventListener("click", async () => {
+      const note = $("#tantou-series-review-note")?.value || "";
+      if (!confirm("Approve this DRAFT series to Editorial Board Series Vote?")) return;
+      try {
+        await approveSeriesForEditorialBoard(selected, note);
+        toast("Series approved by Tantou and sent to Editorial Board Series Vote.", "success");
+        location.href = "tantou-dashboard.html#series-review";
+        await renderTantouSeriesReview(root);
+      } catch (error) {
+        toast(error.message || "Could not approve series to Board.", "error");
+      }
+    });
+    $("#tantou-reject-series")?.addEventListener("click", async () => {
+      const note = $("#tantou-series-review-note")?.value || "";
+      if (!confirm("Reject this DRAFT series and send it back to Mangaka?")) return;
+      try {
+        const result = await rejectDraftSeriesFromTantou(selected, note);
+        toast(result.backendUpdated ? "Series rejected and backend status updated." : "Series rejection saved locally; backend transition was blocked.", result.backendUpdated ? "success" : "info");
+        await renderTantouSeriesReview(root);
+      } catch (error) {
+        toast(error.message || "Could not reject series.", "error");
+      }
+    });
+  }
+
   async function loadTantouApprovedSeries() {
     const lists = [];
 
@@ -1436,18 +1693,26 @@
   async function tantouDashboard() {
     const isKanban = location.hash === "#kanban";
     const isSchedule = location.hash === "#schedule";
+    const isSeriesReview = location.hash === "#series-review";
     const root = shell(
-      isSchedule ? "Tantou Schedule" : (isKanban ? "Tantou Kanban Tasks" : "Tantou Dashboard"),
-      isSchedule ? "View Mangaka-owned schedules and deadlines. Tantou Editor cannot edit them." : (isKanban ? "Manage review tasks directly inside the Tantou dashboard." : "Only Mangaka-approved series/pages are visible to Tantou Editor."),
+      isSchedule ? "Tantou Schedule" : (isSeriesReview ? "Series Review" : (isKanban ? "Tantou Kanban Tasks" : "Tantou Dashboard")),
+      isSchedule ? "View Mangaka-owned schedules and deadlines. Tantou Editor cannot edit them." : (isSeriesReview ? "Review new DRAFT series from Mangaka before Editorial Board voting." : (isKanban ? "Manage review tasks directly inside the Tantou dashboard." : "Only Mangaka-approved series/pages are visible to Tantou Editor.")),
       isSchedule
         ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>`
-        : (isKanban
-          ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>`
-          : `<a class="btn-publish" href="tantou-review.html">Open Chapter Review</a><a class="btn-outline" href="tantou-dashboard.html#kanban" style="margin-left:10px;"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a><a class="btn-outline" href="tantou-dashboard.html#schedule" style="margin-left:10px;"><i class="fa-solid fa-calendar-days"></i> Schedule</a>`)
+        : (isSeriesReview
+          ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a><a class="btn-publish" href="tantou-dashboard.html#series-review" style="margin-left:10px;"><i class="fa-solid fa-book-open-reader"></i> Series Review</a>`
+          : (isKanban
+            ? `<a class="btn-outline" href="tantou-dashboard.html"><i class="fa-solid fa-border-all"></i> Dashboard Overview</a>`
+            : `<a class="btn-publish" href="tantou-dashboard.html#series-review"><i class="fa-solid fa-book-open-reader"></i> Series Review</a><a class="btn-outline" href="tantou-review.html" style="margin-left:10px;">Open Chapter Review</a><a class="btn-outline" href="tantou-dashboard.html#kanban" style="margin-left:10px;"><i class="fa-solid fa-table-columns"></i> Kanban Tasks</a><a class="btn-outline" href="tantou-dashboard.html#schedule" style="margin-left:10px;"><i class="fa-solid fa-calendar-days"></i> Schedule</a>`))
     );
 
     if (isSchedule) {
       await renderRoleReadOnlySchedule(root, { role: "tantou" });
+      return;
+    }
+
+    if (isSeriesReview) {
+      await renderTantouSeriesReview(root);
       return;
     }
 
@@ -1467,7 +1732,8 @@
       const dashboardNav = $$(".tantou-nav .nav-item");
       dashboardNav.forEach(link => {
         const href = link.getAttribute("href") || "";
-        link.classList.toggle("active", isKanban ? href.includes("#kanban") : href === "tantou-dashboard.html");
+        const active = isSeriesReview ? href.includes("#series-review") : (isKanban ? href.includes("#kanban") : href === "tantou-dashboard.html");
+        link.classList.toggle("active", active);
       });
 
       if (isKanban) {
@@ -2288,11 +2554,41 @@
       console.warn("Could not load series for Admin finalization:", err.message);
     }
 
-    state.series = mergeSeriesById(state.series)
+    const candidates = mergeSeriesById(state.series)
       .map(applyTantouReturnOverride)
       .map(applyTantouBoardSubmission)
-      .map(applyBoardDecision)
-      .filter(isBoardDecidedSeries);
+      .map(applyBoardDecision);
+
+    const decided = [];
+    for (const series of candidates) {
+      const id = seriesIdOf(series);
+      if (!id) continue;
+
+      if (isBoardDecidedSeries(series)) {
+        decided.push(series);
+        continue;
+      }
+
+      // Cross-browser fallback: Board votes are stored in backend, while the richer
+      // local Board decision text may only exist in one browser. If a REVIEWING
+      // series has votes, Admin can still finalize it from backend vote summary.
+      const status = normalizeStatusText(series.status || series.seriesStatus || "");
+      if (status === "REVIEWING") {
+        const summary = await Api.voteSummary(id).catch(() => null);
+        if ((summary?.totalVotes || 0) > 0) {
+          const inferredDecision = (summary.approvedVotes || 0) >= (summary.rejectedVotes || 0) ? "CONTINUE" : "REVISION";
+          decided.push({
+            ...series,
+            __backendVoteSummary: summary,
+            boardDecision: inferredDecision,
+            boardDecisionStatus: boardDecisionStatus(inferredDecision),
+            boardDecisionComment: "Inferred from backend Editorial Board votes."
+          });
+        }
+      }
+    }
+
+    state.series = decided;
 
     const activeId = Api.getActiveSeriesId();
     if (state.series.length && !state.series.some(s => String(seriesIdOf(s)) === String(activeId))) {
@@ -2407,7 +2703,7 @@
   }
 
   async function boardVoting() {
-    const root = shell("Strategic Continuity Review", "Editorial Board decides whether the series continues, needs revision, or is cancelled.");
+    const root = shell("Series Vote", "Editorial Board votes on Tantou-approved series before Admin finalization.");
     try {
       await loadBoardEligibleSeries();
 
@@ -2531,7 +2827,6 @@
           <p>Status: ${badge(decision?.status || s?.status)}</p>
           ${decision?.decision ? `<div class="board-decision-summary ${decision.decision === "CANCEL" ? "danger-summary" : ""}"><strong>Board Decision:</strong> ${esc(boardDecisionLabel(decision.decision))}<br><span>${esc(decision.comment || "No comment.")}</span></div>` : `<div class="board-filter-note"><i class="fa-solid fa-clock"></i> No final Board decision has been submitted yet.</div>`}
           <table class="data-table"><thead><tr><th>Decision</th><th>Count</th></tr></thead><tbody><tr><td>Approve</td><td>${summary?.approvedVotes || 0}</td></tr><tr><td>Reject / Revision</td><td>${summary?.rejectedVotes || 0}</td></tr><tr><td>Total</td><td>${summary?.totalVotes || 0}</td></tr></tbody></table>
-          <div style="margin-top:18px;"><a class="btn-publish" href="admin-final-approval.html">Send to Admin Finalization</a></div>
         </div>
         ${renderBoardDiscussion(actualSeriesId, { readOnly: true })}`;
       bindCommonPickers(boardResult);
@@ -2598,8 +2893,33 @@
     } catch (err) { errorBox(root, err); }
   }
 
+  function effectiveAdminBoardDecision(series = {}, summary = null) {
+    const local = getBoardDecision(seriesIdOf(series));
+    if (local) return local;
+
+    if (series.boardDecision) {
+      return {
+        decision: series.boardDecision,
+        status: series.boardDecisionStatus || boardDecisionStatus(series.boardDecision),
+        comment: series.boardDecisionComment || "Board decision loaded from series metadata."
+      };
+    }
+
+    const votes = summary || series.__backendVoteSummary;
+    if ((votes?.totalVotes || 0) > 0) {
+      const decision = (votes.approvedVotes || 0) >= (votes.rejectedVotes || 0) ? "CONTINUE" : "REVISION";
+      return {
+        decision,
+        status: boardDecisionStatus(decision),
+        comment: "Inferred from backend Editorial Board votes."
+      };
+    }
+
+    return null;
+  }
+
   async function adminFinalApproval() {
-    const root = shell("Final Decision Management", "Admin finalizes the Editorial Board decision. Admin does not decide cancellation.");
+    const root = shell("Series Final Decision", "Admin finalizes the Editorial Board Series Vote and applies APPROVED or REJECTED status.");
     try {
       await loadBoardDecidedSeries();
 
@@ -2611,9 +2931,9 @@
       const seriesId = Api.getActiveSeriesId();
       const s = state.series.find(x => String(seriesIdOf(x)) === String(seriesId)) || state.series[0];
       const actualSeriesId = seriesIdOf(s);
-      const decision = getBoardDecision(actualSeriesId);
       const finalization = getAdminFinalization(actualSeriesId);
-      const summary = s ? await Api.voteSummary(actualSeriesId).catch(() => null) : null;
+      const summary = s ? await Api.voteSummary(actualSeriesId).catch(() => s.__backendVoteSummary || null) : null;
+      const decision = effectiveAdminBoardDecision(s, summary);
       const isCancel = decision?.decision === "CANCEL";
       const isRevision = decision?.decision === "REVISION";
       const primaryText = isCancel ? "Confirm Cancellation / Archive" : (isRevision ? "Finalize Revision Request" : "Approve Publication");
@@ -2641,9 +2961,11 @@
 
       $("#admin-finalize-board-decision")?.addEventListener("click", async () => {
         try {
-          const currentDecision = getBoardDecision(Api.getActiveSeriesId());
+          const activeSeries = state.series.find(x => String(seriesIdOf(x)) === String(Api.getActiveSeriesId())) || s;
+          const activeSummary = activeSeries ? await Api.voteSummary(seriesIdOf(activeSeries)).catch(() => activeSeries.__backendVoteSummary || null) : null;
+          const currentDecision = effectiveAdminBoardDecision(activeSeries, activeSummary);
           if (!currentDecision) {
-            toast("No Board decision to finalize.", "error");
+            toast("No Board vote/decision to finalize.", "error");
             return;
           }
 
