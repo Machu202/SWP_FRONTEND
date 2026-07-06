@@ -1,0 +1,25 @@
+{
+  "name": "swp391-mangastudio-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "React + Vite frontend for the SWP391 Manga Studio workflow system.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "start": "npm run dev",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173"
+  },
+  "dependencies": {
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.0.3",
+    "vite": "8.1.3"
+  }
+}

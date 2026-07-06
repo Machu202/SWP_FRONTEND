@@ -1,0 +1,104 @@
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import SeriesPage from "./pages/SeriesPage";
+import SeriesDetailPage from "./pages/SeriesDetailPage";
+import WorkspacePage from "./pages/WorkspacePage";
+import TasksPage from "./pages/TasksPage";
+import ResourcesPage from "./pages/ResourcesPage";
+import ProfilePage from "./pages/ProfilePage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+import ReviewPage from "./pages/ReviewPage";
+import SchedulePage from "./pages/SchedulePage";
+import SystemPage from "./pages/SystemPage";
+import MangakaAssistantReviewPage from "./pages/MangakaAssistantReviewPage";
+import TantouReviewPage from "./pages/TantouReviewPage";
+import EditorialBoardReviewPage from "./pages/EditorialBoardReviewPage";
+import AdminReviewPage from "./pages/AdminReviewPage";
+import { Layout } from "./components/Layout";
+import { EmptyState } from "./components/Status";
+import { useAuth } from "./context/AuthContext";
+import { matchRoute, navigate, useHashRoute } from "./utils/router";
+import { hasRole, roleHome, roleLabel } from "./api/client";
+
+export default function App() {
+  const route = useHashRoute();
+  const { isAuthenticated, session, profile } = useAuth();
+  const role = profile?.roleName || session.role;
+
+  if (!isAuthenticated && route.pathname !== "/login") {
+    setTimeout(() => navigate("/login"), 0);
+    return <LoginPage />;
+  }
+
+  if (isAuthenticated && (route.pathname === "/" || route.pathname === "/login")) {
+    setTimeout(() => navigate(roleHome(role)), 0);
+    return null;
+  }
+
+  if (route.pathname === "/login") return <LoginPage />;
+
+  const page = renderPage(route, role);
+  return <Layout route={route}>{page}</Layout>;
+}
+
+function reviewRouteForRole(role) {
+  if (hasRole(role, ["admin"])) return "/admin-review";
+  if (hasRole(role, ["editorial", "board"])) return "/board-review";
+  if (hasRole(role, ["tantou"])) return "/tantou-review";
+  if (hasRole(role, ["mangaka"])) return "/assistant-review";
+  return "/tasks";
+}
+
+function isAllowed(pathname, role) {
+  if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/system") || pathname.startsWith("/admin-review")) {
+    return hasRole(role, ["admin"]);
+  }
+  if (pathname.startsWith("/board-review")) {
+    return hasRole(role, ["editorial", "board"]);
+  }
+  if (pathname.startsWith("/tantou-review")) {
+    return hasRole(role, ["tantou"]);
+  }
+  if (pathname.startsWith("/assistant-review")) {
+    return hasRole(role, ["mangaka"]);
+  }
+  return true;
+}
+
+function renderPage(route, role) {
+  if (route.pathname === "/review") {
+    setTimeout(() => navigate(reviewRouteForRole(role)), 0);
+    return null;
+  }
+
+  if (!isAllowed(route.pathname, role)) {
+    return (
+      <EmptyState
+        title="This review screen is for another role"
+        body={`You are logged in as ${roleLabel(role)}. Use your role-specific review page from the sidebar.`}
+      />
+    );
+  }
+
+  if (route.pathname === "/dashboard" || route.pathname === "/") return <DashboardPage />;
+  if (route.pathname === "/series") return <SeriesPage />;
+  if (route.pathname === "/tasks") return <TasksPage />;
+  if (route.pathname === "/resources") return <ResourcesPage />;
+  if (route.pathname === "/profile") return <ProfilePage />;
+  if (route.pathname === "/admin/users") return <AdminUsersPage />;
+  if (route.pathname === "/admin/system") return <SystemPage />;
+  if (route.pathname === "/assistant-review") return <MangakaAssistantReviewPage />;
+  if (route.pathname === "/tantou-review") return <TantouReviewPage />;
+  if (route.pathname === "/board-review") return <EditorialBoardReviewPage />;
+  if (route.pathname === "/admin-review") return <AdminReviewPage />;
+  if (route.pathname === "/review-legacy") return <ReviewPage />;
+  if (route.pathname === "/schedule") return <SchedulePage />;
+
+  const seriesMatch = matchRoute(route.parts, "/series/:seriesId");
+  if (seriesMatch) return <SeriesDetailPage seriesId={seriesMatch.seriesId} />;
+
+  const workspaceMatch = matchRoute(route.parts, "/workspace/:pageId");
+  if (workspaceMatch) return <WorkspacePage pageId={workspaceMatch.pageId} query={route.params} />;
+
+  return <EmptyState title="Page not found" body={`No React route exists for ${route.pathname}.`} />;
+}
