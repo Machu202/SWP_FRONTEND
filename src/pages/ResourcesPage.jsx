@@ -5,10 +5,21 @@ import { Alert, EmptyState, LoadingBlock } from "../components/Status";
 const TABS = [
   { key: "ALL", label: "All Assets" },
   { key: "BRUSH", label: "Brushes & Tools" },
-  { key: "MODEL_3D", label: "3D Models" },
-  { key: "SCREENTONE", label: "Screentones" },
-  { key: "TASK_SUBMISSION", label: "Submissions" }
+  { key: "SCREENTONE", label: "Screentones" }
 ];
+
+const HIDDEN_RESOURCE_TYPES = new Set([
+  "MODEL_3D",
+  "3D_MODEL",
+  "TASK_SUBMISSION",
+  "SUBMISSION",
+  "ASSISTANT_SUBMISSION",
+  "FINISHED_WORK"
+]);
+
+function normalizeResourceType(item) {
+  return String(item?.resourceType || item?.type || "").toUpperCase();
+}
 
 export default function ResourcesPage() {
   const [resources, setResources] = useState([]);
@@ -33,10 +44,14 @@ export default function ResourcesPage() {
 
   useEffect(() => { load(); }, []);
 
+  const visibleResources = useMemo(() => {
+    return resources.filter((item) => !HIDDEN_RESOURCE_TYPES.has(normalizeResourceType(item)));
+  }, [resources]);
+
   const filtered = useMemo(() => {
-    if (activeTab === "ALL") return resources;
-    return resources.filter((item) => String(item.resourceType || item.type || "").toUpperCase().includes(activeTab));
-  }, [resources, activeTab]);
+    if (activeTab === "ALL") return visibleResources;
+    return visibleResources.filter((item) => normalizeResourceType(item).includes(activeTab));
+  }, [visibleResources, activeTab]);
 
   async function upload(event) {
     const files = Array.from(event.target.files || []);
@@ -77,11 +92,11 @@ export default function ResourcesPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 5 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 5 }}>Resource Library</h1>
-          <p style={{ color: "#6b7280", fontSize: 14 }}>Tải về cọ vẽ, bối cảnh 3D và các tài liệu tham khảo chung của Studio.</p>
+          <p style={{ color: "#6b7280", fontSize: 14 }}>Tải về cọ vẽ, screentone và các tài liệu tham khảo chung của Studio.</p>
         </div>
         <div className="button-row">
           <select value={resourceType} onChange={(event) => setResourceType(event.target.value)}>
-            <option>PAGE_IMAGE</option><option>REFERENCE</option><option>TASK_SUBMISSION</option><option>BRUSH</option><option>MODEL_3D</option><option>SCREENTONE</option>
+            <option>PAGE_IMAGE</option><option>REFERENCE</option><option>BRUSH</option><option>SCREENTONE</option>
           </select>
           <label className="btn-publish file-button">
             {uploading ? "Uploading..." : "Upload files"}
@@ -98,7 +113,7 @@ export default function ResourcesPage() {
         <div className="resource-grid" id="resource-grid-container" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
           {filtered.map((resource) => <ResourceCard key={resource.id} resource={resource} onRemove={() => remove(resource.id)} />)}
         </div>
-      ) : <EmptyState icon="□" title="No resources yet" body="Upload images, references, brush files, or task submissions." />}
+      ) : <EmptyState icon="□" title="No resources yet" body="Upload images, references, brush files, or screentones." />}
     </section>
   );
 }

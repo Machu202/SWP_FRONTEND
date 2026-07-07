@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, extractMediaUrl, hasRole, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -57,6 +57,12 @@ export default function TasksPage() {
     if (!selected && tasks.length) setSelected(tasks[0]);
     if (selected && tasks.length && !tasks.some((task) => String(task.id) === String(selected.id))) setSelected(tasks[0]);
   }, [tasks, selected]);
+
+  useEffect(() => {
+    setSelectedFile(null);
+    setSelectedFileName("");
+    setConfirmReady(false);
+  }, [selected?.id]);
 
   const grouped = useMemo(() => {
     const groups = Object.fromEntries(COLUMNS.map((column) => [column.key, []]));
@@ -372,33 +378,90 @@ function TaskDetail({ selected, assistants, canAssign, onAssign, onMove }) {
 }
 
 function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile, onConfirm, onSubmit }) {
+  const inputRef = useRef(null);
+
+  function choose(file) {
+    onChooseFile(file || null);
+  }
+
+  function openPicker() {
+    if (!disabled) inputRef.current?.click();
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    if (disabled) return;
+    choose(event.dataTransfer?.files?.[0]);
+  }
+
+  const hasFile = Boolean(selectedFileName);
+
   return (
     <div className="task-box assistant-submit-box" id="submit-work-box">
       <div className="task-box-title assistant-submit-title">
         <span>☁ Submit Finished Work to Mangaka</span>
         <span className="assistant-submit-step">Final step</span>
       </div>
+
       <div className="assistant-submit-help">
         <strong>Upload your finished drawing here.</strong>
         <span>After upload, the task moves to <b>Reviewing</b> so Mangaka can check it.</span>
       </div>
-      <label className="upload-dropzone assistant-upload-dropzone">
-        <i>☁</i>
-        <p><b>Drop finished file here</b> or click this box</p>
-        <span>Supports .png, .jpg, .webp</span>
-        <input
-          type="file"
-          accept="image/*"
-          disabled={disabled}
-          onChange={(event) => onChooseFile(event.target.files?.[0])}
-        />
-      </label>
-      <div id="selected-work-file" className="selected-work-file">{selectedFileName || "No file selected yet"}</div>
+
+      <input
+        ref={inputRef}
+        className="assistant-hidden-file-input"
+        type="file"
+        accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+        disabled={disabled}
+        onChange={(event) => choose(event.target.files?.[0])}
+      />
+
+      <button
+        className="assistant-file-button"
+        type="button"
+        disabled={disabled}
+        onClick={openPicker}
+      >
+        📁 Choose Finished File
+      </button>
+
+      <div
+        className={hasFile ? "upload-dropzone assistant-upload-dropzone has-file" : "upload-dropzone assistant-upload-dropzone"}
+        id="file-dropzone"
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        onClick={openPicker}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") openPicker();
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={handleDrop}
+        aria-disabled={disabled}
+      >
+        <i>{hasFile ? "✓" : "☁"}</i>
+        <p><b>{hasFile ? selectedFileName : "Drop finished file here"}</b>{hasFile ? "" : " or click this box"}</p>
+        <span>{hasFile ? "File selected. Tick the confirmation box, then submit to Mangaka." : "Supports .png, .jpg, .webp"}</span>
+      </div>
+
+      <div id="selected-work-file" className={hasFile ? "selected-work-file has-file" : "selected-work-file"}>
+        <span>{hasFile ? "✅" : "📄"}</span>
+        {hasFile ? <>Selected: <strong>{selectedFileName}</strong></> : "No file selected yet"}
+      </div>
+
       <label className="assistant-review-check">
-        <input type="checkbox" checked={confirmReady} onChange={(event) => onConfirm(event.target.checked)} />
+        <input type="checkbox" checked={confirmReady} disabled={disabled || !hasFile} onChange={(event) => onConfirm(event.target.checked)} />
         <span>I confirm this file is ready for Mangaka review</span>
       </label>
-      <button type="button" className="btn btn-dark full" disabled={disabled || !selectedFileName || !confirmReady} onClick={onSubmit}>Submit to Review</button>
+
+      <button
+        type="button"
+        className={hasFile && confirmReady ? "btn btn-dark full assistant-final-submit-btn is-ready" : "btn btn-dark full assistant-final-submit-btn"}
+        disabled={disabled || !hasFile || !confirmReady}
+        onClick={onSubmit}
+      >
+        Submit to Review
+      </button>
       <p className="assistant-submit-note">Choose an assignment first, upload the finished image, confirm, then submit.</p>
     </div>
   );

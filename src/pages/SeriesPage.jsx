@@ -29,6 +29,7 @@ export default function SeriesPage() {
   const [message, setMessage] = useState("");
 
   const canCreate = hasRole(role, ["mangaka"]);
+  const canDelete = hasRole(role, ["mangaka", "admin"]);
 
   async function load() {
     setLoading(true);
@@ -130,6 +131,25 @@ export default function SeriesPage() {
       setError(err.message || "Could not create series");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteSeries(item) {
+    if (!item?.id || !canDelete) return;
+    const title = item.title || `Series #${item.id}`;
+    const confirmed = window.confirm(
+      `Delete "${title}"?\n\nThis will ask the backend to remove the series. If chapters, pages, tasks, or reviews still depend on it, the backend may reject the deletion.`
+    );
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+    try {
+      await api.series.remove(item.id);
+      setMessage(`Deleted ${title}.`);
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not delete series. Remove dependent chapters/pages first, or check backend cascade rules.");
     }
   }
 
@@ -245,7 +265,7 @@ export default function SeriesPage() {
             <div className="stack" key={group}>
               <h3 className="group-title">{group}</h3>
               <div className="series-grid">
-                {items.map((item) => <SeriesCard key={item.id} series={item} />)}
+                {items.map((item) => <SeriesCard key={item.id} series={item} canDelete={canDelete} onDelete={deleteSeries} />)}
               </div>
             </div>
           ))}
@@ -255,18 +275,26 @@ export default function SeriesPage() {
   );
 }
 
-function SeriesCard({ series }) {
+function SeriesCard({ series, canDelete, onDelete }) {
   const cover = resolveMediaUrl(series.coverImageUrl || series.coverUrl || series.imageUrl || series.thumbnailUrl);
   return (
-    <button className="list-card series-card" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
-      <div className="list-card-img series-cover">
-        {cover ? <img src={cover} alt={series.title} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}
-      </div>
-      <div className="list-card-content series-body">
-        <div className="row-between"><div className="list-card-title">{series.title}</div><StatusBadge value={series.status} /></div>
-        <p>{series.summary || series.description || "No summary provided."}</p>
-        <small>{series.genre || "Unknown genre"} {series.mangakaName ? `• ${series.mangakaName}` : ""}</small>
-      </div>
-    </button>
+    <div className="list-card series-card series-card-with-actions">
+      <button className="series-card-main" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
+        <div className="list-card-img series-cover">
+          {cover ? <img src={cover} alt={series.title} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}
+        </div>
+        <div className="list-card-content series-body">
+          <div className="row-between"><div className="list-card-title">{series.title}</div><StatusBadge value={series.status} /></div>
+          <p>{series.summary || series.description || "No summary provided."}</p>
+          <small>{series.genre || "Unknown genre"} {series.mangakaName ? `• ${series.mangakaName}` : ""}</small>
+        </div>
+      </button>
+      {canDelete && (
+        <div className="list-card-actions series-card-actions">
+          <button className="btn btn-small" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>Open</button>
+          <button className="btn btn-small btn-danger" onClick={() => onDelete(series)}>Delete</button>
+        </div>
+      )}
+    </div>
   );
 }

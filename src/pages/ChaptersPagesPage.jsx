@@ -158,6 +158,48 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
     }
   }
 
+  async function deleteChapter(chapter) {
+    if (!chapter?.id || !canEdit) return;
+    const label = `Chapter ${chapterNumber(chapter)}: ${chapterTitle(chapter)}`;
+    const confirmed = window.confirm(
+      `Delete ${label}?\n\nPages, scripts, hitboxes, tasks, and feedback connected to this chapter may also need to be removed by the backend before deletion can succeed.`
+    );
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+    try {
+      await api.chapters.remove(chapter.id);
+      setMessage(`Deleted ${label}.`);
+      if (String(selectedChapterId) === String(chapter.id)) {
+        setSelectedChapterId("");
+        setPages([]);
+      }
+      await loadSelectedSeries(selectedSeriesId);
+    } catch (err) {
+      setError(err.message || "Could not delete chapter. Delete dependent pages first, or check backend cascade rules.");
+    }
+  }
+
+  async function deletePage(page) {
+    if (!page?.id || !canEdit) return;
+    const label = `Page ${pageNumber(page)}`;
+    const confirmed = window.confirm(
+      `Delete ${label}?\n\nHitboxes, tasks, versions, or feedback connected to this page may also need to be removed by the backend before deletion can succeed.`
+    );
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+    try {
+      await api.pages.remove(page.id);
+      setMessage(`Deleted ${label}.`);
+      await loadPages(selectedChapterId);
+    } catch (err) {
+      setError(err.message || "Could not delete page. Remove dependent hitboxes/tasks/feedback first, or check backend cascade rules.");
+    }
+  }
+
   async function refreshAll() {
     await loadSeriesList();
     if (selectedSeriesId) await loadSelectedSeries(selectedSeriesId);
@@ -260,10 +302,15 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
           {chapters.length ? (
             <div className="list chapter-list-static">
               {chapters.map((chapter) => (
-                <button key={chapter.id} className={String(selectedChapterId) === String(chapter.id) ? "list-row interactive active" : "list-row interactive"} onClick={() => setSelectedChapterId(String(chapter.id))}>
-                  <div><strong>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</strong><small>{series?.title || chapter.seriesTitle || ""}</small></div>
-                  <StatusBadge value={chapter.publishStatus || chapter.publish_status || "DRAFT"} />
-                </button>
+                <div key={chapter.id} className={String(selectedChapterId) === String(chapter.id) ? "list-row interactive active chapter-delete-row" : "list-row interactive chapter-delete-row"}>
+                  <button className="chapter-row-main" onClick={() => setSelectedChapterId(String(chapter.id))}>
+                    <div><strong>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</strong><small>{series?.title || chapter.seriesTitle || ""}</small></div>
+                  </button>
+                  <div className="chapter-row-actions">
+                    <StatusBadge value={chapter.publishStatus || chapter.publish_status || "DRAFT"} />
+                    {canEdit && <button className="danger-icon-btn" title="Delete chapter" onClick={() => deleteChapter(chapter)}>Delete</button>}
+                  </div>
+                </div>
               ))}
             </div>
           ) : <EmptyState icon="▧" title="No chapters yet" body="Create a chapter before uploading pages." />}
@@ -281,9 +328,12 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
                       <button onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}`)}>
                         {url ? <img src={url} alt={`Page ${pageNumber(page)}`} /> : <span>No image</span>}
                       </button>
-                      <div className="page-card-footer">
+                      <div className="page-card-footer page-card-footer-actions">
                         <strong>Page {pageNumber(page)}</strong>
-                        <button className="btn btn-small" onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}`)}>Open canvas</button>
+                        <div className="page-action-row">
+                          <button className="btn btn-small" onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}`)}>Open canvas</button>
+                          {canEdit && <button className="btn btn-small btn-danger" onClick={() => deletePage(page)}>Delete</button>}
+                        </div>
                       </div>
                     </div>
                   );

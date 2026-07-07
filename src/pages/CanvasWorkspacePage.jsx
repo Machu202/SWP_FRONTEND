@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, extractMediaUrl, hasRole, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, hasRole, resolveMediaUrl, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -24,8 +24,65 @@ function hitboxId(box) {
   return box?.id || `${box?.xCoord}-${box?.yCoord}-${box?.width}-${box?.height}`;
 }
 
-function boxValue(box, first, second) {
-  return Number(box?.[first] ?? box?.[second] ?? 0);
+function toFiniteNumber(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null || value === "") continue;
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return 0;
+}
+
+function boxValue(box, first, second, third) {
+  return toFiniteNumber(box?.[first], box?.[second], third ? box?.[third] : undefined);
+}
+
+function normalizeHitbox(box = {}) {
+  const id = box.id ?? box.hitboxId ?? box.hitbox_id;
+  return {
+    ...box,
+    id,
+    xCoord: toFiniteNumber(box.xCoord, box.x_coord, box.x, box.left),
+    yCoord: toFiniteNumber(box.yCoord, box.y_coord, box.y, box.top),
+    width: toFiniteNumber(box.width, box.w),
+    height: toFiniteNumber(box.height, box.h)
+  };
+}
+
+function mergeHitboxLists(...sources) {
+  const map = new Map();
+  sources.flatMap((source) => unwrapList(source)).forEach((box) => {
+    if (!box) return;
+    const normalized = normalizeHitbox(box);
+    const key = normalized.id ? `id-${normalized.id}` : `${normalized.xCoord}-${normalized.yCoord}-${normalized.width}-${normalized.height}`;
+    if (!map.has(key)) map.set(key, normalized);
+  });
+  return Array.from(map.values());
+}
+
+function canvasOriginalSize(canvas, selectedPage, imageSize) {
+  return {
+    width: toFiniteNumber(
+      canvas?.originalWidth,
+      canvas?.original_width,
+      canvas?.width,
+      selectedPage?.width,
+      selectedPage?.imageWidth,
+      selectedPage?.originalWidth,
+      imageSize.width,
+      1
+    ),
+    height: toFiniteNumber(
+      canvas?.originalHeight,
+      canvas?.original_height,
+      canvas?.height,
+      selectedPage?.height,
+      selectedPage?.imageHeight,
+      selectedPage?.originalHeight,
+      imageSize.height,
+      1
+    )
+  };
 }
 
 export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapterId = "", initialPageId = "" }) {
@@ -46,6 +103,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [selectedBox, setSelectedBox] = useState(null);
   const [draftBox, setDraftBox] = useState(null);
   const [dragStart, setDragStart] = useState(null);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [taskDescription, setTaskDescription] = useState("");
   const [assistantId, setAssistantId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -133,11 +191,17 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         api.workspace.hitboxes(pageId).catch(() => [])
       ]);
       const fallbackImageUrl = pageImage(selectedPage);
-      const fallbackWidth = selectedPage?.width || selectedPage?.imageWidth || selectedPage?.originalWidth || 1;
-      const fallbackHeight = selectedPage?.height || selectedPage?.imageHeight || selectedPage?.originalHeight || 1;
-      setCanvas(canvasData || { imageUrl: fallbackImageUrl, originalWidth: fallbackWidth, originalHeight: fallbackHeight });
-      setHitboxes(hitboxData || []);
+      const fallbackWidth = selectedPage?.width || selectedPage?.imageWidth || selectedPage?.originalWidth || null;
+      const fallbackHeight = selectedPage?.height || selectedPage?.imageHeight || selectedPage?.originalHeight || null;
+      setCanvas({
+        ...(canvasData || {}),
+        imageUrl: canvasData?.imageUrl || canvasData?.image_url || fallbackImageUrl,
+        originalWidth: canvasData?.originalWidth || canvasData?.original_width || fallbackWidth,
+        originalHeight: canvasData?.originalHeight || canvasData?.original_height || fallbackHeight
+      });
+      setHitboxes(mergeHitboxLists(hitboxData, canvasData?.hitboxes));
       setSelectedBox(null);
+      setImageSize({ width: 0, height: 0 });
     } catch (err) {
       setError(err.message || "Could not load canvas.");
     }
@@ -169,8 +233,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     const rect = image.getBoundingClientRect();
     const displayWidth = rect.width || 1;
     const displayHeight = rect.height || 1;
-    const originalWidth = Number(canvas.originalWidth || canvas.width || image.naturalWidth || displayWidth);
-    const originalHeight = Number(canvas.originalHeight || canvas.height || image.naturalHeight || displayHeight);
+    const originalWidth = toFiniteNumber(canvas.originalWidth, canvas.original_width, canvas.width, selectedPage?.width, image.naturalWidth, displayWidth);
+    const originalHeight = toFiniteNumber(canvas.originalHeight, canvas.original_height, canvas.height, selectedPage?.height, image.naturalHeight, displayHeight);
     const x = Math.max(0, Math.min(originalWidth, ((event.clientX - rect.left) / displayWidth) * originalWidth));
     const y = Math.max(0, Math.min(originalHeight, ((event.clientY - rect.top) / displayHeight) * originalHeight));
     return { x, y, originalWidth, originalHeight };
@@ -209,14 +273,22 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setError("");
     setMessage("");
     try {
-      const saved = await api.workspace.createHitbox(selectedPageId, {
-        x: Number(draftBox.xCoord.toFixed(2)),
-        y: Number(draftBox.yCoord.toFixed(2)),
+      const fallbackBox = {
+        id: `local-${Date.now()}`,
+        xCoord: Number(draftBox.xCoord.toFixed(2)),
+        yCoord: Number(draftBox.yCoord.toFixed(2)),
         width: Number(draftBox.width.toFixed(2)),
         height: Number(draftBox.height.toFixed(2))
+      };
+      const saved = await api.workspace.createHitbox(selectedPageId, {
+        x: fallbackBox.xCoord,
+        y: fallbackBox.yCoord,
+        width: fallbackBox.width,
+        height: fallbackBox.height
       });
-      setHitboxes((old) => [...old, saved]);
-      setSelectedBox(saved);
+      const savedBox = normalizeHitbox(saved || fallbackBox);
+      setHitboxes((old) => mergeHitboxLists(old, [savedBox]));
+      setSelectedBox(savedBox);
       setMessage("Hitbox created. Fill the task form to create Assistant work.");
     } catch (err) {
       setError(err.message || "Could not create hitbox.");
@@ -243,6 +315,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   if (loading) return <LoadingBlock label="Loading canvas workspace..." />;
 
   const imageUrl = resolveMediaUrl(canvas?.imageUrl || canvas?.image_url || pageImage(selectedPage));
+  const originalSize = canvasOriginalSize(canvas, selectedPage, imageSize);
 
   return (
     <section className="core-feature-page canvas-workspace-tab static-tab-screen stack">
@@ -285,10 +358,21 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
               >
-                <img ref={imageRef} src={imageUrl} alt={`Page ${pageNumber(selectedPage) || selectedPageId}`} draggable="false" />
+                <img
+                  ref={imageRef}
+                  src={imageUrl}
+                  alt={`Page ${pageNumber(selectedPage) || selectedPageId}`}
+                  draggable="false"
+                  onLoad={(event) => {
+                    setImageSize({
+                      width: event.currentTarget.naturalWidth || event.currentTarget.getBoundingClientRect().width || 1,
+                      height: event.currentTarget.naturalHeight || event.currentTarget.getBoundingClientRect().height || 1
+                    });
+                  }}
+                />
                 <div className="hitbox-layer-react">
-                  {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} canvas={canvas} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} />)}
-                  {draftBox && <CanvasBox box={draftBox} canvas={canvas} draft label="New" />}
+                  {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} />)}
+                  {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" />}
                 </div>
               </div>
             ) : <EmptyState icon="□" title="Select a page to start" body="Choose a series, chapter, and page from the controls above." />}
@@ -322,19 +406,35 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             {selectedPage && <div><strong>Page:</strong> {pageNumber(selectedPage)}</div>}
             <div><strong>Hitboxes:</strong> {hitboxes.length}</div>
           </div>
+          {hitboxes.length > 0 && (
+            <div className="saved-hitbox-list">
+              <div className="mini-section-label">Saved hitboxes on this page</div>
+              {hitboxes.map((box, index) => (
+                <button
+                  key={hitboxId(box)}
+                  type="button"
+                  className={`saved-hitbox-row ${selectedBox && String(selectedBox.id) === String(box.id) ? "active" : ""}`}
+                  onClick={() => setSelectedBox(box)}
+                >
+                  <span>#{index + 1}</span>
+                  <small>X {boxValue(box, "xCoord", "x_coord").toFixed(0)} · Y {boxValue(box, "yCoord", "y_coord").toFixed(0)}</small>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
   );
 }
 
-function CanvasBox({ box, canvas, active, draft, label, onClick }) {
-  const originalWidth = Number(canvas?.originalWidth || canvas?.width || 1);
-  const originalHeight = Number(canvas?.originalHeight || canvas?.height || 1);
-  const x = boxValue(box, "xCoord", "x_coord");
-  const y = boxValue(box, "yCoord", "y_coord");
-  const width = boxValue(box, "width", "width");
-  const height = boxValue(box, "height", "height");
+function CanvasBox({ box, originalSize, active, draft, label, onClick }) {
+  const originalWidth = Math.max(toFiniteNumber(originalSize?.width, 1), 1);
+  const originalHeight = Math.max(toFiniteNumber(originalSize?.height, 1), 1);
+  const x = boxValue(box, "xCoord", "x_coord", "x");
+  const y = boxValue(box, "yCoord", "y_coord", "y");
+  const width = boxValue(box, "width", "width", "w");
+  const height = boxValue(box, "height", "height", "h");
   return (
     <button
       type="button"
