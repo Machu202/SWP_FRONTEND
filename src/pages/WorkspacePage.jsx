@@ -64,7 +64,7 @@ export default function WorkspacePage({ pageId, query }) {
     const originalHeight = Number(canvas?.originalHeight || image.naturalHeight || displayHeight);
     const x = Math.max(0, Math.min(originalWidth, ((event.clientX - rect.left) / displayWidth) * originalWidth));
     const y = Math.max(0, Math.min(originalHeight, ((event.clientY - rect.top) / displayHeight) * originalHeight));
-    return { x, y, originalWidth, originalHeight, rect };
+    return { x, y, originalWidth, originalHeight };
   }
 
   function handlePointerDown(event) {
@@ -156,93 +156,105 @@ export default function WorkspacePage({ pageId, query }) {
   }
 
   if (loading) return <LoadingBlock label="Loading canvas..." />;
-  if (!canvas) return <EmptyState title="Canvas unavailable" body="Select a page from the series detail page." />;
+  if (!canvas) return <EmptyState icon="□" title="Canvas unavailable" body="Select a page from the series detail page." />;
 
   const imageUrl = resolveMediaUrl(canvas.imageUrl);
 
   return (
-    <section className="workspace-layout">
-      <div className="workspace-main card">
-        <div className="card-header">
-          <div>
-            <p className="eyebrow">Page #{pageId}</p>
-            <h3>Draw hitboxes on the manga page</h3>
-          </div>
-          <div className="button-row">
-            {seriesId && <button className="btn btn-small" onClick={() => navigate(`/series/${seriesId}`)}>Back to series</button>}
-            <StatusBadge value={`${hitboxes.length} hitboxes`} />
-          </div>
-        </div>
+    <section className="editor-layout react-editor">
+      <div className="floating-tools">
+        <button className="tool-btn active" title="Hitbox tool">□</button>
+        <button className="tool-btn" title="Comment tool">✎</button>
+        <button className="tool-btn" title="Move tool">↕</button>
+        <button className="tool-btn" title="Grid">#</button>
+      </div>
 
+      <div className="center-workspace">
         <Alert type="success">{message}</Alert>
         <Alert type="danger">{error}</Alert>
-
-        <div
-          className="canvas-wrap"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-        >
-          {imageUrl ? <img ref={imageRef} src={imageUrl} alt="Manga page" draggable="false" /> : <EmptyState title="No image URL" body="The page exists but has no image URL." />}
-          {hitboxes.map((box) => (
-            <HitboxOverlay
-              key={hitboxId(box)}
-              box={box}
-              canvas={canvas}
-              active={selected && String(selected.id) === String(box.id)}
-              onClick={(event) => { event.stopPropagation(); loadComments(box); }}
-            />
-          ))}
-          {draftBox && <HitboxOverlay box={draftBox} canvas={canvas} draft />}
+        <div className="canvas-view">
+          <div
+            className="manga-page"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+          >
+            <div className="grid-guide" />
+            {imageUrl ? <img ref={imageRef} src={imageUrl} alt="Manga page" draggable="false" /> : <EmptyState icon="▧" title="No image URL" body="The page exists but has no image URL." />}
+            {hitboxes.map((box, index) => (
+              <HitboxOverlay
+                key={hitboxId(box)}
+                box={box}
+                canvas={canvas}
+                active={selected && String(selected.id) === String(box.id)}
+                label={`Task ${index + 1}`}
+                onClick={(event) => { event.stopPropagation(); loadComments(box); }}
+              />
+            ))}
+            {draftBox && <HitboxOverlay box={draftBox} canvas={canvas} draft label="New" />}
+          </div>
         </div>
       </div>
 
-      <aside className="workspace-side card stack">
-        <h3>Selected hitbox</h3>
-        {selected ? (
-          <>
-            <div className="metric-grid compact">
-              <span>X <strong>{Number(selected.xCoord).toFixed(1)}</strong></span>
-              <span>Y <strong>{Number(selected.yCoord).toFixed(1)}</strong></span>
-              <span>W <strong>{Number(selected.width).toFixed(1)}</strong></span>
-              <span>H <strong>{Number(selected.height).toFixed(1)}</strong></span>
-            </div>
+      <aside className="right-panel">
+        <div className="panel-tabs">
+          <button className="p-tab active">Layers</button>
+          <button className="p-tab">Details</button>
+        </div>
 
-            <label>
-              Task description
-              <textarea rows="4" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe what the assistant needs to draw or revise." />
-            </label>
-            <button className="btn btn-primary" onClick={createTask} disabled={!description.trim()}>Create task</button>
-            <button className="btn btn-danger" onClick={deleteSelected}>Delete hitbox</button>
+        <div className="panel-content">
+          <div className="layer-item active">
+            <span className="layer-visibility-toggle">●</span>
+            <div className="layer-preview">PG</div>
+            <div className="layer-name">Page #{pageId}</div>
+          </div>
+          {hitboxes.map((box, index) => (
+            <button key={hitboxId(box)} className={selected && String(selected.id) === String(box.id) ? "layer-item active" : "layer-item"} onClick={() => loadComments(box)}>
+              <span className="layer-visibility-toggle">□</span>
+              <div className="layer-preview">HB</div>
+              <div className="layer-name">Hitbox {index + 1}</div>
+            </button>
+          ))}
 
-            <div className="divider-line" />
-            <label>
-              Comment
-              <textarea rows="3" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Pin a note/comment to this hitbox." />
-            </label>
-            <button className="btn" onClick={addComment} disabled={!comment.trim()}>Add comment</button>
+          <button className="btn-add-page-right" onClick={() => seriesId ? navigate(`/series/${seriesId}`) : navigate("/series")}>＋ Back to Chapter</button>
 
-            <div className="list">
-              {comments.map((item) => (
-                <div className="list-row" key={item.id || item.content}>
-                  <div>
-                    <strong>{item.content}</strong>
-                    <small>{item.createdAt || item.user?.username || "comment"}</small>
-                  </div>
+          <div className="form-section" style={{ padding: 14, marginTop: 12 }}>
+            <div className="form-section-title">Selected Hitbox</div>
+            {selected ? (
+              <>
+                <div className="metric-grid compact">
+                  <span>X <strong>{Number(selected.xCoord).toFixed(1)}</strong></span>
+                  <span>Y <strong>{Number(selected.yCoord).toFixed(1)}</strong></span>
+                  <span>W <strong>{Number(selected.width).toFixed(1)}</strong></span>
+                  <span>H <strong>{Number(selected.height).toFixed(1)}</strong></span>
                 </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <EmptyState title="No hitbox selected" body="Drag on the image to create a new rectangular hitbox, or click an existing one." />
-        )}
+                <label>Task description<textarea className="form-control" rows="4" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe what the assistant needs to draw or revise." /></label>
+                <button className="btn-publish full" onClick={createTask} disabled={!description.trim()}>Create task</button>
+                <button className="btn btn-danger full" onClick={deleteSelected}>Delete hitbox</button>
+
+                <div className="divider-line" />
+                <label>Comment<textarea className="form-control" rows="3" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Pin a note/comment to this hitbox." /></label>
+                <button className="btn full" onClick={addComment} disabled={!comment.trim()}>Add comment</button>
+                <div className="list" style={{ marginTop: 12 }}>
+                  {comments.map((item) => <div className="list-row" key={item.id || item.content}><div><strong>{item.content}</strong><small>{item.createdAt || item.user?.username || "comment"}</small></div></div>)}
+                </div>
+              </>
+            ) : <EmptyState icon="□" title="No hitbox selected" body="Drag on the image to create a hitbox, or click an existing one." />}
+          </div>
+        </div>
+
+        <div className="page-info-footer">
+          <div className="info-row"><span className="info-label">Hitboxes</span><span className="info-val">{hitboxes.length}</span></div>
+          <div className="info-row"><span className="info-label">Mode</span><span className="info-val">Task Marking</span></div>
+          <div className="info-row"><span className="info-label">Backend</span><span className="info-val"><StatusBadge value="Connected" /></span></div>
+        </div>
       </aside>
     </section>
   );
 }
 
-function HitboxOverlay({ box, canvas, active, draft, onClick }) {
+function HitboxOverlay({ box, canvas, active, draft, onClick, label }) {
   const originalWidth = Number(canvas?.originalWidth || 1);
   const originalHeight = Number(canvas?.originalHeight || 1);
   const left = `${(Number(box.xCoord || box.x || 0) / originalWidth) * 100}%`;
@@ -253,10 +265,13 @@ function HitboxOverlay({ box, canvas, active, draft, onClick }) {
     <button
       data-box="true"
       type="button"
-      className={`hitbox ${active ? "active" : ""} ${draft ? "draft" : ""}`}
+      className={`editor-hitbox ${active ? "active" : ""} ${draft ? "selection-box" : ""}`}
       style={{ left, top, width, height }}
       onClick={onClick}
       title={`Hitbox ${box.id || "new"}`}
-    />
+    >
+      {!draft && <span className="hitbox-tag">{label}</span>}
+      {!draft && <span className="resize-handle" />}
+    </button>
   );
 }

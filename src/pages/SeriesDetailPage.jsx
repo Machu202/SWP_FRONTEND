@@ -75,11 +75,7 @@ export default function SeriesDetailPage({ seriesId }) {
     setError("");
     setMessage("");
     try {
-      const created = await api.chapters.create({
-        seriesId: Number(seriesId),
-        chapterNumber: Number(chapterForm.chapterNumber),
-        title: chapterForm.title
-      });
+      const created = await api.chapters.create({ seriesId: Number(seriesId), chapterNumber: Number(chapterForm.chapterNumber), title: chapterForm.title });
       setMessage(`Created chapter ${created.chapterNumber}`);
       setChapterForm({ chapterNumber: "", title: "" });
       await load();
@@ -134,81 +130,98 @@ export default function SeriesDetailPage({ seriesId }) {
   }
 
   if (loading) return <LoadingBlock label="Loading series detail..." />;
-  if (!series) return <EmptyState title="Series not found" body="The backend did not return this series." />;
+  if (!series) return <EmptyState icon="◇" title="Series not found" body="The backend did not return this series." />;
 
   const cover = resolveMediaUrl(series.coverImageUrl || series.coverUrl || series.imageUrl || series.thumbnailUrl);
 
   return (
-    <section className="stack">
-      <button className="btn btn-ghost fit" onClick={() => navigate("/series")}>← Back to series</button>
+    <section className="core-feature-page chapter-manager-screen stack">
       <Alert type="success">{message}</Alert>
       <Alert type="danger">{error}</Alert>
 
-      <div className="detail-hero">
-        <div className="detail-cover">{cover ? <img src={cover} alt={series.title} /> : <span>{series.title?.slice(0, 1)}</span>}</div>
-        <div>
-          <p className="eyebrow">Series #{series.id}</p>
-          <h2>{series.title}</h2>
-          <p>{series.description || series.summary || "No description."}</p>
-          <div className="meta-row">
-            <StatusBadge value={series.status} />
-            <span>{series.genre || "Unknown genre"}</span>
-            <span>Mangaka: {series.mangakaName || series.mangakaUsername || series.mangakaEmail || "Unknown"}</span>
-            <span>Tantou: {series.tantouName || "Unassigned"}</span>
-          </div>
-          {canEdit && (
-            <div className="button-row">
-              <button className="btn" onClick={() => setSeriesStatus("REVIEWING")}>Send to review</button>
-              <button className="btn" onClick={() => setSeriesStatus("DRAFT")}>Back to draft</button>
+      <div className="feature-header">
+        <div className="detail-hero" style={{ padding: 0, border: 0 }}>
+          <div className="detail-cover">{cover ? <img src={cover} alt={series.title} /> : <span>{series.title?.slice(0, 1)}</span>}</div>
+          <div>
+            <p className="eyebrow">Series #{series.id}</p>
+            <h1>{series.title}</h1>
+            <p>{series.description || series.summary || "No description."}</p>
+            <div className="meta-row">
+              <StatusBadge value={series.status} />
+              <span>{series.genre || "Unknown genre"}</span>
+              <span>Mangaka: {series.mangakaName || series.mangakaUsername || series.mangakaEmail || "Unknown"}</span>
+              <span>Tantou: {series.tantouName || "Unassigned"}</span>
             </div>
-          )}
+          </div>
+        </div>
+        <div className="button-row">
+          <button className="btn" onClick={() => navigate("/series")}>← Back</button>
+          {canEdit && <button className="btn-publish" onClick={() => setSeriesStatus("REVIEWING")}>Send to Review</button>}
         </div>
       </div>
 
-      <div className="grid two uneven">
-        <div className="card stack">
-          <div className="card-header">
-            <h3>Chapters</h3>
-            <StatusBadge value={`${chapters.length} total`} />
+      <div className="feature-grid two-cols">
+        <div className="card-box">
+          <h3>Select Series</h3>
+          <div className="form-group">
+            <label>Manga Series</label>
+            <input className="form-control" value={series.title || ""} readOnly />
           </div>
 
           {canEdit && (
-            <form className="inline-form" onSubmit={createChapter}>
-              <input type="number" min="1" placeholder="No." value={chapterForm.chapterNumber} onChange={(event) => setChapterForm({ ...chapterForm, chapterNumber: event.target.value })} />
-              <input placeholder="Chapter title" value={chapterForm.title} onChange={(event) => setChapterForm({ ...chapterForm, title: event.target.value })} />
-              <button className="btn btn-primary" disabled={!chapterForm.chapterNumber || !chapterForm.title}>Create</button>
+            <form className="feature-form" onSubmit={createChapter}>
+              <h3>Create New Chapter</h3>
+              <div className="form-row">
+                <div className="form-group"><label>Chapter Number</label><input className="form-control" type="number" min="1" required value={chapterForm.chapterNumber} onChange={(event) => setChapterForm({ ...chapterForm, chapterNumber: event.target.value })} /></div>
+                <div className="form-group"><label>Chapter Title</label><input className="form-control" placeholder="Chapter title" value={chapterForm.title} onChange={(event) => setChapterForm({ ...chapterForm, title: event.target.value })} /></div>
+              </div>
+              <button className="btn-publish" type="submit"><span>＋</span> Create Chapter</button>
             </form>
           )}
+        </div>
 
+        <div className="card-box">
+          <h3>Upload Pages</h3>
+          <div className="feature-form">
+            <div className="form-group">
+              <label>Chapter</label>
+              <select className="form-control" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)}>
+                <option value="">Choose chapter</option>
+                {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>Chapter {chapter.chapterNumber}: {chapter.title}</option>)}
+              </select>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label>Start Page Number</label><input className="form-control" type="number" min="1" value={(pages.reduce((max, page) => Math.max(max, Number(page.pageNumber || 0)), 0) || 0) + 1} readOnly /></div>
+              <div className="form-group"><label>Image Files</label><label className="form-control file-button">{uploading ? "Uploading..." : "Choose images"}<input type="file" accept="image/*" multiple onChange={uploadPages} disabled={!selectedChapterId || uploading || !canEdit} /></label></div>
+            </div>
+          </div>
+          <div className="upload-log">{selectedChapterId ? `${pages.length} page(s) currently uploaded for this chapter.` : "Choose a chapter before uploading pages."}</div>
+        </div>
+      </div>
+
+      <div className="feature-grid two-cols">
+        <div className="card-box stack">
+          <div className="section-title-row"><h3>Chapters</h3><span className="schedule-count">{chapters.length}</span></div>
           {chapters.length ? (
             <div className="list">
               {chapters.map((chapter) => (
                 <button key={chapter.id} className={String(selectedChapterId) === String(chapter.id) ? "list-row interactive active" : "list-row interactive"} onClick={() => setSelectedChapterId(String(chapter.id))}>
-                  <div>
-                    <strong>Chapter {chapter.chapterNumber}: {chapter.title}</strong>
-                    <small>{chapter.seriesTitle}</small>
-                  </div>
+                  <div><strong>Chapter {chapter.chapterNumber}: {chapter.title}</strong><small>{chapter.seriesTitle || series.title}</small></div>
                   <StatusBadge value={chapter.publishStatus} />
                 </button>
               ))}
             </div>
-          ) : <EmptyState title="No chapters yet" body="Create a chapter before uploading pages or drawing task boxes." />}
+          ) : <EmptyState icon="▧" title="No chapters yet" body="Create a chapter before uploading pages or drawing task boxes." />}
         </div>
 
-        <div className="card stack">
-          <div className="card-header">
-            <h3>{selectedChapter ? `Chapter ${selectedChapter.chapterNumber} workspace` : "Chapter workspace"}</h3>
-            {selectedChapterId && canEdit && <label className="btn btn-primary file-button">{uploading ? "Uploading..." : "Upload pages"}<input type="file" accept="image/*" multiple onChange={uploadPages} disabled={uploading} /></label>}
-          </div>
-
+        <div className="card-box stack">
+          <div className="section-title-row"><h3>{selectedChapter ? `Chapter ${selectedChapter.chapterNumber} Workspace` : "Chapter Workspace"}</h3><span className="schedule-count">{pages.length} pages</span></div>
           {selectedChapterId ? (
             <>
               <div className="script-box">
-                <label>
-                  Chapter script / notes
-                  <textarea value={script} onChange={(event) => setScript(event.target.value)} rows="5" placeholder="Write chapter script or instructions here." />
-                </label>
-                <button className="btn" onClick={saveScript}>Save script</button>
+                <label>Chapter Script / Notes</label>
+                <textarea className="form-control" value={script} onChange={(event) => setScript(event.target.value)} rows="5" placeholder="Write chapter script or instructions here." />
+                <button className="btn" onClick={saveScript}>Save Script</button>
               </div>
 
               {pages.length ? (
@@ -228,35 +241,21 @@ export default function SeriesDetailPage({ seriesId }) {
                     );
                   })}
                 </div>
-              ) : <EmptyState title="No pages uploaded" body="Upload manga page images to use the canvas, hitboxes, and task assignment flow." />}
+              ) : <EmptyState icon="▧" title="No pages uploaded" body="Upload manga page images to use canvas, hitboxes, and task assignment." />}
             </>
-          ) : <EmptyState title="Select a chapter" body="Choose or create a chapter first." />}
+          ) : <EmptyState icon="▧" title="Choose a chapter" body="Select a chapter from the left to view pages and scripts." />}
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <h3>Series tasks</h3>
-          <button className="btn btn-small" onClick={() => navigate("/tasks")}>Open Kanban</button>
-        </div>
+      <div className="card-box">
+        <div className="section-title-row"><h3>Series Tasks</h3><button className="btn btn-small" onClick={() => navigate("/tasks")}>Open Kanban</button></div>
         {tasks.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Description</th><th>Page</th><th>Assistant</th><th>Status</th></tr></thead>
-              <tbody>
-                {tasks.map((task) => (
-                  <tr key={task.id}>
-                    <td>{task.id}</td>
-                    <td>{task.description}</td>
-                    <td>{task.pageNumber || "-"}</td>
-                    <td>{task.assistantName || "Unassigned"}</td>
-                    <td><StatusBadge value={task.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="task-mini-list">
+            {tasks.slice(0, 6).map((task) => (
+              <div className="list-row" key={task.id}><div><strong>{task.description || `Task #${task.id}`}</strong><small>{task.assistantName || "Unassigned"} • Page {task.pageNumber || "?"}</small></div><StatusBadge value={task.status} /></div>
+            ))}
           </div>
-        ) : <EmptyState title="No tasks for this series" body="Open a page canvas and draw hitboxes to create tasks." />}
+        ) : <EmptyState icon="☑" title="No tasks for this series" body="Create task hitboxes from an uploaded page canvas." />}
       </div>
     </section>
   );

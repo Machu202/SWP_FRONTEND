@@ -1,9 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, extractMediaUrl, resolveMediaUrl } from "../api/client";
-import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
+import { Alert, EmptyState, LoadingBlock } from "../components/Status";
+
+const TABS = [
+  { key: "ALL", label: "All Assets" },
+  { key: "BRUSH", label: "Brushes & Tools" },
+  { key: "MODEL_3D", label: "3D Models" },
+  { key: "SCREENTONE", label: "Screentones" },
+  { key: "TASK_SUBMISSION", label: "Submissions" }
+];
 
 export default function ResourcesPage() {
   const [resources, setResources] = useState([]);
+  const [activeTab, setActiveTab] = useState("ALL");
   const [resourceType, setResourceType] = useState("PAGE_IMAGE");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -24,6 +33,11 @@ export default function ResourcesPage() {
 
   useEffect(() => { load(); }, []);
 
+  const filtered = useMemo(() => {
+    if (activeTab === "ALL") return resources;
+    return resources.filter((item) => String(item.resourceType || item.type || "").toUpperCase().includes(activeTab));
+  }, [resources, activeTab]);
+
   async function upload(event) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -31,9 +45,7 @@ export default function ResourcesPage() {
     setError("");
     setMessage("");
     try {
-      for (const file of files) {
-        await api.resources.upload(file, resourceType);
-      }
+      for (const file of files) await api.resources.upload(file, resourceType);
       setMessage(`Uploaded ${files.length} resource(s).`);
       await load();
     } catch (err) {
@@ -58,53 +70,58 @@ export default function ResourcesPage() {
   if (loading) return <LoadingBlock label="Loading resources..." />;
 
   return (
-    <section className="stack">
+    <section className="stack resource-library-screen">
       <Alert type="success">{message}</Alert>
       <Alert type="danger">{error}</Alert>
 
-      <div className="card toolbar">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 5 }}>
         <div>
-          <p className="eyebrow">Cloud/resource storage</p>
-          <h3>{resources.length} uploaded resources</h3>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 5 }}>Resource Library</h1>
+          <p style={{ color: "#6b7280", fontSize: 14 }}>Tải về cọ vẽ, bối cảnh 3D và các tài liệu tham khảo chung của Studio.</p>
         </div>
         <div className="button-row">
           <select value={resourceType} onChange={(event) => setResourceType(event.target.value)}>
-            <option>PAGE_IMAGE</option>
-            <option>REFERENCE</option>
-            <option>TASK_SUBMISSION</option>
-            <option>BRUSH</option>
-            <option>MODEL_3D</option>
+            <option>PAGE_IMAGE</option><option>REFERENCE</option><option>TASK_SUBMISSION</option><option>BRUSH</option><option>MODEL_3D</option><option>SCREENTONE</option>
           </select>
-          <label className="btn btn-primary file-button">
+          <label className="btn-publish file-button">
             {uploading ? "Uploading..." : "Upload files"}
             <input type="file" multiple onChange={upload} disabled={uploading} />
           </label>
         </div>
       </div>
 
-      {resources.length ? (
-        <div className="resource-grid">
-          {resources.map((resource) => {
-            const url = resolveMediaUrl(extractMediaUrl(resource));
-            const isImage = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url);
-            return (
-              <div className="resource-card" key={resource.id}>
-                <div className="resource-preview">
-                  {isImage ? <img src={url} alt={`Resource ${resource.id}`} /> : <span>{resource.resourceType || "FILE"}</span>}
-                </div>
-                <div className="stack small-gap">
-                  <div className="row-between"><strong>Resource #{resource.id}</strong><StatusBadge value={resource.resourceType} /></div>
-                  <code className="url-code">{url || "No URL"}</code>
-                  <div className="button-row">
-                    {url && <a className="btn btn-small" href={url} target="_blank" rel="noreferrer">Open</a>}
-                    <button className="btn btn-small btn-danger" onClick={() => remove(resource.id)}>Delete</button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      <div className="resource-filter-tabs" style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "2px solid #e5e7eb", paddingBottom: 10 }}>
+        {TABS.map((tab) => <button key={tab.key} className={activeTab === tab.key ? "r-tab active" : "r-tab"} onClick={() => setActiveTab(tab.key)}>{tab.label}</button>)}
+      </div>
+
+      {filtered.length ? (
+        <div className="resource-grid" id="resource-grid-container" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
+          {filtered.map((resource) => <ResourceCard key={resource.id} resource={resource} onRemove={() => remove(resource.id)} />)}
         </div>
-      ) : <EmptyState title="No resources yet" body="Upload images, references, brush files, or task submissions." />}
+      ) : <EmptyState icon="□" title="No resources yet" body="Upload images, references, brush files, or task submissions." />}
     </section>
+  );
+}
+
+function ResourceCard({ resource, onRemove }) {
+  const url = resolveMediaUrl(extractMediaUrl(resource));
+  const type = resource.resourceType || resource.type || "FILE";
+  const isImage = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url) || String(type).includes("IMAGE") || String(type).includes("COVER");
+  return (
+    <div className="resource-card">
+      <div className="rs-thumb">
+        {isImage && url ? <img src={url} alt={`Resource ${resource.id}`} /> : <span>{type}</span>}
+        <div className="rs-type-badge">{type}</div>
+        <div className="rs-status">Available</div>
+      </div>
+      <div className="rs-info">
+        <div className="rs-title"><span>Resource #{resource.id}</span><button className="btn-icon-only" onClick={onRemove}>×</button></div>
+        <div className="rs-desc">{url || "No URL was returned from backend."}</div>
+        <div className="rs-meta">
+          <span className="rs-author"><span className="topbar-avatar" style={{ width: 16, height: 16, fontSize: 9 }}>SF</span> Studio</span>
+          {url && <a className="btn btn-small" href={url} target="_blank" rel="noreferrer">Open</a>}
+        </div>
+      </div>
+    </div>
   );
 }

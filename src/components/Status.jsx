@@ -14,9 +14,10 @@ export function Alert({ type = "info", children }) {
   return <div className={`alert alert-${type}`}>{children}</div>;
 }
 
-export function EmptyState({ title = "No data yet", body = "Create or load data to continue." }) {
+export function EmptyState({ title = "No data yet", body = "Create or load data to continue.", icon = "▧" }) {
   return (
-    <div className="empty-state">
+    <div className="empty-state-box">
+      <i>{icon}</i>
       <strong>{title}</strong>
       <p>{body}</p>
     </div>

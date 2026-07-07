@@ -16,6 +16,8 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [assistants, setAssistants] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [confirmReady, setConfirmReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -89,6 +91,8 @@ export default function TasksPage() {
       const updated = await api.tasks.submit(task.id, imageUrl);
       setTasks((old) => old.map((item) => String(item.id) === String(task.id) ? updated : item));
       setSelected(updated);
+      setSelectedFileName("");
+      setConfirmReady(false);
       setMessage("Task submitted for review.");
     } catch (err) {
       setError(err.message || "Could not submit work");
@@ -98,73 +102,85 @@ export default function TasksPage() {
   if (loading) return <LoadingBlock label="Loading tasks..." />;
 
   return (
-    <section className="stack">
+    <section className="stack backend-kanban">
       <Alert type="success">{message}</Alert>
       <Alert type="danger">{error}</Alert>
 
       <div className="kanban-board">
         {COLUMNS.map((column) => (
           <div className="kanban-column" key={column.key}>
-            <div className="column-title">
-              <h3>{column.label}</h3>
-              <span>{grouped[column.key]?.length || 0}</span>
+            <div className="kanban-column-header column-title">
+              <span>{column.label}</span>
+              <span className="task-count">{grouped[column.key]?.length || 0}</span>
             </div>
-            <div className="kanban-list">
-              {(grouped[column.key] || []).map((task) => (
-                <TaskCard key={task.id} task={task} onClick={() => setSelected(task)} onMove={updateStatus} />
-              ))}
+            <div className="kanban-task-list kanban-list">
+              {(grouped[column.key] || []).map((task) => <TaskCard key={task.id} task={task} onClick={() => setSelected(task)} onMove={updateStatus} />)}
               {!grouped[column.key]?.length && <div className="drop-placeholder">No tasks</div>}
             </div>
           </div>
         ))}
       </div>
 
-      <div className="card stack">
-        <h3>Task detail</h3>
-        {selected ? (
-          <div className="task-detail-grid">
+      <div className="task-content-grid">
+        <div className="task-box">
+          <div className="task-box-title"><span>Task Detail</span>{selected && <StatusBadge value={selected.status} />}</div>
+          {selected ? (
             <div className="stack">
-              <div className="row-between"><strong>Task #{selected.id}</strong><StatusBadge value={selected.status} /></div>
-              <p>{selected.description || "No description."}</p>
-              <div className="meta-row wrap">
-                <span>Series: {selected.seriesTitle || "-"}</span>
-                <span>Chapter: {selected.chapterTitle || selected.chapterNumber || "-"}</span>
-                <span>Page: {selected.pageNumber || "-"}</span>
-                <span>Assistant: {selected.assistantName || "Unassigned"}</span>
+              <div className="task-detail-header">
+                <div className="task-detail-meta"><span>Task #{selected.id}</span><span>{selected.seriesTitle || "No series"}</span></div>
+                <h1>{selected.description || `Task #${selected.id}`}</h1>
+                <div className="meta-row wrap">
+                  <span>Chapter: {selected.chapterTitle || selected.chapterNumber || "-"}</span>
+                  <span>Page: {selected.pageNumber || "-"}</span>
+                  <span>Assistant: {selected.assistantName || "Unassigned"}</span>
+                </div>
               </div>
 
               {canAssign && (
-                <label>
-                  Assign assistant
-                  <select value={selected.assistantId || ""} onChange={(event) => assignAssistant(selected.id, event.target.value)}>
+                <div className="form-group">
+                  <label>Assign assistant</label>
+                  <select className="form-control" value={selected.assistantId || ""} onChange={(event) => assignAssistant(selected.id, event.target.value)}>
                     <option value="">Choose assistant</option>
-                    {assistants.map((assistant) => (
-                      <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email}</option>
-                    ))}
+                    {assistants.map((assistant) => <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email}</option>)}
                   </select>
-                </label>
+                </div>
               )}
 
               <div className="button-row">
-                {COLUMNS.map((column) => (
-                  <button key={column.key} className="btn btn-small" onClick={() => updateStatus(selected, column.key)}>{column.label}</button>
-                ))}
+                {COLUMNS.map((column) => <button key={column.key} className="btn btn-small" onClick={() => updateStatus(selected, column.key)}>{column.label}</button>)}
               </div>
 
-              {canSubmit && (
-                <label className="btn btn-primary file-button fit">
-                  Upload finished image
-                  <input type="file" accept="image/*" onChange={(event) => submitWork(selected, event.target.files?.[0])} />
-                </label>
-              )}
+              <div className="reference-panel">
+                <Preview title="Reference image" url={selected.referenceImageUrl} />
+                <Preview title="Submitted image" url={selected.submittedImageUrl} />
+              </div>
             </div>
+          ) : <EmptyState icon="☑" title="Select a task" body="Click any card in the Kanban board to view details, assign an assistant, move status, or submit work." />}
+        </div>
 
-            <div className="reference-panel">
-              <Preview title="Reference image" url={selected.referenceImageUrl} />
-              <Preview title="Submitted image" url={selected.submittedImageUrl} />
-            </div>
+        {canSubmit && (
+          <div className="task-box assistant-submit-box" id="submit-work-box">
+            <div className="task-box-title assistant-submit-title"><span>☁ Submit Finished Work to Mangaka</span><span className="assistant-submit-step">Final step</span></div>
+            <div className="assistant-submit-help"><strong>Upload your finished drawing here.</strong><span>After upload, the task moves to <b>In Review</b> so Mangaka can check it.</span></div>
+            <label className="assistant-file-button btn full">
+              Choose Finished File
+              <input type="file" accept="image/*" onChange={(event) => setSelectedFileName(event.target.files?.[0]?.name || "")} />
+            </label>
+            <label className="upload-dropzone assistant-upload-dropzone">
+              <i>☁</i>
+              <p><b>Drop finished file here</b> or click this box</p>
+              <span>Supports .png, .jpg, .webp</span>
+              <input type="file" accept="image/*" onChange={(event) => {
+                const file = event.target.files?.[0];
+                setSelectedFileName(file?.name || "");
+                if (selected && file && confirmReady) submitWork(selected, file);
+              }} disabled={!selected} />
+            </label>
+            <div id="selected-work-file" className="selected-work-file">{selectedFileName || "No file selected yet"}</div>
+            <label className="assistant-review-check"><input type="checkbox" checked={confirmReady} onChange={(event) => setConfirmReady(event.target.checked)} /><span>I confirm this file is ready for Mangaka review</span></label>
+            <p className="assistant-submit-note">Choose a selected task first, confirm, then choose the file in the dropzone to submit.</p>
           </div>
-        ) : <EmptyState title="Select a task" body="Click any card in the Kanban board to view details, assign an assistant, move status, or submit work." />}
+        )}
       </div>
     </section>
   );
@@ -172,17 +188,12 @@ export default function TasksPage() {
 
 function TaskCard({ task, onClick, onMove }) {
   return (
-    <button className="task-card" onClick={onClick}>
-      <div className="row-between">
-        <strong>#{task.id}</strong>
-        <StatusBadge value={task.status} />
-      </div>
-      <p>{task.description || "No description"}</p>
+    <button className="kanban-card task-card" onClick={onClick}>
+      <span className="tag">{normalizeTaskStatus(task.status)}</span>
+      <div className="task-title">{task.description || "No description"}</div>
       <small>{task.seriesTitle || "No series"} • Page {task.pageNumber || "?"}</small>
-      <div className="button-row" onClick={(event) => event.stopPropagation()}>
-        {COLUMNS.filter((column) => column.key !== normalizeTaskStatus(task.status)).slice(0, 2).map((column) => (
-          <button key={column.key} className="btn btn-tiny" onClick={() => onMove(task, column.key)}>{column.label}</button>
-        ))}
+      <div className="button-row" onClick={(event) => event.stopPropagation()} style={{ marginTop: 12 }}>
+        {COLUMNS.filter((column) => column.key !== normalizeTaskStatus(task.status)).slice(0, 2).map((column) => <button key={column.key} className="btn btn-tiny" onClick={() => onMove(task, column.key)}>{column.label}</button>)}
       </div>
     </button>
   );
@@ -190,10 +201,5 @@ function TaskCard({ task, onClick, onMove }) {
 
 function Preview({ title, url }) {
   const resolved = resolveMediaUrl(url);
-  return (
-    <div className="preview-box">
-      <strong>{title}</strong>
-      {resolved ? <img src={resolved} alt={title} /> : <span>No image</span>}
-    </div>
-  );
+  return <div className="preview-box"><strong>{title}</strong>{resolved ? <img src={resolved} alt={title} /> : <span>No image</span>}</div>;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, hasRole, roleLabel } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
@@ -23,7 +23,7 @@ export default function DashboardPage() {
         api.tasks.mine().catch(() => []),
         api.notifications.unread().catch(() => [])
       ]);
-      setData({ series, tasks, notifications });
+      setData({ series: series || [], tasks: tasks || [], notifications: notifications || [] });
     } catch (err) {
       setError(err.message || "Dashboard failed to load");
     } finally {
@@ -38,78 +38,222 @@ export default function DashboardPage() {
 
   if (loading) return <LoadingBlock label="Loading dashboard..." />;
 
-  const reviewCount = data.tasks.filter((task) => String(task.status || "").toLowerCase().includes("review")).length;
-
   return (
-    <section className="stack">
+    <>
       <Alert type="danger">{error}</Alert>
+      {hasRole(role, ["assistant"]) ? <AssistantDashboard data={data} profile={profile} session={session} /> : null}
+      {hasRole(role, ["mangaka"]) ? <MangakaDashboard data={data} profile={profile} session={session} /> : null}
+      {hasRole(role, ["tantou"]) ? <EditorialDashboard data={data} role="Tantou Editor" /> : null}
+      {hasRole(role, ["editorial", "board"]) ? <EditorialDashboard data={data} role="Editorial Board" /> : null}
+      {hasRole(role, ["admin"]) ? <AdminDashboard data={data} /> : null}
+      {!role && <GenericDashboard data={data} role={role} />}
+    </>
+  );
+}
 
-      <div className="hero-card">
+function MangakaDashboard({ data }) {
+  const activeSeries = data.series.filter((item) => String(item.status || "").toUpperCase() !== "ARCHIVED");
+  return (
+    <section className="stack mangaka-dashboard-exact">
+      <div className="grid-layout">
         <div>
-          <p className="eyebrow">Welcome back</p>
-          <h2>{profile?.fullName || profile?.username || session.username || "MangaSystem user"}</h2>
-          <p>Your role is <strong>{roleLabel(role)}</strong>. This React frontend uses JWT authorization and the Spring Boot `/api/v1` endpoints.</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => navigate(hasRole(role, ["assistant"]) ? "/tasks" : "/series")}>Continue work</button>
-      </div>
-
-      <div className="stats-grid">
-        <Stat label="Series" value={data.series.length} tone="info" />
-        <Stat label="My tasks" value={data.tasks.length} tone="warning" />
-        <Stat label="In review" value={reviewCount} tone="success" />
-        <Stat label="Unread notifications" value={data.notifications.length} tone="danger" />
-      </div>
-
-      <div className="grid two">
-        <div className="card">
-          <div className="card-header">
-            <h3>Recent series</h3>
-            <button className="btn btn-small" onClick={() => navigate("/series")}>Open</button>
+          <h3 style={{ marginBottom: 15, fontSize: 16, fontWeight: 700 }}>Active Series</h3>
+          <div className="series-grid" id="active-series-container">
+            {activeSeries.length ? activeSeries.slice(0, 4).map((series) => <DashboardSeriesCard key={series.id} series={series} />) : (
+              <EmptyState icon="◇" title="Không có series nào đang hoạt động" body="Vui lòng tạo mới để bắt đầu quy trình Mangaka." />
+            )}
           </div>
-          {data.series.length ? (
-            <div className="list">
-              {data.series.slice(0, 5).map((series) => (
-                <button className="list-row interactive" key={series.id} onClick={() => navigate(`/series/${series.id}`)}>
-                  <div>
-                    <strong>{series.title}</strong>
-                    <small>{series.genre || series.mangakaName || "No genre"}</small>
-                  </div>
-                  <StatusBadge value={series.status} />
-                </button>
-              ))}
-            </div>
-          ) : <EmptyState title="No series found" body="Create a series or ask the backend admin to assign data to your user." />}
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3>Current tasks</h3>
-            <button className="btn btn-small" onClick={() => navigate("/tasks")}>Open</button>
-          </div>
-          {data.tasks.length ? (
-            <div className="list">
-              {data.tasks.slice(0, 5).map((task) => (
-                <div className="list-row" key={task.id}>
-                  <div>
-                    <strong>{task.description || `Task #${task.id}`}</strong>
-                    <small>{task.seriesTitle || "No series"} • Page {task.pageNumber || "?"}</small>
-                  </div>
-                  <StatusBadge value={task.status} />
-                </div>
-              ))}
+        <div>
+          <div className="card-box">
+            <div className="activity-header">
+              <h3 style={{ fontSize: 14, fontWeight: 700 }}>Quick Actions</h3>
             </div>
-          ) : <EmptyState title="No tasks assigned" body="Mangaka can create tasks from the workspace canvas." />}
+            <div className="quick-actions-grid">
+              <button className="action-btn" onClick={() => navigate("/series")}><i>＋</i><span>+ New Series</span></button>
+              <button className="action-btn" onClick={() => navigate("/series")}><i>▧</i><span>Chapters</span></button>
+              <button className="action-btn" onClick={() => navigate("/series")}><i>□</i><span>Canvas</span></button>
+              <button className="action-btn" onClick={() => navigate("/tasks")}><i>▤</i><span>Kanban</span></button>
+              <button className="action-btn" onClick={() => navigate("/schedule")}><i>◷</i><span>Schedule</span></button>
+              <button className="action-btn" onClick={() => navigate("/assistant-review")}><i>☰</i><span>Review</span></button>
+            </div>
+          </div>
+
+          <div className="card-box" style={{ marginTop: 20 }}>
+            <div className="activity-header"><h3 style={{ fontSize: 14, fontWeight: 700 }}>Recent Activity</h3></div>
+            {data.tasks.length ? (
+              <div className="list">
+                {data.tasks.slice(0, 4).map((task) => (
+                  <div className="list-row" key={task.id}>
+                    <div><strong>{task.description || `Task #${task.id}`}</strong><small>{task.seriesTitle || "No series"}</small></div>
+                    <StatusBadge value={task.status} />
+                  </div>
+                ))}
+              </div>
+            ) : <div className="empty-activity">No workflow activity yet.</div>}
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function Stat({ label, value, tone }) {
+function AssistantDashboard({ data, profile, session }) {
+  const doing = data.tasks.filter((task) => /doing|progress/i.test(String(task.status || "")));
+  const review = data.tasks.filter((task) => /review/i.test(String(task.status || "")));
+  const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   return (
-    <div className={`stat-card stat-${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <section className="stack assistant-dashboard-exact">
+      <div className="ast-dashboard-header">
+        <span>Production Assistant</span>
+        <h1>
+          Welcome, {profile?.fullName || profile?.username || session.username || "Assistant"}
+          <span className="date">{today}</span>
+        </h1>
+      </div>
+
+      <div className="ast-stats-grid">
+        <div className="ast-stat-card dark">
+          <div className="ast-stat-title"><span>Active assignments</span><span>Today</span></div>
+          <div className="ast-stat-value">{data.tasks.length}<span> tasks</span></div>
+          <div className="ast-stat-desc">{review.length} waiting for Mangaka review</div>
+        </div>
+        <div className="ast-stat-card">
+          <div className="ast-stat-title"><span>In progress</span><span>Queue</span></div>
+          <div className="ast-stat-value">{doing.length}<span> doing</span></div>
+        </div>
+      </div>
+
+      <div className="assistant-home-grid">
+        <div>
+          <div className="section-title-row"><h3>Active Assignments</h3><button className="btn btn-small" onClick={() => navigate("/tasks")}>Open All</button></div>
+          <div className="ast-task-list">
+            {data.tasks.length ? data.tasks.slice(0, 7).map((task) => <AssistantTaskItem key={task.id} task={task} />) : (
+              <EmptyState icon="☑" title="No assignments yet" body="Assigned tasks from Mangaka will appear here." />
+            )}
+          </div>
+        </div>
+
+        <aside>
+          <div className="ast-side-card">
+            <div className="activity-header"><h3>Deadlines</h3></div>
+            <div className="ast-deadline-item"><div className="date-box"><div className="date-month">NOW</div><div className="date-day">{data.tasks.length}</div></div><div><strong>Open tasks</strong><p className="review-helper">Work through your assigned queue.</p></div></div>
+            <div className="ast-deadline-item"><div className="date-box"><div className="date-month">REV</div><div className="date-day">{review.length}</div></div><div><strong>In review</strong><p className="review-helper">Submissions waiting for Mangaka checks.</p></div></div>
+          </div>
+          <div className="ast-side-card">
+            <div className="activity-header"><h3>Quick Resources</h3></div>
+            <div className="ast-quick-grid">
+              <button className="ast-quick-btn" onClick={() => navigate("/resources")}><i>□</i>Resources</button>
+              <button className="ast-quick-btn" onClick={() => navigate("/tasks")}><i>☁</i>Submit Work</button>
+              <button className="ast-quick-btn" onClick={() => navigate("/schedule")}><i>◷</i>Schedule</button>
+              <button className="ast-quick-btn" onClick={() => navigate("/profile")}><i>◎</i>Profile</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function EditorialDashboard({ data, role }) {
+  const waiting = data.series.filter((item) => /review/i.test(String(item.status || "")));
+  return (
+    <section className="stack">
+      <div className="hero-card">
+        <div>
+          <p className="eyebrow">{role} workspace</p>
+          <h2>{role === "Tantou Editor" ? "Production Review" : "Voting Dashboard"}</h2>
+          <p>{role === "Tantou Editor" ? "Check assigned chapters, page quality, and editor feedback." : "Review submitted series and vote on board approval."}</p>
+        </div>
+        <button className="btn-publish" onClick={() => navigate(role === "Tantou Editor" ? "/tantou-review" : "/board-review")}>{role === "Tantou Editor" ? "Open Review" : "Open Voting"}</button>
+      </div>
+      <div className="stats-grid">
+        <Stat label="Visible series" value={data.series.length} tone="info" />
+        <Stat label="Reviewing" value={waiting.length} tone="warning" />
+        <Stat label="My tasks" value={data.tasks.length} tone="success" />
+        <Stat label="Unread" value={data.notifications.length} tone="danger" />
+      </div>
+      <SeriesListCard title="Review queue" series={waiting.length ? waiting : data.series} />
+    </section>
+  );
+}
+
+function AdminDashboard({ data }) {
+  return (
+    <section className="stack">
+      <div className="hero-card">
+        <div>
+          <p className="eyebrow">Administration Console</p>
+          <h2>System and Publishing Control</h2>
+          <p>Manage users, system parameters, schedules, and final approval decisions.</p>
+        </div>
+        <div className="button-row"><button className="btn" onClick={() => navigate("/admin/users")}>Users</button><button className="btn-publish" onClick={() => navigate("/admin-review")}>Final Approval</button></div>
+      </div>
+      <div className="stats-grid">
+        <Stat label="Series" value={data.series.length} tone="info" />
+        <Stat label="Tasks" value={data.tasks.length} tone="warning" />
+        <Stat label="Unread" value={data.notifications.length} tone="danger" />
+        <Stat label="Control" value="✓" tone="success" />
+      </div>
+      <SeriesListCard title="Latest series" series={data.series} />
+    </section>
+  );
+}
+
+function GenericDashboard({ data, role }) {
+  return (
+    <section className="stack">
+      <div className="hero-card"><div><p className="eyebrow">Welcome back</p><h2>MangaSystem user</h2><p>Your role is <strong>{roleLabel(role)}</strong>.</p></div></div>
+      <SeriesListCard title="Series" series={data.series} />
+    </section>
+  );
+}
+
+function DashboardSeriesCard({ series }) {
+  return (
+    <button className="dashboard-series-card series-card" onClick={() => navigate(`/series/${series.id}`)}>
+      <div className="series-cover"><span>{(series.title || "M").slice(0, 1).toUpperCase()}</span></div>
+      <div className="series-body">
+        <div className="row-between"><strong>{series.title}</strong><StatusBadge value={series.status} /></div>
+        <p>{series.summary || series.description || "No summary provided."}</p>
+        <small>{series.genre || "Unknown genre"}</small>
+      </div>
+    </button>
+  );
+}
+
+function AssistantTaskItem({ task }) {
+  return (
+    <button className="ast-task-item" onClick={() => navigate("/tasks")}>
+      <div className="ast-task-thumb">#{task.pageNumber || task.id}</div>
+      <div className="ast-task-info">
+        <div className="ast-task-title"><span>{task.description || `Task #${task.id}`}</span><StatusBadge value={task.status} /></div>
+        <div className="ast-task-sub">{task.seriesTitle || "No series"} • Page {task.pageNumber || "?"}</div>
+        <div className="ast-task-meta"><span>{task.chapterTitle || task.chapterNumber || "No chapter"}</span><span className="text-danger">Open detail</span></div>
+      </div>
+    </button>
+  );
+}
+
+function SeriesListCard({ title, series }) {
+  return (
+    <div className="card">
+      <div className="card-header"><h3>{title}</h3><button className="btn btn-small" onClick={() => navigate("/series")}>Open</button></div>
+      {series.length ? (
+        <div className="list">
+          {series.slice(0, 6).map((item) => (
+            <button className="list-row interactive" key={item.id} onClick={() => navigate(`/series/${item.id}`)}>
+              <div><strong>{item.title}</strong><small>{item.genre || item.mangakaName || "No genre"}</small></div>
+              <StatusBadge value={item.status} />
+            </button>
+          ))}
+        </div>
+      ) : <EmptyState icon="◇" title="No series found" body="Backend data for this role will appear here." />}
     </div>
   );
+}
+
+function Stat({ label, value, tone }) {
+  return <div className={`stat-card stat-${tone}`}><span>{label}</span><strong>{value}</strong></div>;
 }
