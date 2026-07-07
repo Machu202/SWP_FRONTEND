@@ -90,6 +90,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const role = profile?.roleName || session.role;
   const canEdit = hasRole(role, ["mangaka"]);
   const imageRef = useRef(null);
+  const wrapRef = useRef(null);
 
   const [seriesList, setSeriesList] = useState([]);
   const [chapters, setChapters] = useState([]);
@@ -104,6 +105,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [draftBox, setDraftBox] = useState(null);
   const [dragStart, setDragStart] = useState(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [isImageReady, setIsImageReady] = useState(false);
   const [taskDescription, setTaskDescription] = useState("");
   const [assistantId, setAssistantId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -201,7 +203,10 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       });
       setHitboxes(mergeHitboxLists(hitboxData, canvasData?.hitboxes));
       setSelectedBox(null);
+      setDraftBox(null);
+      setDragStart(null);
       setImageSize({ width: 0, height: 0 });
+      setIsImageReady(false);
     } catch (err) {
       setError(err.message || "Could not load canvas.");
     }
@@ -229,7 +234,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   function getImageCoords(event) {
     const image = imageRef.current;
-    if (!image || !canvas) return null;
+    if (!image || !canvas || !isImageReady) return null;
     const rect = image.getBoundingClientRect();
     const displayWidth = rect.width || 1;
     const displayHeight = rect.height || 1;
@@ -241,9 +246,10 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   }
 
   function handlePointerDown(event) {
-    if (!canEdit || event.target.dataset.box) return;
+    if (!canEdit || event.target.closest?.("[data-box=\"true\"]")) return;
     const coords = getImageCoords(event);
     if (!coords) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     setDragStart(coords);
     setDraftBox(null);
     setSelectedBox(null);
@@ -260,7 +266,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setDraftBox({ xCoord: x, yCoord: y, width, height });
   }
 
-  async function handlePointerUp() {
+  async function handlePointerUp(event) {
+    event?.currentTarget?.releasePointerCapture?.(event.pointerId);
     if (!dragStart || !draftBox) {
       setDragStart(null);
       return;
@@ -294,6 +301,39 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       setError(err.message || "Could not create hitbox.");
     } finally {
       setDraftBox(null);
+    }
+  }
+
+  function handleImageLoad(event) {
+    const image = event.currentTarget;
+    const naturalWidth = image.naturalWidth || image.getBoundingClientRect().width || 1;
+    const naturalHeight = image.naturalHeight || image.getBoundingClientRect().height || 1;
+    setImageSize({ width: naturalWidth, height: naturalHeight });
+    setIsImageReady(true);
+    setCanvas((old) => old ? {
+      ...old,
+      originalWidth: toFiniteNumber(old.originalWidth, old.original_width, old.width, selectedPage?.width, selectedPage?.imageWidth, naturalWidth),
+      originalHeight: toFiniteNumber(old.originalHeight, old.original_height, old.height, selectedPage?.height, selectedPage?.imageHeight, naturalHeight)
+    } : old);
+  }
+
+  function handleImageError() {
+    setIsImageReady(false);
+    setError("Could not load this page image. Check the image URL stored for this page.");
+  }
+
+  async function deleteSelectedHitbox() {
+    if (!selectedBox?.id || String(selectedBox.id).startsWith("local-")) return;
+    if (!window.confirm("Delete this hitbox? Any task connected to it may also be affected by backend rules.")) return;
+    setError("");
+    setMessage("");
+    try {
+      await api.workspace.deleteHitbox(selectedBox.id);
+      setHitboxes((old) => old.filter((box) => String(box.id) !== String(selectedBox.id)));
+      setSelectedBox(null);
+      setMessage("Hitbox deleted.");
+    } catch (err) {
+      setError(err.message || "Could not delete hitbox.");
     }
   }
 
@@ -352,28 +392,31 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
           <div className="hitbox-stage canvas-hitbox-stage">
             {selectedPageId && imageUrl ? (
               <div
-                className="hitbox-image-wrap"
+                ref={wrapRef}
+                key={`canvas-wrap-${selectedPageId}-${imageUrl}`}
+                className={`hitbox-image-wrap ${isImageReady ? "ready" : "loading"}`}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onPointerLeave={dragStart ? undefined : handlePointerUp}
               >
                 <img
                   ref={imageRef}
                   src={imageUrl}
                   alt={`Page ${pageNumber(selectedPage) || selectedPageId}`}
                   draggable="false"
-                  onLoad={(event) => {
-                    setImageSize({
-                      width: event.currentTarget.naturalWidth || event.currentTarget.getBoundingClientRect().width || 1,
-                      height: event.currentTarget.naturalHeight || event.currentTarget.getBoundingClientRect().height || 1
-                    });
-                  }}
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
                 />
-                <div className="hitbox-layer-react">
-                  {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} />)}
-                  {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" />}
-                </div>
+                {isImageReady ? (
+                  <div className="hitbox-layer-react">
+                    {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} />)}
+                    {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" />}
+                  </div>
+                ) : (
+                  <div className="canvas-image-loading">Loading page image…</div>
+                )}
               </div>
             ) : <EmptyState icon="□" title="Select a page to start" body="Choose a series, chapter, and page from the controls above." />}
           </div>
@@ -399,6 +442,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             </div>
             <div className="form-group"><label>Task Description</label><textarea className="form-control" required value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Describe what the Assistant must fix or draw..." /></div>
             <button className="btn-publish full" type="submit" disabled={!selectedBox?.id || !taskDescription.trim() || !canEdit}>Create Hitbox Task</button>
+            <button className="btn-outline full" type="button" onClick={deleteSelectedHitbox} disabled={!selectedBox?.id || String(selectedBox?.id || "").startsWith("local-")}>Delete Selected Hitbox</button>
           </form>
           <div className="upload-log">
             {selectedSeries && <div><strong>Series:</strong> {selectedSeries.title}</div>}
@@ -428,6 +472,12 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   );
 }
 
+function valueToPercent(value, total) {
+  const number = toFiniteNumber(value);
+  const safeTotal = Math.max(toFiniteNumber(total, 1), 1);
+  return (number / safeTotal) * 100;
+}
+
 function CanvasBox({ box, originalSize, active, draft, label, onClick }) {
   const originalWidth = Math.max(toFiniteNumber(originalSize?.width, 1), 1);
   const originalHeight = Math.max(toFiniteNumber(originalSize?.height, 1), 1);
@@ -435,13 +485,20 @@ function CanvasBox({ box, originalSize, active, draft, label, onClick }) {
   const y = boxValue(box, "yCoord", "y_coord", "y");
   const width = boxValue(box, "width", "width", "w");
   const height = boxValue(box, "height", "height", "h");
+  const unitBox = x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
+  const left = Math.max(0, Math.min(100, unitBox ? x * 100 : valueToPercent(x, originalWidth)));
+  const top = Math.max(0, Math.min(100, unitBox ? y * 100 : valueToPercent(y, originalHeight)));
+  const boxWidth = Math.max(0.5, Math.min(100 - left, unitBox ? width * 100 : valueToPercent(width, originalWidth)));
+  const boxHeight = Math.max(0.5, Math.min(100 - top, unitBox ? height * 100 : valueToPercent(height, originalHeight)));
+
   return (
     <button
       type="button"
       data-box="true"
       className={`${draft ? "drawn-hitbox" : "saved-hitbox"} ${active ? "active" : ""}`}
-      style={{ left: `${(x / originalWidth) * 100}%`, top: `${(y / originalHeight) * 100}%`, width: `${(width / originalWidth) * 100}%`, height: `${(height / originalHeight) * 100}%` }}
+      style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}
       onClick={onClick}
+      title={`Hitbox ${label}: X ${x.toFixed(0)}, Y ${y.toFixed(0)}, W ${width.toFixed(0)}, H ${height.toFixed(0)}`}
     >
       {!draft && <span>{label}</span>}
     </button>
