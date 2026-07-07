@@ -42,8 +42,8 @@ function navForRole(role) {
   if (group === "assistant") {
     return [
       { path: "/dashboard", label: "Dashboard", icon: "▦" },
-      { path: "/tasks", label: "Assignments", icon: "☑" },
-      { path: "/tasks", label: "Kanban Board", icon: "▤" },
+      { path: "/tasks?tab=assignments", label: "Assignments", icon: "☑" },
+      { path: "/tasks?tab=kanban", label: "Kanban Board", icon: "▤" },
       { path: "/schedule", label: "Schedule", icon: "◷" },
       { path: "/resources", label: "Resource Library", icon: "□" }
     ];
@@ -51,12 +51,12 @@ function navForRole(role) {
   return [
     { path: "/dashboard", label: "Dashboard", icon: "▦" },
     { path: "/series", label: "Series", icon: "◇" },
-    { path: "/series", label: "Manuscripts", icon: "✎" },
-    { path: "/series", label: "Chapters & Pages", icon: "▧" },
-    { path: "/series", label: "Canvas Workspace", icon: "□" },
-    { path: "/tasks", label: "Kanban Board", icon: "▤" },
+    { path: "/manuscripts", label: "Manuscripts", icon: "✎" },
+    { path: "/chapters-pages", label: "Chapters & Pages", icon: "▧" },
+    { path: "/canvas-workspace", label: "Canvas Workspace", icon: "□" },
+    { path: "/tasks?tab=kanban", label: "Kanban Board", icon: "▤" },
     { path: "/schedule", label: "Schedule", icon: "◷" },
-    { path: "/tasks", label: "Assignments", icon: "☑" },
+    { path: "/tasks?tab=assignments", label: "Assignments", icon: "☑" },
     { path: "/assistant-review", label: "Review", icon: "☰" },
     { path: "/resources", label: "Assets", icon: "⬆" }
   ];
@@ -108,16 +108,22 @@ export function Layout({ children, route }) {
         )}
 
         <nav className={`nav-group ${group}-nav`}>
-          {nav.map((item, index) => (
-            <button
-              key={`${item.path}-${item.label}-${index}`}
-              onClick={() => navigate(item.path)}
-              className={active === item.path || (item.path !== "/series" && active.startsWith(`${item.path}/`)) || (item.path === "/series" && active.startsWith("/series")) ? "nav-item active" : "nav-item"}
-            >
-              <i>{item.icon}</i>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {nav.map((item, index) => {
+            const itemPath = item.path.split("?")[0];
+            const exactHash = route.hash === item.path;
+            const baseActive = active === itemPath || (itemPath !== "/series" && active.startsWith(`${itemPath}/`)) || (itemPath === "/series" && active.startsWith("/series") && !active.startsWith("/series/"));
+            const isActive = item.path.includes("?") ? exactHash : baseActive;
+            return (
+              <button
+                key={`${item.path}-${item.label}-${index}`}
+                onClick={() => navigate(item.path)}
+                className={isActive ? "nav-item active" : "nav-item"}
+              >
+                <i>{item.icon}</i>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="sidebar-spacer" />
@@ -151,7 +157,7 @@ export function Layout({ children, route }) {
           {!isEditor && (
             <div className="page-header route-header">
               <div>
-                <h1>{pageTitle(route.pathname)}</h1>
+                <h1>{pageTitle(route.pathname, role)}</h1>
                 <p>{pageSubtitle(route.pathname, role)}</p>
               </div>
               <div className="route-chip">{roleLabel(role)}</div>
@@ -172,8 +178,11 @@ function topbarBrand(group) {
   return "Studio Flow";
 }
 
-function pageTitle(pathname) {
+function pageTitle(pathname, role) {
   if (pathname.startsWith("/series/")) return "Chapter Manager & Page Upload";
+  if (pathname.startsWith("/chapters-pages")) return "Chapter Manager & Page Upload";
+  if (pathname.startsWith("/manuscripts")) return "Manuscripts";
+  if (pathname.startsWith("/canvas-workspace")) return "Canvas Workspace";
   if (pathname.startsWith("/workspace/")) return "Page Canvas";
   if (pathname.startsWith("/admin/users")) return "User Administration";
   if (pathname.startsWith("/admin/system")) return "Admin Settings";
@@ -181,7 +190,7 @@ function pageTitle(pathname) {
   if (pathname.startsWith("/tantou-review")) return "Chapter Review Queue";
   if (pathname.startsWith("/board-review")) return "Editorial Voting";
   if (pathname.startsWith("/admin-review")) return "Final Approval Console";
-  if (pathname.startsWith("/series")) return "Create New Series";
+  if (pathname.startsWith("/series")) return hasRole(role, ["mangaka"]) ? "My Series" : "Manga Series";
   if (pathname.startsWith("/tasks")) return "Kanban Board";
   if (pathname.startsWith("/resources")) return "Resource Library";
   if (pathname.startsWith("/schedule")) return "Schedule";
@@ -191,8 +200,11 @@ function pageTitle(pathname) {
 
 function pageSubtitle(pathname, role) {
   if (pathname.startsWith("/workspace/")) return "Draw hitboxes, pin comments, and create assistant tasks.";
+  if (pathname.startsWith("/canvas-workspace")) return "Open a manga page, draw hitboxes, and create assistant tasks.";
+  if (pathname.startsWith("/chapters-pages")) return "Create chapters and upload manga pages through the backend page API.";
+  if (pathname.startsWith("/manuscripts")) return "Browse chapter scripts, page files, and manuscript structure.";
   if (pathname.startsWith("/series/")) return "Create chapters and upload manga pages through the backend page API.";
-  if (pathname.startsWith("/series")) return "Initialize a new manga series project and define its core metadata.";
+  if (pathname.startsWith("/series")) return hasRole(role, ["mangaka"]) ? "Logged in as Mangaka." : "View manga series available to your role.";
   if (pathname.startsWith("/tasks")) return "Track Todo, Doing, Reviewing, and Approved work.";
   if (pathname.startsWith("/assistant-review")) return "Review Tantou feedback, add comments, and check assistant submissions.";
   if (pathname.startsWith("/tantou-review")) return "Review assigned pages and leave annotation feedback.";

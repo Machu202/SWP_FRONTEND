@@ -247,11 +247,17 @@ export const api = {
 
   chapterScripts: {
     get: (chapterId) => apiFetch(`/chapter-scripts/chapters/${chapterId}`),
-    save: (chapterId, content) => apiFetch(`/chapter-scripts/chapters/${chapterId}`, {
-      method: "POST",
-      body: String(content || ""),
-      contentType: "text/plain"
-    }),
+    save: (chapterId, content) => {
+      const text = String(content ?? "").trim();
+      if (!text) {
+        return Promise.reject(new Error("Write chapter script / notes before saving."));
+      }
+      return apiFetch(`/chapter-scripts/chapters/${chapterId}`, {
+        method: "POST",
+        body: text,
+        contentType: "text/plain; charset=UTF-8"
+      });
+    },
     bySeries: (seriesId) => apiFetch(`/chapter-scripts/series/${seriesId}`)
   },
 

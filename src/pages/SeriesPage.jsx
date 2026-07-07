@@ -6,13 +6,10 @@ import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Stat
 
 const DEFAULT_SERIES = {
   title: "",
-  genre: "Action",
+  genre: "",
   summary: "",
   description: "",
-  script: "",
-  status: "Pre-production",
-  targetAudience: "Shonen (Boys)",
-  pageCount: 20,
+  status: "DRAFT",
   coverImageUrl: ""
 };
 
@@ -23,10 +20,9 @@ export default function SeriesPage() {
   const role = profile?.roleName || session.role;
   const [series, setSeries] = useState([]);
   const [status, setStatus] = useState("");
-  const [form, setForm] = useState(DEFAULT_SERIES);
+  const [form, setForm] = useState({ ...DEFAULT_SERIES });
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState("");
-  const [conceptPreview, setConceptPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -54,8 +50,11 @@ export default function SeriesPage() {
 
   useEffect(() => () => {
     if (coverPreview) URL.revokeObjectURL(coverPreview);
-    if (conceptPreview) URL.revokeObjectURL(conceptPreview);
-  }, [coverPreview, conceptPreview]);
+  }, [coverPreview]);
+
+  function updateForm(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
 
   function handleCoverChange(event) {
     const file = event.target.files?.[0];
@@ -73,36 +72,46 @@ export default function SeriesPage() {
     if (coverPreview) URL.revokeObjectURL(coverPreview);
     setCoverFile(file);
     setCoverPreview(URL.createObjectURL(file));
-    setForm((current) => ({ ...current, coverImageUrl: "" }));
+    updateForm("coverImageUrl", "");
     setError("");
-  }
-
-  function handleConceptChange(event) {
-    const file = event.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    if (conceptPreview) URL.revokeObjectURL(conceptPreview);
-    setConceptPreview(URL.createObjectURL(file));
   }
 
   function clearCover() {
     if (coverPreview) URL.revokeObjectURL(coverPreview);
     setCoverFile(null);
     setCoverPreview("");
-    setForm((current) => ({ ...current, coverImageUrl: "" }));
+    updateForm("coverImageUrl", "");
+  }
+
+  function resetForm() {
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+    setForm({ ...DEFAULT_SERIES });
+    setCoverFile(null);
+    setCoverPreview("");
   }
 
   async function createSeries(event) {
     event.preventDefault();
-    setSaving(true);
     setError("");
     setMessage("");
+
+    if (!form.title.trim()) {
+      setError("Title is required.");
+      return;
+    }
+    if (!form.genre.trim()) {
+      setError("Genre is required.");
+      return;
+    }
+
+    setSaving(true);
     try {
       let payload = {
-        title: form.title,
-        genre: form.genre,
-        summary: form.summary || form.description,
-        description: form.description || form.summary,
-        status: form.status
+        title: form.title.trim(),
+        genre: form.genre.trim(),
+        summary: form.summary.trim(),
+        description: form.description.trim(),
+        status: form.status || "DRAFT"
       };
 
       if (coverFile) {
@@ -115,9 +124,7 @@ export default function SeriesPage() {
 
       const created = await api.series.create(payload);
       setMessage(`Created ${created.title || form.title}`);
-      setForm(DEFAULT_SERIES);
-      clearCover();
-      setConceptPreview("");
+      resetForm();
       await load();
     } catch (err) {
       setError(err.message || "Could not create series");
@@ -139,110 +146,99 @@ export default function SeriesPage() {
   if (loading) return <LoadingBlock label="Loading series..." />;
 
   return (
-    <section className="stack series-static-screen">
+    <section className="stack series-static-screen my-series-screen">
       <Alert type="success">{message}</Alert>
       <Alert type="danger">{error}</Alert>
 
-      {canCreate && (
-        <form onSubmit={createSeries} style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 30, marginTop: 20 }}>
-          <div>
-            <div className="form-section">
-              <div className="form-section-title">Core Information</div>
-              <div className="form-group">
-                <label>Series Title <span style={{ color: "red" }}>*</span></label>
-                <input type="text" className="form-control" placeholder="Enter series title..." value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Synopsis / Logline <span style={{ color: "red" }}>*</span></label>
-                <textarea className="form-control" placeholder="Brief summary of the story..." style={{ height: 120 }} value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Series Script / Story Bible</label>
-                <textarea className="form-control" placeholder="Optional: add story bible, key scenes, dialogue notes, or long-form script..." style={{ height: 150 }} value={form.script} onChange={(event) => setForm({ ...form, script: event.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>Genre (Thể loại) <span style={{ color: "red" }}>*</span></label>
-                <select className="form-control" value={form.genre} onChange={(event) => setForm({ ...form, genre: event.target.value })}>
-                  {GENRES.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
-                </select>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                <div className="form-group">
-                  <label>Target Audience</label>
-                  <select className="form-control" value={form.targetAudience} onChange={(event) => setForm({ ...form, targetAudience: event.target.value })}>
-                    <option>Shonen (Boys)</option><option>Seinen (Adult Men)</option><option>Shojo (Girls)</option><option>Josei (Adult Women)</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select className="form-control" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
-                    <option>Pre-production</option><option>Serialization</option><option>Hiatus</option><option>DRAFT</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="form-section">
-              <div className="form-section-title">Visual Identity</div>
-              <div className="form-group">
-                <label>Series Cover <span style={{ color: "red" }}>*</span></label>
-                <label className="upload-zone cover-upload-box" style={{ height: 250 }}>
-                  {coverPreview ? <img src={coverPreview} alt="Cover preview" /> : (
-                    <div id="cover-placeholder" style={{ zIndex: 1, textAlign: "center" }}>
-                      <i style={{ fontSize: 40, marginBottom: 15, color: "#d1d5db", display: "block" }}>▧</i>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>Upload Primary Art</span>
-                    </div>
-                  )}
-                  <input type="file" accept="image/*" onChange={handleCoverChange} />
-                </label>
-                {coverFile && <button type="button" className="btn btn-small" style={{ marginTop: 8 }} onClick={clearCover}>Remove cover</button>}
-              </div>
-
-              <div className="form-group">
-                <label>Concept Art / Background</label>
-                <label className="upload-zone cover-upload-box" style={{ height: 120 }}>
-                  {conceptPreview ? <img src={conceptPreview} alt="Concept preview" /> : (
-                    <div style={{ zIndex: 1, textAlign: "center" }}>
-                      <i style={{ fontSize: 24, marginBottom: 10, color: "#d1d5db", display: "block" }}>▧</i>
-                      <span style={{ fontSize: 12, fontWeight: 600 }}>Upload Concept</span>
-                    </div>
-                  )}
-                  <input type="file" accept="image/*" onChange={handleConceptChange} />
-                </label>
-              </div>
-            </div>
-
-            <div className="form-section">
-              <div className="form-section-title">Technical Settings</div>
-              <div className="form-group">
-                <label>Target Page Count</label>
-                <input type="number" className="form-control" value={form.pageCount} onChange={(event) => setForm({ ...form, pageCount: event.target.value })} />
-              </div>
-            </div>
-
-            <button className="btn-publish" style={{ width: "100%", marginTop: 20, padding: 15, fontSize: 16 }} disabled={saving || !form.title || !form.summary}>
-              {saving ? "Creating..." : "Create New Series"}
-            </button>
-          </div>
-        </form>
-      )}
-
-      <div className="toolbar" style={{ marginTop: 10 }}>
+      <div className="toolbar series-count-toolbar">
         <div>
           <p className="eyebrow">{canCreate ? "Your owned titles" : "All visible titles"}</p>
           <h2>{series.length} manga series</h2>
         </div>
         {!canCreate && (
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">All statuses</option><option value="DRAFT">DRAFT</option><option value="REVIEWING">REVIEWING</option><option value="APPROVED">APPROVED</option><option value="REJECTED">REJECTED</option>
+          <select className="form-control compact-select" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">All statuses</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="REVIEWING">REVIEWING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
           </select>
         )}
       </div>
 
+      {canCreate && (
+        <form className="form-section create-series-simple-form" onSubmit={createSeries}>
+          <div className="form-section-title">Create new series</div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Title</label>
+              <input
+                type="text"
+                className="form-control"
+                value={form.title}
+                onChange={(event) => updateForm("title", event.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Genre</label>
+              <select
+                className="form-control"
+                value={form.genre}
+                onChange={(event) => updateForm("genre", event.target.value)}
+                required
+              >
+                <option value="">Select genre</option>
+                {GENRES.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Cover image</label>
+            <label className="upload-box series-cover-upload-inline">
+              {coverPreview ? (
+                <img src={coverPreview} alt="Cover preview" />
+              ) : (
+                <span>Choose cover image</span>
+              )}
+              <input type="file" accept="image/*" onChange={handleCoverChange} />
+            </label>
+            {coverFile && (
+              <div className="upload-selected-row">
+                <span>{coverFile.name}</span>
+                <button type="button" className="btn btn-small" onClick={clearCover}>Remove</button>
+              </div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label>Summary</label>
+            <textarea
+              className="form-control"
+              value={form.summary}
+              onChange={(event) => updateForm("summary", event.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              className="form-control"
+              value={form.description}
+              onChange={(event) => updateForm("description", event.target.value)}
+            />
+          </div>
+
+          <button className="btn-publish create-series-submit" disabled={saving}>
+            {saving ? "Creating..." : "Create series"}
+          </button>
+        </form>
+      )}
+
       {!series.length ? (
-        <EmptyState icon="◇" title="No series loaded" body="Check that the backend is running, you are logged in, and seed data exists for your role." />
+        <EmptyState icon="◇" title="No series loaded" body="Check that the backend is running, you are logged in, and series data exists for your role." />
       ) : (
         <div className="series-groups">
           {Object.entries(grouped).map(([group, items]) => (
@@ -262,7 +258,7 @@ export default function SeriesPage() {
 function SeriesCard({ series }) {
   const cover = resolveMediaUrl(series.coverImageUrl || series.coverUrl || series.imageUrl || series.thumbnailUrl);
   return (
-    <button className="list-card series-card" onClick={() => navigate(`/series/${series.id}`)}>
+    <button className="list-card series-card" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
       <div className="list-card-img series-cover">
         {cover ? <img src={cover} alt={series.title} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}
       </div>

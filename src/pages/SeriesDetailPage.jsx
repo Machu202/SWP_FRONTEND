@@ -110,8 +110,16 @@ export default function SeriesDetailPage({ seriesId }) {
     if (!selectedChapterId) return;
     setError("");
     setMessage("");
+
+    const cleanedScript = String(script || "").trim();
+    if (!cleanedScript) {
+      setError("Write chapter script / notes before saving. The backend rejects empty request bodies.");
+      return;
+    }
+
     try {
-      await api.chapterScripts.save(selectedChapterId, script);
+      const saved = await api.chapterScripts.save(selectedChapterId, cleanedScript);
+      setScript(saved?.content || cleanedScript);
       setMessage("Chapter script saved.");
     } catch (err) {
       setError(err.message || "Could not save script. Check backend ChapterScript endpoint.");

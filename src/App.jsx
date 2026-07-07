@@ -1,7 +1,9 @@
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import SeriesPage from "./pages/SeriesPage";
-import SeriesDetailPage from "./pages/SeriesDetailPage";
+import ChaptersPagesPage from "./pages/ChaptersPagesPage";
+import ManuscriptsPage from "./pages/ManuscriptsPage";
+import CanvasWorkspacePage from "./pages/CanvasWorkspacePage";
 import WorkspacePage from "./pages/WorkspacePage";
 import TasksPage from "./pages/TasksPage";
 import ResourcesPage from "./pages/ResourcesPage";
@@ -53,15 +55,9 @@ function isAllowed(pathname, role) {
   if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/system") || pathname.startsWith("/admin-review")) {
     return hasRole(role, ["admin"]);
   }
-  if (pathname.startsWith("/board-review")) {
-    return hasRole(role, ["editorial", "board"]);
-  }
-  if (pathname.startsWith("/tantou-review")) {
-    return hasRole(role, ["tantou"]);
-  }
-  if (pathname.startsWith("/assistant-review")) {
-    return hasRole(role, ["mangaka"]);
-  }
+  if (pathname.startsWith("/board-review")) return hasRole(role, ["editorial", "board"]);
+  if (pathname.startsWith("/tantou-review")) return hasRole(role, ["tantou"]);
+  if (pathname.startsWith("/assistant-review")) return hasRole(role, ["mangaka"]);
   return true;
 }
 
@@ -82,6 +78,17 @@ function renderPage(route, role) {
 
   if (route.pathname === "/dashboard" || route.pathname === "/") return <DashboardPage />;
   if (route.pathname === "/series") return <SeriesPage />;
+  if (route.pathname === "/manuscripts") return <ManuscriptsPage initialSeriesId={route.params.get("seriesId") || ""} />;
+  if (route.pathname === "/chapters-pages") return <ChaptersPagesPage initialSeriesId={route.params.get("seriesId") || ""} />;
+  if (route.pathname === "/canvas-workspace") {
+    return (
+      <CanvasWorkspacePage
+        initialSeriesId={route.params.get("seriesId") || ""}
+        initialChapterId={route.params.get("chapterId") || ""}
+        initialPageId={route.params.get("pageId") || ""}
+      />
+    );
+  }
   if (route.pathname === "/tasks") return <TasksPage />;
   if (route.pathname === "/resources") return <ResourcesPage />;
   if (route.pathname === "/profile") return <ProfilePage />;
@@ -95,7 +102,7 @@ function renderPage(route, role) {
   if (route.pathname === "/schedule") return <SchedulePage />;
 
   const seriesMatch = matchRoute(route.parts, "/series/:seriesId");
-  if (seriesMatch) return <SeriesDetailPage seriesId={seriesMatch.seriesId} />;
+  if (seriesMatch) return <ChaptersPagesPage initialSeriesId={seriesMatch.seriesId} />;
 
   const workspaceMatch = matchRoute(route.parts, "/workspace/:pageId");
   if (workspaceMatch) return <WorkspacePage pageId={workspaceMatch.pageId} query={route.params} />;
