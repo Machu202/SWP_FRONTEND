@@ -145,10 +145,9 @@ export function Layout({ children, route }) {
           <div className="topbar-right">
             <div className={`search-box ${group}-search`}>
               <span>⌕</span>
-              <input type="text" placeholder={group === "assistant" ? "Search brushes, models..." : "Search..."} aria-label="Search" />
+              <input type="text" placeholder="Search..." aria-label="Search" />
             </div>
             <button className="top-icon" title="Notifications">♡</button>
-            <button className="mode-chip">{brand.mode}</button>
             <button className="topbar-avatar plain-user-avatar" onClick={() => navigate("/profile")} title={profile?.email || session.email || roleLabel(role)}>{initials}</button>
           </div>
         </header>
@@ -160,7 +159,6 @@ export function Layout({ children, route }) {
                 <h1>{pageTitle(route.pathname, role)}</h1>
                 <p>{pageSubtitle(route.pathname, role)}</p>
               </div>
-              <div className="route-chip">{roleLabel(role)}</div>
             </div>
           )}
           {children}

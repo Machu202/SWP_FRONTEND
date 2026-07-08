@@ -16,6 +16,49 @@ function tabFromRoute(route) {
   return value === "assignments" ? "assignments" : "kanban";
 }
 
+function toFiniteNumber(...values) {
+  for (const value of values) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return 0;
+}
+
+function boxValue(source, ...keys) {
+  for (const key of keys) {
+    const numeric = Number(source?.[key]);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return 0;
+}
+
+function normalizeHitbox(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const id = raw.id ?? raw.hitboxId ?? raw.hitbox_id ?? null;
+  const xCoord = toFiniteNumber(raw.xCoord, raw.x_coord, raw.x, raw.left);
+  const yCoord = toFiniteNumber(raw.yCoord, raw.y_coord, raw.y, raw.top);
+  const width = toFiniteNumber(raw.width, raw.w);
+  const height = toFiniteNumber(raw.height, raw.h);
+  if (width <= 0 || height <= 0) return null;
+  return { ...raw, id, xCoord, yCoord, width, height };
+}
+
+function taskHitboxId(task) {
+  return task?.hitboxId ?? task?.hitbox_id ?? task?.hitbox?.id ?? task?.hitboxDto?.id ?? null;
+}
+
+function taskPageId(task) {
+  return task?.pageId ?? task?.page_id ?? task?.page?.id ?? task?.hitbox?.pageId ?? task?.hitbox?.page_id ?? null;
+}
+
+function taskReferenceUrl(task) {
+  return task?.referenceImageUrl || task?.pageImageUrl || task?.imageUrl || task?.page?.imageUrl || "";
+}
+
+function directTaskHitbox(task) {
+  return normalizeHitbox(task?.hitbox || task?.hitboxDto || task);
+}
+
 export default function TasksPage() {
   const route = useHashRoute();
   const activeTab = tabFromRoute(route);
@@ -24,10 +67,12 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [assistants, setAssistants] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [selectedHitbox, setSelectedHitbox] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedFileName, setSelectedFileName] = useState("");
   const [confirmReady, setConfirmReady] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hitboxLoading, setHitboxLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -63,6 +108,57 @@ export default function TasksPage() {
     setSelectedFileName("");
     setConfirmReady(false);
   }, [selected?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSelectedHitbox() {
+      if (!selected) {
+        setSelectedHitbox(null);
+        setHitboxLoading(false);
+        return;
+      }
+
+      const direct = directTaskHitbox(selected);
+      if (direct) {
+        setSelectedHitbox(direct);
+        setHitboxLoading(false);
+        return;
+      }
+
+      const hitboxId = taskHitboxId(selected);
+      const pageId = taskPageId(selected);
+      if (!pageId) {
+        setSelectedHitbox(null);
+        setHitboxLoading(false);
+        return;
+      }
+
+      setHitboxLoading(true);
+      try {
+        const response = await api.workspace.hitboxes(pageId).catch(() => []);
+        const rawList = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.hitboxes)
+            ? response.hitboxes
+            : [];
+        const normalizedList = rawList.map(normalizeHitbox).filter(Boolean);
+        let match = null;
+        if (hitboxId !== null && hitboxId !== undefined && hitboxId !== "") {
+          match = normalizedList.find((box) => String(box.id) === String(hitboxId));
+        }
+        if (!match && normalizedList.length === 1) match = normalizedList[0];
+        if (!cancelled) setSelectedHitbox(match || null);
+      } catch {
+        if (!cancelled) setSelectedHitbox(null);
+      } finally {
+        if (!cancelled) setHitboxLoading(false);
+      }
+    }
+
+    loadSelectedHitbox();
+    return () => { cancelled = true; };
+  }, [selected]);
 
   const grouped = useMemo(() => {
     const groups = Object.fromEntries(COLUMNS.map((column) => [column.key, []]));
@@ -180,6 +276,8 @@ export default function TasksPage() {
         <AssignmentsPanel
           tasks={tasks}
           selected={selected}
+          selectedHitbox={selectedHitbox}
+          hitboxLoading={hitboxLoading}
           assistants={assistants}
           canAssign={canAssign}
           canSubmit={canSubmit}
@@ -229,6 +327,8 @@ function KanbanBoard({ grouped, counts, selected, onSelect, onMove }) {
 function AssignmentsPanel({
   tasks,
   selected,
+  selectedHitbox,
+  hitboxLoading,
   assistants,
   canAssign,
   canSubmit,
@@ -281,6 +381,8 @@ function AssignmentsPanel({
       <div className="assignments-detail-stack">
         <TaskDetail
           selected={selected}
+          selectedHitbox={selectedHitbox}
+          hitboxLoading={hitboxLoading}
           assistants={assistants}
           canAssign={canAssign}
           onAssign={onAssign}
@@ -327,7 +429,8 @@ function TaskCard({ task, selected, onClick, onMove }) {
   );
 }
 
-function TaskDetail({ selected, assistants, canAssign, onAssign, onMove }) {
+function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAssign, onAssign, onMove }) {
+  const referenceUrl = taskReferenceUrl(selected);
   return (
     <div className="task-box assignment-detail-box">
       <div className="task-box-title">
@@ -366,7 +469,7 @@ function TaskDetail({ selected, assistants, canAssign, onAssign, onMove }) {
           </div>
 
           <div className="reference-panel assignment-reference-panel">
-            <Preview title="Reference image" url={selected.referenceImageUrl} />
+            <HitboxPreview title="Reference image" url={referenceUrl} box={selectedHitbox} loading={hitboxLoading} />
             <Preview title="Submitted image" url={selected.submittedImageUrl} />
           </div>
         </div>
@@ -468,7 +571,7 @@ function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile,
 }
 
 function TaskThumbnail({ task }) {
-  const url = resolveMediaUrl(task.submittedImageUrl || task.referenceImageUrl);
+  const url = resolveMediaUrl(task.submittedImageUrl || task.referenceImageUrl || task.pageImageUrl);
   if (url) return <img className="ast-task-thumb" src={url} alt="Task preview" />;
   return <div className="ast-task-thumb assignment-task-thumb-placeholder">▧</div>;
 }
@@ -476,4 +579,56 @@ function TaskThumbnail({ task }) {
 function Preview({ title, url }) {
   const resolved = resolveMediaUrl(url);
   return <div className="preview-box"><strong>{title}</strong>{resolved ? <img src={resolved} alt={title} /> : <span>No image</span>}</div>;
+}
+
+function HitboxPreview({ title, url, box, loading }) {
+  const resolved = resolveMediaUrl(url);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    setImageSize({ width: 0, height: 0 });
+  }, [resolved]);
+
+  if (!resolved) {
+    return <div className="preview-box"><strong>{title}</strong><span>No image</span></div>;
+  }
+
+  const originalWidth = Math.max(toFiniteNumber(imageSize.width, 1), 1);
+  const originalHeight = Math.max(toFiniteNumber(imageSize.height, 1), 1);
+  const x = boxValue(box, "xCoord", "x_coord", "x");
+  const y = boxValue(box, "yCoord", "y_coord", "y");
+  const width = boxValue(box, "width", "w");
+  const height = boxValue(box, "height", "h");
+  const hasBox = Boolean(box) && width > 0 && height > 0;
+  const unitBox = hasBox && x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
+
+  const left = hasBox ? (unitBox ? x * 100 : (x / originalWidth) * 100) : 0;
+  const top = hasBox ? (unitBox ? y * 100 : (y / originalHeight) * 100) : 0;
+  const boxWidth = hasBox ? (unitBox ? width * 100 : (width / originalWidth) * 100) : 0;
+  const boxHeight = hasBox ? (unitBox ? height * 100 : (height / originalHeight) * 100) : 0;
+
+  return (
+    <div className="preview-box preview-box-hitbox">
+      <strong>{title}</strong>
+      <div className="preview-image-stage">
+        <img
+          src={resolved}
+          alt={title}
+          onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })}
+        />
+        {hasBox && imageSize.width > 0 && imageSize.height > 0 && (
+          <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
+            <span className="task-hitbox-label">Task area</span>
+          </div>
+        )}
+      </div>
+      {loading ? (
+        <small className="preview-hitbox-note">Loading hitbox area…</small>
+      ) : hasBox ? (
+        <small className="preview-hitbox-note">Mangaka hitbox is highlighted on the reference page.</small>
+      ) : (
+        <small className="preview-hitbox-note">No saved hitbox was returned for this task yet.</small>
+      )}
+    </div>
+  );
 }

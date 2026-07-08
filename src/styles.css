@@ -8221,3 +8221,165 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 .hitbox-task-card .feature-form .btn-outline.full {
   margin-top: 10px;
 }
+
+/* Required field markers for real backend series creation */
+.required-mark {
+  color: #ef4444;
+  font-weight: 800;
+}
+.form-required-note {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+  margin: -4px 0 12px;
+}
+
+/* ========================================= */
+/* --- IN-WEBSITE DELETE CONFIRMATION MODAL --- */
+/* ========================================= */
+.delete-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.delete-modal-card {
+  width: min(420px, 100%);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+  padding: 26px;
+  text-align: center;
+  animation: deleteModalIn 0.16s ease-out;
+}
+
+.delete-modal-icon {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #dc2626;
+  font-weight: 900;
+  font-size: 20px;
+}
+
+.delete-modal-card h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 800;
+}
+
+.delete-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.delete-modal-actions .btn {
+  min-width: 104px;
+}
+
+.btn.solid-danger,
+.btn.btn-danger.solid-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+.btn.solid-danger:hover,
+.btn.btn-danger.solid-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: white;
+}
+
+@keyframes deleteModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Assistant task reference hitbox preview */
+.preview-box-hitbox {
+  align-items: stretch;
+}
+
+.preview-image-stage {
+  position: relative;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+}
+
+.preview-image-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  background: #fff;
+}
+
+.task-hitbox-overlay {
+  position: absolute;
+  border: 3px solid #4f46e5;
+  background: rgba(79, 70, 229, 0.16);
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.10);
+  pointer-events: none;
+  min-width: 18px;
+  min-height: 18px;
+}
+
+.task-hitbox-label {
+  position: absolute;
+  left: -3px;
+  top: -32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.preview-hitbox-note {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .task-hitbox-label {
+    top: 8px;
+    left: 8px;
+  }
+}

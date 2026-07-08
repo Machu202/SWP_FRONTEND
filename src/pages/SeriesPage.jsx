@@ -27,6 +27,8 @@ export default function SeriesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const canCreate = hasRole(role, ["mangaka"]);
   const canDelete = hasRole(role, ["mangaka", "admin"]);
@@ -91,17 +93,29 @@ export default function SeriesPage() {
     setCoverPreview("");
   }
 
+  function validateCreateSeriesForm() {
+    const missing = [];
+    if (!form.title.trim()) missing.push("title");
+    if (!form.genre.trim()) missing.push("genre");
+    if (!form.summary.trim()) missing.push("summary");
+    if (!form.description.trim()) missing.push("description");
+
+    if (missing.length) {
+      const labels = missing.map((field) => field.charAt(0).toUpperCase() + field.slice(1));
+      return `${labels.join(", ")} ${missing.length === 1 ? "is" : "are"} required before creating a series.`;
+    }
+
+    return "";
+  }
+
   async function createSeries(event) {
     event.preventDefault();
     setError("");
     setMessage("");
 
-    if (!form.title.trim()) {
-      setError("Title is required.");
-      return;
-    }
-    if (!form.genre.trim()) {
-      setError("Genre is required.");
+    const validationError = validateCreateSeriesForm();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -134,22 +148,27 @@ export default function SeriesPage() {
     }
   }
 
-  async function deleteSeries(item) {
+  function requestDeleteSeries(item) {
     if (!item?.id || !canDelete) return;
-    const title = item.title || `Series #${item.id}`;
-    const confirmed = window.confirm(
-      `Delete "${title}"?\n\nThis will ask the backend to remove the series. If chapters, pages, tasks, or reviews still depend on it, the backend may reject the deletion.`
-    );
-    if (!confirmed) return;
+    setPendingDelete({ item, name: item.title || `Series #${item.id}` });
+  }
 
+  async function confirmDeleteSeries() {
+    if (!pendingDelete?.item?.id || deleting) return;
+
+    const { item, name } = pendingDelete;
+    setDeleting(true);
     setError("");
     setMessage("");
     try {
       await api.series.remove(item.id);
-      setMessage(`Deleted ${title}.`);
+      setMessage(`Deleted ${name}.`);
+      setPendingDelete(null);
       await load();
     } catch (err) {
       setError(err.message || "Could not delete series. Remove dependent chapters/pages first, or check backend cascade rules.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -187,12 +206,12 @@ export default function SeriesPage() {
       </div>
 
       {canCreate && (
-        <form className="form-section create-series-simple-form" onSubmit={createSeries}>
+        <form className="form-section create-series-simple-form" onSubmit={createSeries} noValidate>
           <div className="form-section-title">Create new series</div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Title</label>
+              <label>Title <span className="required-mark">*</span></label>
               <input
                 type="text"
                 className="form-control"
@@ -202,7 +221,7 @@ export default function SeriesPage() {
               />
             </div>
             <div className="form-group">
-              <label>Genre</label>
+              <label>Genre <span className="required-mark">*</span></label>
               <select
                 className="form-control"
                 value={form.genre}
@@ -234,23 +253,28 @@ export default function SeriesPage() {
           </div>
 
           <div className="form-group">
-            <label>Summary</label>
+            <label>Summary <span className="required-mark">*</span></label>
             <textarea
               className="form-control"
               value={form.summary}
               onChange={(event) => updateForm("summary", event.target.value)}
+              placeholder="Required: short synopsis or logline for this series..."
+              required
             />
           </div>
 
           <div className="form-group">
-            <label>Description</label>
+            <label>Description <span className="required-mark">*</span></label>
             <textarea
               className="form-control"
               value={form.description}
               onChange={(event) => updateForm("description", event.target.value)}
+              placeholder="Required: longer description, premise, or production notes..."
+              required
             />
           </div>
 
+          <p className="form-required-note">* Title, genre, summary, and description are required before creating a series.</p>
           <button className="btn-publish create-series-submit" disabled={saving}>
             {saving ? "Creating..." : "Create series"}
           </button>
@@ -265,12 +289,20 @@ export default function SeriesPage() {
             <div className="stack" key={group}>
               <h3 className="group-title">{group}</h3>
               <div className="series-grid">
-                {items.map((item) => <SeriesCard key={item.id} series={item} canDelete={canDelete} onDelete={deleteSeries} />)}
+                {items.map((item) => <SeriesCard key={item.id} series={item} canDelete={canDelete} onDelete={requestDeleteSeries} />)}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <DeleteConfirmModal
+        open={Boolean(pendingDelete)}
+        name={pendingDelete?.name || "this item"}
+        busy={deleting}
+        onCancel={() => !deleting && setPendingDelete(null)}
+        onConfirm={confirmDeleteSeries}
+      />
     </section>
   );
 }
@@ -295,6 +327,23 @@ function SeriesCard({ series, canDelete, onDelete }) {
           <button className="btn btn-small btn-danger" onClick={() => onDelete(series)}>Delete</button>
         </div>
       )}
+    </div>
+  );
+}
+
+function DeleteConfirmModal({ open, name, busy, onCancel, onConfirm }) {
+  if (!open) return null;
+
+  return (
+    <div className="delete-modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <div className="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="delete-modal-icon">!</div>
+        <h3 id="delete-modal-title">Are you sure you want to delete {name}?</h3>
+        <div className="delete-modal-actions">
+          <button className="btn" type="button" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button className="btn btn-danger solid-danger" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Deleting..." : "Delete"}</button>
+        </div>
+      </div>
     </div>
   );
 }

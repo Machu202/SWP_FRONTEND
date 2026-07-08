@@ -40,6 +40,8 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const selectedChapter = useMemo(
     () => chapters.find((chapter) => String(chapter.id) === String(selectedChapterId)),
@@ -158,45 +160,42 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
     }
   }
 
-  async function deleteChapter(chapter) {
+  function requestDeleteChapter(chapter) {
     if (!chapter?.id || !canEdit) return;
-    const label = `Chapter ${chapterNumber(chapter)}: ${chapterTitle(chapter)}`;
-    const confirmed = window.confirm(
-      `Delete ${label}?\n\nPages, scripts, hitboxes, tasks, and feedback connected to this chapter may also need to be removed by the backend before deletion can succeed.`
-    );
-    if (!confirmed) return;
-
-    setError("");
-    setMessage("");
-    try {
-      await api.chapters.remove(chapter.id);
-      setMessage(`Deleted ${label}.`);
-      if (String(selectedChapterId) === String(chapter.id)) {
-        setSelectedChapterId("");
-        setPages([]);
-      }
-      await loadSelectedSeries(selectedSeriesId);
-    } catch (err) {
-      setError(err.message || "Could not delete chapter. Delete dependent pages first, or check backend cascade rules.");
-    }
+    setPendingDelete({ kind: "chapter", item: chapter, name: `Chapter ${chapterNumber(chapter)}: ${chapterTitle(chapter)}` });
   }
 
-  async function deletePage(page) {
+  function requestDeletePage(page) {
     if (!page?.id || !canEdit) return;
-    const label = `Page ${pageNumber(page)}`;
-    const confirmed = window.confirm(
-      `Delete ${label}?\n\nHitboxes, tasks, versions, or feedback connected to this page may also need to be removed by the backend before deletion can succeed.`
-    );
-    if (!confirmed) return;
+    setPendingDelete({ kind: "page", item: page, name: `Page ${pageNumber(page)}` });
+  }
 
+  async function confirmDelete() {
+    if (!pendingDelete?.item?.id || deleting) return;
+
+    const { kind, item, name } = pendingDelete;
+    setDeleting(true);
     setError("");
     setMessage("");
     try {
-      await api.pages.remove(page.id);
-      setMessage(`Deleted ${label}.`);
-      await loadPages(selectedChapterId);
+      if (kind === "chapter") {
+        await api.chapters.remove(item.id);
+        setMessage(`Deleted ${name}.`);
+        if (String(selectedChapterId) === String(item.id)) {
+          setSelectedChapterId("");
+          setPages([]);
+        }
+        await loadSelectedSeries(selectedSeriesId);
+      } else if (kind === "page") {
+        await api.pages.remove(item.id);
+        setMessage(`Deleted ${name}.`);
+        await loadPages(selectedChapterId);
+      }
+      setPendingDelete(null);
     } catch (err) {
-      setError(err.message || "Could not delete page. Remove dependent hitboxes/tasks/feedback first, or check backend cascade rules.");
+      setError(err.message || `Could not delete ${kind || "item"}.`);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -308,7 +307,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
                   </button>
                   <div className="chapter-row-actions">
                     <StatusBadge value={chapter.publishStatus || chapter.publish_status || "DRAFT"} />
-                    {canEdit && <button className="danger-icon-btn" title="Delete chapter" onClick={() => deleteChapter(chapter)}>Delete</button>}
+                    {canEdit && <button className="danger-icon-btn" title="Delete chapter" onClick={() => requestDeleteChapter(chapter)}>Delete</button>}
                   </div>
                 </div>
               ))}
@@ -332,7 +331,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
                         <strong>Page {pageNumber(page)}</strong>
                         <div className="page-action-row">
                           <button className="btn btn-small" onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}`)}>Open canvas</button>
-                          {canEdit && <button className="btn btn-small btn-danger" onClick={() => deletePage(page)}>Delete</button>}
+                          {canEdit && <button className="btn btn-small btn-danger" onClick={() => requestDeletePage(page)}>Delete</button>}
                         </div>
                       </div>
                     </div>
@@ -343,6 +342,31 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
           ) : <EmptyState icon="▧" title="Choose a chapter" body="Select a chapter from the list to view uploaded pages." />}
         </div>
       </div>
+
+      <DeleteConfirmModal
+        open={Boolean(pendingDelete)}
+        name={pendingDelete?.name || "this item"}
+        busy={deleting}
+        onCancel={() => !deleting && setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </section>
+  );
+}
+
+function DeleteConfirmModal({ open, name, busy, onCancel, onConfirm }) {
+  if (!open) return null;
+
+  return (
+    <div className="delete-modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <div className="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="delete-modal-icon">!</div>
+        <h3 id="delete-modal-title">Are you sure you want to delete {name}?</h3>
+        <div className="delete-modal-actions">
+          <button className="btn" type="button" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button className="btn btn-danger solid-danger" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Deleting..." : "Delete"}</button>
+        </div>
+      </div>
+    </div>
   );
 }
