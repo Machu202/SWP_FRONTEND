@@ -1,21 +1,56 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert } from "../components/Status";
 import { roleHome } from "../api/client";
 
 const ROLES = ["Mangaka", "Assistant", "Tantou Editor", "Editorial Board", "Admin"];
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+function loadGoogleScript() {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Could not load Google Sign-In script."));
+    document.head.appendChild(script);
+  });
+}
+
+function normalizeOtpCode(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits || String(value || "").trim();
+}
 
 export default function LoginPage() {
-  const { login, register } = useAuth();
+  const { login, register, requestOtp, verifyOtp, googleLogin } = useAuth();
+  const googleButtonRef = useRef(null);
   const [mode, setMode] = useState("login");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [registration, setRegistration] = useState({ username: "", email: "", phoneNumber: "", password: "", role: "Mangaka" });
   const [otpEmail, setOtpEmail] = useState("");
+  const [otpPassword, setOtpPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+
+  async function finishLogin(session) {
+    setMessage("Login successful. Redirecting...");
+    navigate(roleHome(session.role));
+  }
 
   async function submitLogin(event) {
     event.preventDefault();
@@ -24,8 +59,7 @@ export default function LoginPage() {
     setMessage("");
     try {
       const session = await login(credentials);
-      setMessage("Login successful. Redirecting...");
-      navigate(roleHome(session.role));
+      await finishLogin(session);
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
@@ -50,11 +84,95 @@ export default function LoginPage() {
     }
   }
 
-  function fakeOtp(event) {
-    event.preventDefault();
-    setMessage(otpCode ? "OTP form is ready. Connect it to /api/v1/auth/verify-otp if your backend enables it." : "OTP has been sent and will expire in 60s.");
+  async function sendOtp(event) {
+    event?.preventDefault();
+    setBusy(true);
     setError("");
+    setMessage("");
+    try {
+      if (!otpEmail.includes("@")) {
+        throw new Error("OTP login needs the account email because the backend verifies OTP by email.");
+      }
+      await requestOtp({ username: otpEmail.trim(), password: otpPassword });
+      setOtpSent(true);
+      setMessage("OTP sent. Check your email and enter the code.");
+    } catch (err) {
+      setError(err.message || "Could not send OTP");
+    } finally {
+      setBusy(false);
+    }
   }
+
+  async function submitOtp(event) {
+    event.preventDefault();
+    if (!otpSent) {
+      await sendOtp(event);
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const code = normalizeOtpCode(otpCode);
+      if (!code) throw new Error("Enter the OTP code from your email.");
+      const session = await verifyOtp(otpEmail.trim(), code);
+      await finishLogin(session);
+    } catch (err) {
+      setError(err.message || "OTP verification failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGoogleCredential(response) {
+    const credential = response?.credential;
+    if (!credential) {
+      setError("Google did not return an ID token.");
+      return;
+    }
+
+    setGoogleBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const session = await googleLogin(credential);
+      await finishLogin(session);
+    } catch (err) {
+      setError(err.message || "Google login failed");
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (mode !== "login" || !GOOGLE_CLIENT_ID || !googleButtonRef.current) return;
+
+    let cancelled = false;
+    googleButtonRef.current.innerHTML = "";
+
+    loadGoogleScript()
+      .then(() => {
+        if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredential
+        });
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: "outline",
+          size: "large",
+          width: 360,
+          text: "signin_with",
+          shape: "rectangular"
+        });
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || "Google Sign-In could not be loaded.");
+      });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   return (
     <div className="split-layout">
@@ -68,8 +186,8 @@ export default function LoginPage() {
 
           {mode !== "register" && (
             <div className="tabs" id="login-tabs">
-              <button type="button" className={mode === "login" ? "tab active" : "tab"} onClick={() => setMode("login")}>PASSWORD</button>
-              <button type="button" className={mode === "otp" ? "tab active" : "tab"} onClick={() => setMode("otp")}>via OTP</button>
+              <button type="button" className={mode === "login" ? "tab active" : "tab"} onClick={() => { setMode("login"); setError(""); setMessage(""); }}>PASSWORD</button>
+              <button type="button" className={mode === "otp" ? "tab active" : "tab"} onClick={() => { setMode("otp"); setError(""); setMessage(""); }}>via OTP</button>
             </div>
           )}
 
@@ -115,23 +233,84 @@ export default function LoginPage() {
               <button className="btn-primary" id="btn-login" disabled={busy || !credentials.username || !credentials.password}>{busy ? "Logging in..." : "Login"}</button>
 
               <div className="divider">Or login with</div>
-              <div className="social-login"><button type="button" className="btn-social"><strong>Google</strong></button></div>
+              <div className="social-login google-login-box">
+                {GOOGLE_CLIENT_ID ? (
+                  <>
+                    <div ref={googleButtonRef} className="google-render-target" />
+                    {googleBusy && <p className="login-helper-text">Signing in with Google...</p>}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-social"
+                    onClick={() => setError("Google login needs VITE_GOOGLE_CLIENT_ID in frontend .env and the same client ID in backend manga.app.googleClientId.")}
+                  >
+                    <strong>Google</strong>
+                  </button>
+                )}
+              </div>
               <p className="new-account">New to this page ? <button type="button" onClick={() => setMode("register")}>create new account</button></p>
             </form>
           )}
 
           {mode === "otp" && (
-            <form id="form-otp-section" className="form-section plain-form" onSubmit={fakeOtp}>
+            <form id="form-otp-section" className="form-section plain-form" onSubmit={submitOtp}>
               <div className="input-group">
-                <label>Enter gmail</label>
-                <input type="text" placeholder="Ví dụ: leduchuylt@gmail.com" value={otpEmail} onChange={(event) => setOtpEmail(event.target.value)} />
+                <label>Account email</label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  placeholder="Ví dụ: mangaka@studio.com"
+                  value={otpEmail}
+                  onChange={(event) => {
+                    setOtpEmail(event.target.value);
+                    setOtpSent(false);
+                  }}
+                />
               </div>
-              <div className="center-btn"><button className="btn-secondary" disabled={!otpEmail}>Enter</button></div>
+
+              <div className="input-group">
+                <label>Password</label>
+                <div className="password-wrapper">
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••"
+                    value={otpPassword}
+                    onChange={(event) => {
+                      setOtpPassword(event.target.value);
+                      setOtpSent(false);
+                    }}
+                  />
+                  <span className="eye-icon">👁️</span>
+                </div>
+              </div>
+
+              <div className="center-btn">
+                <button className="btn-secondary" type="button" disabled={busy || !otpEmail || !otpPassword} onClick={sendOtp}>
+                  {busy && !otpSent ? "Sending..." : otpSent ? "OTP Sent" : "Send OTP"}
+                </button>
+              </div>
+
               <div className="input-group otp-later">
-                <input type="text" placeholder="Ví dụ: 111-111" className="otp-input-large" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} />
+                <label>OTP code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ví dụ: 111111"
+                  className="otp-input-large"
+                  value={otpCode}
+                  disabled={!otpSent}
+                  onChange={(event) => setOtpCode(event.target.value)}
+                />
               </div>
-              <p className="otp-timer-text">OTP has been sent and will expired in <span>60</span>s</p>
-              <div className="otp-resend-action"><span className="not-received-text">Not received OTP?</span><button type="button" className="btn-orange">Send again</button></div>
+
+              <p className="otp-timer-text">{otpSent ? "OTP has been sent and will expire in 5 minutes." : "Enter your email and password, then request an OTP."}</p>
+              <button className="btn-primary" disabled={busy || !otpSent || !otpCode}>{busy && otpSent ? "Verifying..." : "Login with OTP"}</button>
+              <div className="otp-resend-action">
+                <span className="not-received-text">Not received OTP?</span>
+                <button type="button" className="btn-orange" disabled={busy || !otpEmail || !otpPassword} onClick={sendOtp}>Send again</button>
+              </div>
             </form>
           )}
 

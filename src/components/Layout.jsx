@@ -71,6 +71,12 @@ function brandForRole(role) {
   return { title: "Mangaka Workspace", subtitle: "Studio Flow", avatar: "SF", cta: "New Series", ctaPath: "/series", mode: "Creator Mode" };
 }
 
+function hasInlinePageHeader(pathname = "") {
+  return pathname.startsWith("/chapters-pages") ||
+    pathname.startsWith("/canvas-workspace") ||
+    pathname.startsWith("/manuscripts");
+}
+
 export function Layout({ children, route }) {
   const { session, profile, logout } = useAuth();
   const role = profile?.roleName || session.role;
@@ -80,6 +86,7 @@ export function Layout({ children, route }) {
   const active = route.pathname;
   const initials = (profile?.username || profile?.fullName || session.username || brand.avatar).slice(0, 2).toUpperCase();
   const isEditor = active.startsWith("/workspace/");
+  const showRouteHeader = !isEditor && !hasInlinePageHeader(route.pathname);
 
   return (
     <div className={`app-shell ${group}-screen feature-screen`}>
@@ -153,7 +160,7 @@ export function Layout({ children, route }) {
         </header>
 
         <section className={`content-padding ${isEditor ? "editor-content-padding" : ""}`}>
-          {!isEditor && (
+          {showRouteHeader && (
             <div className="page-header route-header">
               <div>
                 <h1>{pageTitle(route.pathname, role)}</h1>

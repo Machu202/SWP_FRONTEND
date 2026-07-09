@@ -33,13 +33,7 @@ export function roleLabel(role = "") {
   return role || "User";
 }
 
-export function roleHome(role = "") {
-  const normalized = normalizeRole(role);
-  if (normalized.includes("admin")) return "/admin-review";
-  if (normalized.includes("editorial") || normalized.includes("board")) return "/board-review";
-  if (normalized.includes("tantou")) return "/tantou-review";
-  if (normalized.includes("assistant")) return "/tasks";
-  if (normalized.includes("mangaka")) return "/series";
+export function roleHome() {
   return "/dashboard";
 }
 
@@ -213,8 +207,15 @@ export const api = {
       return setSession(data || {});
     },
     register: (payload) => apiFetch("/auth/register", { method: "POST", body: payload }),
-    verifyOtp: (email, otpCode) => apiFetch("/auth/verify-otp", { method: "POST", body: { email, otpCode } }),
-    google: (token) => apiFetch("/auth/google", { method: "POST", body: { token } })
+    requestOtp: ({ username, password }) => apiFetch("/auth/request-otp", { method: "POST", body: { username, password } }),
+    verifyOtp: async (email, otpCode) => {
+      const data = await apiFetch("/auth/verify-otp", { method: "POST", body: { email, otpCode } });
+      return setSession(data || {});
+    },
+    google: async (token) => {
+      const data = await apiFetch("/auth/google", { method: "POST", body: { token } });
+      return setSession(data || {});
+    }
   },
 
   users: {

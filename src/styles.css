@@ -8383,3 +8383,93 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
     left: 8px;
   }
 }
+
+
+/* Login integrations */
+.google-login-box {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+}
+
+.google-render-target {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.login-helper-text {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  font-weight: 600;
+}
+
+
+/* Canvas initial image load fix: do not hide the page image while waiting for onLoad */
+.hitbox-image-wrap.loading {
+  min-width: min(520px, 100%);
+  min-height: 320px;
+}
+
+.hitbox-image-wrap.loading img {
+  opacity: 1 !important;
+  position: relative !important;
+  pointer-events: auto !important;
+}
+
+.hitbox-image-wrap.loading .canvas-image-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+  background: rgba(31, 47, 77, 0.14);
+  border-radius: 4px;
+}
+
+/* Breaking bug fixes from role-navigation review */
+.feature-header,
+.static-feature-header,
+.route-header,
+.series-card,
+.chapter-delete-row,
+.page-card-footer-actions,
+.nav-item,
+.topbar-left,
+.topbar-right {
+  user-select: none;
+}
+
+.chapter-delete-row {
+  overflow: visible !important;
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.chapter-row-main {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.chapter-row-actions {
+  flex: 0 0 auto !important;
+  min-width: 150px !important;
+  justify-content: flex-end !important;
+  overflow: visible !important;
+}
+
+.danger-icon-btn,
+.page-action-row .btn-danger,
+.series-card-actions .btn-danger {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.readonly-review-note,
+.review-helper {
+  line-height: 1.55;
+}

@@ -15,6 +15,18 @@ const DEFAULT_SERIES = {
 
 const GENRES = ["Action", "Adventure", "Comedy", "Romance", "Fantasy", "Sci-Fi", "Horror", "Slice of Life", "Mystery", "Sports"];
 
+function isReviewableSeries(series) {
+  const status = String(series?.status || "").toUpperCase();
+  return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
+}
+
+function seriesOpenPath(role, series) {
+  if (hasRole(role, ["tantou"])) return `/tantou-review?seriesId=${series.id}`;
+  if (hasRole(role, ["editorial", "board"])) return `/board-review?seriesId=${series.id}`;
+  if (hasRole(role, ["admin"])) return `/admin-review?seriesId=${series.id}`;
+  return `/chapters-pages?seriesId=${series.id}`;
+}
+
 export default function SeriesPage() {
   const { profile, session } = useAuth();
   const role = profile?.roleName || session.role;
@@ -172,15 +184,20 @@ export default function SeriesPage() {
     }
   }
 
+  const displaySeries = useMemo(() => {
+    if (hasRole(role, ["tantou"]) && !status) return series.filter(isReviewableSeries);
+    return series;
+  }, [series, role, status]);
+
   const grouped = useMemo(() => {
     const groups = {};
-    series.forEach((item) => {
+    displaySeries.forEach((item) => {
       const key = item.status || "DRAFT";
       groups[key] = groups[key] || [];
       groups[key].push(item);
     });
     return groups;
-  }, [series]);
+  }, [displaySeries]);
 
   if (loading) return <LoadingBlock label="Loading series..." />;
 
@@ -191,13 +208,13 @@ export default function SeriesPage() {
 
       <div className="toolbar series-count-toolbar">
         <div>
-          <p className="eyebrow">{canCreate ? "Your owned titles" : "All visible titles"}</p>
-          <h2>{series.length} manga series</h2>
+          <p className="eyebrow">{canCreate ? "Your owned titles" : hasRole(role, ["tantou"]) ? "Reviewable titles" : "All visible titles"}</p>
+          <h2>{displaySeries.length} manga series</h2>
         </div>
         {!canCreate && (
           <select className="form-control compact-select" value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
-            <option value="DRAFT">DRAFT</option>
+            {!hasRole(role, ["tantou"]) && <option value="DRAFT">DRAFT</option>}
             <option value="REVIEWING">REVIEWING</option>
             <option value="APPROVED">APPROVED</option>
             <option value="REJECTED">REJECTED</option>
@@ -281,7 +298,7 @@ export default function SeriesPage() {
         </form>
       )}
 
-      {!series.length ? (
+      {!displaySeries.length ? (
         <EmptyState icon="◇" title="No series loaded" body="Check that the backend is running, you are logged in, and series data exists for your role." />
       ) : (
         <div className="series-groups">
@@ -289,7 +306,7 @@ export default function SeriesPage() {
             <div className="stack" key={group}>
               <h3 className="group-title">{group}</h3>
               <div className="series-grid">
-                {items.map((item) => <SeriesCard key={item.id} series={item} canDelete={canDelete} onDelete={requestDeleteSeries} />)}
+                {items.map((item) => <SeriesCard key={item.id} series={item} role={role} canDelete={canDelete} onDelete={requestDeleteSeries} />)}
               </div>
             </div>
           ))}
@@ -307,11 +324,11 @@ export default function SeriesPage() {
   );
 }
 
-function SeriesCard({ series, canDelete, onDelete }) {
+function SeriesCard({ series, role, canDelete, onDelete }) {
   const cover = resolveMediaUrl(series.coverImageUrl || series.coverUrl || series.imageUrl || series.thumbnailUrl);
   return (
     <div className="list-card series-card series-card-with-actions">
-      <button className="series-card-main" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
+      <button className="series-card-main" onClick={() => navigate(seriesOpenPath(role, series))}>
         <div className="list-card-img series-cover">
           {cover ? <img src={cover} alt={series.title} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}
         </div>
@@ -323,7 +340,7 @@ function SeriesCard({ series, canDelete, onDelete }) {
       </button>
       {canDelete && (
         <div className="list-card-actions series-card-actions">
-          <button className="btn btn-small" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>Open</button>
+          <button className="btn btn-small" onClick={() => navigate(seriesOpenPath(role, series))}>Open</button>
           <button className="btn btn-small btn-danger" onClick={() => onDelete(series)}>Delete</button>
         </div>
       )}

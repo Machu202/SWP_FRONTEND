@@ -4,6 +4,32 @@ import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
+function safeDashboardCall(promise, fallback = [], timeoutMs = 7000) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => window.setTimeout(() => resolve(fallback), timeoutMs))
+  ]).catch(() => fallback);
+}
+
+function asList(value) {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.content)) return value.content;
+  if (Array.isArray(value?.data)) return value.data;
+  return [];
+}
+
+function isReviewableSeries(series) {
+  const status = String(series?.status || "").toUpperCase();
+  return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
+}
+
+function dashboardSeriesTarget(role, series) {
+  if (hasRole(role, ["tantou"])) return `/tantou-review?seriesId=${series.id}`;
+  if (hasRole(role, ["editorial", "board"])) return `/board-review?seriesId=${series.id}`;
+  if (hasRole(role, ["admin"])) return `/admin-review?seriesId=${series.id}`;
+  return `/series/${series.id}`;
+}
+
 export default function DashboardPage() {
   const { profile, session } = useAuth();
   const role = profile?.roleName || session.role;
@@ -17,14 +43,21 @@ export default function DashboardPage() {
     try {
       const seriesPromise = hasRole(role, ["mangaka"])
         ? api.series.mine()
-        : api.series.list({ size: 8 });
+        : api.series.list({ size: 50 });
+
       const [series, tasks, notifications] = await Promise.all([
-        seriesPromise.catch(() => []),
-        api.tasks.mine().catch(() => []),
-        api.notifications.unread().catch(() => [])
+        safeDashboardCall(seriesPromise, []),
+        safeDashboardCall(api.tasks.mine(), []),
+        safeDashboardCall(api.notifications.unread(), [])
       ]);
-      setData({ series: series || [], tasks: tasks || [], notifications: notifications || [] });
+
+      setData({
+        series: asList(series),
+        tasks: asList(tasks),
+        notifications: asList(notifications)
+      });
     } catch (err) {
+      setData({ series: [], tasks: [], notifications: [] });
       setError(err.message || "Dashboard failed to load");
     } finally {
       setLoading(false);
@@ -157,7 +190,7 @@ function AssistantDashboard({ data, profile, session }) {
 }
 
 function EditorialDashboard({ data, role }) {
-  const waiting = data.series.filter((item) => /review/i.test(String(item.status || "")));
+  const waiting = data.series.filter(isReviewableSeries);
   return (
     <section className="stack">
       <div className="hero-card">
@@ -174,7 +207,7 @@ function EditorialDashboard({ data, role }) {
         <Stat label="My tasks" value={data.tasks.length} tone="success" />
         <Stat label="Unread" value={data.notifications.length} tone="danger" />
       </div>
-      <SeriesListCard title="Review queue" series={waiting.length ? waiting : data.series} />
+      <SeriesListCard title="Review queue" series={waiting} role={role} />
     </section>
   );
 }
@@ -196,7 +229,7 @@ function AdminDashboard({ data }) {
         <Stat label="Unread" value={data.notifications.length} tone="danger" />
         <Stat label="Control" value="✓" tone="success" />
       </div>
-      <SeriesListCard title="Latest series" series={data.series} />
+      <SeriesListCard title="Latest series" series={data.series} role="Admin" />
     </section>
   );
 }
@@ -205,7 +238,7 @@ function GenericDashboard({ data, role }) {
   return (
     <section className="stack">
       <div className="hero-card"><div><p className="eyebrow">Welcome back</p><h2>MangaSystem user</h2><p>Your role is <strong>{roleLabel(role)}</strong>.</p></div></div>
-      <SeriesListCard title="Series" series={data.series} />
+      <SeriesListCard title="Series" series={data.series} role={role} />
     </section>
   );
 }
@@ -236,14 +269,14 @@ function AssistantTaskItem({ task }) {
   );
 }
 
-function SeriesListCard({ title, series }) {
+function SeriesListCard({ title, series, role = "" }) {
   return (
     <div className="card">
       <div className="card-header"><h3>{title}</h3><button className="btn btn-small" onClick={() => navigate("/series")}>Open</button></div>
       {series.length ? (
         <div className="list">
           {series.slice(0, 6).map((item) => (
-            <button className="list-row interactive" key={item.id} onClick={() => navigate(`/series/${item.id}`)}>
+            <button className="list-row interactive" key={item.id} onClick={() => navigate(dashboardSeriesTarget(role, item))}>
               <div><strong>{item.title}</strong><small>{item.genre || item.mangakaName || "No genre"}</small></div>
               <StatusBadge value={item.status} />
             </button>

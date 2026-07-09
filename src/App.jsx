@@ -51,6 +51,14 @@ function reviewRouteForRole(role) {
   return "/tasks";
 }
 
+function seriesRouteForRole(role, seriesId) {
+  if (hasRole(role, ["mangaka"])) return `/chapters-pages?seriesId=${seriesId}`;
+  if (hasRole(role, ["tantou"])) return `/tantou-review?seriesId=${seriesId}`;
+  if (hasRole(role, ["editorial", "board"])) return `/board-review?seriesId=${seriesId}`;
+  if (hasRole(role, ["admin"])) return `/admin-review?seriesId=${seriesId}`;
+  return `/chapters-pages?seriesId=${seriesId}`;
+}
+
 function isAllowed(pathname, role) {
   if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/system") || pathname.startsWith("/admin-review")) {
     return hasRole(role, ["admin"]);
@@ -102,7 +110,10 @@ function renderPage(route, role) {
   if (route.pathname === "/schedule") return <SchedulePage />;
 
   const seriesMatch = matchRoute(route.parts, "/series/:seriesId");
-  if (seriesMatch) return <ChaptersPagesPage initialSeriesId={seriesMatch.seriesId} />;
+  if (seriesMatch) {
+    setTimeout(() => navigate(seriesRouteForRole(role, seriesMatch.seriesId)), 0);
+    return null;
+  }
 
   const workspaceMatch = matchRoute(route.parts, "/workspace/:pageId");
   if (workspaceMatch) return <WorkspacePage pageId={workspaceMatch.pageId} query={route.params} />;

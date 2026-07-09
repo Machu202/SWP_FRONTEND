@@ -7,6 +7,11 @@ function normalizeList(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function isReviewableSeries(series) {
+  const status = String(series?.status || "").toUpperCase();
+  return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
+}
+
 export default function TantouReviewPage() {
   const [series, setSeries] = useState([]);
   const [chapters, setChapters] = useState([]);
@@ -22,8 +27,9 @@ export default function TantouReviewPage() {
     setMessage("");
     try {
       const visibleSeries = await api.series.list({ size: 100 }).catch(() => []);
-      setSeries(visibleSeries || []);
-      const chapterGroups = await Promise.all((visibleSeries || []).map(async (item) => {
+      const reviewableSeries = (visibleSeries || []).filter(isReviewableSeries);
+      setSeries(reviewableSeries);
+      const chapterGroups = await Promise.all(reviewableSeries.map(async (item) => {
         const list = await api.chapters.bySeries(item.id).catch(() => []);
         return normalizeList(list).map((chapter) => ({
           ...chapter,
@@ -158,7 +164,7 @@ function TantouChapterRow({ chapter, pages, onLoadPages, onApprove, onRevision }
         <div className="button-row vertical-buttons">
           <button className="btn btn-primary" onClick={onApprove}>Approve chapter</button>
           <button className="btn btn-danger" onClick={onRevision}>Request changes</button>
-          <button className="btn" onClick={() => navigate(`/series/${chapter.seriesId}`)}>Open series</button>
+          <button className="btn" onClick={() => navigate(`/chapters-pages?seriesId=${chapter.seriesId}`)}>Open series</button>
         </div>
       </div>
     </div>

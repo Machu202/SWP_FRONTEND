@@ -24,10 +24,16 @@ function seriesCover(series) {
   return resolveMediaUrl(series?.coverImageUrl || series?.cover_image_url || series?.coverUrl || series?.imageUrl || series?.thumbnailUrl);
 }
 
+function isReviewableSeries(series) {
+  const status = String(series?.status || "").toUpperCase();
+  return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
+}
+
 export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const { profile, session } = useAuth();
   const role = profile?.roleName || session.role;
   const canEdit = hasRole(role, ["mangaka"]);
+  const isTantou = hasRole(role, ["tantou"]);
 
   const [seriesList, setSeriesList] = useState([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || ""));
@@ -53,7 +59,8 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
     setError("");
     try {
       const data = canEdit ? await api.series.mine() : await api.series.list();
-      const list = data || [];
+      const rawList = data || [];
+      const list = isTantou ? rawList.filter(isReviewableSeries) : rawList;
       setSeriesList(list);
       const nextSeriesId = String(selectedSeriesId || initialSeriesId || list[0]?.id || "");
       setSelectedSeriesId(nextSeriesId);
@@ -216,8 +223,8 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
 
       <div className="feature-header static-feature-header">
         <div>
-          <h1>Chapter Manager &amp; Page Upload</h1>
-          <p>Create chapters and upload manga pages through the backend page API.</p>
+          <h1>{canEdit ? "Chapter Manager & Page Upload" : "Chapter & Page Review Browser"}</h1>
+          <p>{canEdit ? "Create chapters and upload manga pages through the backend page API." : "View assigned/reviewable chapters and open the Tantou review workflow without Mangaka upload controls."}</p>
         </div>
         <button className="btn-publish" onClick={refreshAll}>↻ Refresh</button>
       </div>
@@ -268,30 +275,50 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
         </div>
 
         <div className="card-box">
-          <h3>Upload Pages</h3>
-          <div className="feature-form">
-            <div className="form-group">
-              <label>Chapter</label>
-              <select className="form-control" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)}>
-                <option value="">Choose chapter</option>
-                {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</option>)}
-              </select>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Start Page Number</label>
-                <input className="form-control" type="number" min="1" value={(pages.reduce((max, page) => Math.max(max, Number(pageNumber(page) || 0)), 0) || 0) + 1} readOnly />
+          {canEdit ? (
+            <>
+              <h3>Upload Pages</h3>
+              <div className="feature-form">
+                <div className="form-group">
+                  <label>Chapter</label>
+                  <select className="form-control" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)}>
+                    <option value="">Choose chapter</option>
+                    {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</option>)}
+                  </select>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Start Page Number</label>
+                    <input className="form-control" type="number" min="1" value={(pages.reduce((max, page) => Math.max(max, Number(pageNumber(page) || 0)), 0) || 0) + 1} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label>Image Files</label>
+                    <label className="form-control file-button">
+                      {uploading ? "Uploading..." : "Choose images"}
+                      <input type="file" accept="image/*" multiple onChange={uploadPages} disabled={!selectedChapterId || uploading} />
+                    </label>
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Image Files</label>
-                <label className="form-control file-button">
-                  {uploading ? "Uploading..." : "Choose images"}
-                  <input type="file" accept="image/*" multiple onChange={uploadPages} disabled={!selectedChapterId || uploading || !canEdit} />
-                </label>
+              <div className="upload-log">{selectedChapterId ? `${pages.length} page(s) currently uploaded for this chapter.` : "Choose a chapter before uploading pages."}</div>
+            </>
+          ) : (
+            <>
+              <h3>Review Mode</h3>
+              <p className="review-helper">This role can view uploaded pages, but chapter creation and page upload are reserved for Mangaka.</p>
+              <div className="feature-form">
+                <div className="form-group">
+                  <label>Chapter</label>
+                  <select className="form-control" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)}>
+                    <option value="">Choose chapter</option>
+                    {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</option>)}
+                  </select>
+                </div>
+                {isTantou && <button className="btn-publish" type="button" onClick={() => navigate(`/tantou-review?seriesId=${selectedSeriesId}`)} disabled={!selectedSeriesId}>Open Tantou Review</button>}
               </div>
-            </div>
-          </div>
-          <div className="upload-log">{selectedChapterId ? `${pages.length} page(s) currently uploaded for this chapter.` : "Choose a chapter before uploading pages."}</div>
+              <div className="upload-log">{selectedChapterId ? `${pages.length} page(s) uploaded for this chapter.` : "Choose a chapter to view pages."}</div>
+            </>
+          )}
         </div>
       </div>
 
@@ -330,7 +357,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
                       <div className="page-card-footer page-card-footer-actions">
                         <strong>Page {pageNumber(page)}</strong>
                         <div className="page-action-row">
-                          <button className="btn btn-small" onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}`)}>Open canvas</button>
+                          <button className="btn btn-small" onClick={() => navigate(canEdit ? `/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}` : `/tantou-review?seriesId=${selectedSeriesId}&pageId=${page.id}`)}>{canEdit ? "Open canvas" : "Open review"}</button>
                           {canEdit && <button className="btn btn-small btn-danger" onClick={() => requestDeletePage(page)}>Delete</button>}
                         </div>
                       </div>

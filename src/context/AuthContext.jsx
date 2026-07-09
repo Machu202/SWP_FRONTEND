@@ -49,6 +49,24 @@ export function AuthProvider({ children }) {
     return api.auth.register(payload);
   }
 
+  async function requestOtp(payload) {
+    return api.auth.requestOtp(payload);
+  }
+
+  async function verifyOtp(email, otpCode) {
+    const saved = await api.auth.verifyOtp(email, otpCode);
+    setSessionState(saved);
+    await refreshProfile();
+    return saved;
+  }
+
+  async function googleLogin(credential) {
+    const saved = await api.auth.google(credential);
+    setSessionState(saved);
+    await refreshProfile();
+    return saved;
+  }
+
   function logout() {
     clearSession();
     setSessionState(getSession());
@@ -68,6 +86,9 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     login,
     register,
+    requestOtp,
+    verifyOtp,
+    googleLogin,
     logout,
     refreshProfile,
     homePath: roleHome(profile?.roleName || session.role)

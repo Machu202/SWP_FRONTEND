@@ -116,6 +116,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const selectedChapter = useMemo(() => chapters.find((chapter) => String(chapter.id) === String(selectedChapterId)), [chapters, selectedChapterId]);
   const selectedPage = useMemo(() => pages.find((page) => String(page.id) === String(selectedPageId)), [pages, selectedPageId]);
 
+  const imageUrl = resolveMediaUrl(canvas?.imageUrl || canvas?.image_url || pageImage(selectedPage));
+
   async function loadSeriesList() {
     setLoading(true);
     setError("");
@@ -192,9 +194,10 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         api.workspace.canvasInit(pageId).catch(() => null),
         api.workspace.hitboxes(pageId).catch(() => [])
       ]);
-      const fallbackImageUrl = pageImage(selectedPage);
-      const fallbackWidth = selectedPage?.width || selectedPage?.imageWidth || selectedPage?.originalWidth || null;
-      const fallbackHeight = selectedPage?.height || selectedPage?.imageHeight || selectedPage?.originalHeight || null;
+      const pageForCanvas = pages.find((page) => String(page.id) === String(pageId)) || selectedPage;
+      const fallbackImageUrl = pageImage(pageForCanvas);
+      const fallbackWidth = pageForCanvas?.width || pageForCanvas?.imageWidth || pageForCanvas?.originalWidth || null;
+      const fallbackHeight = pageForCanvas?.height || pageForCanvas?.imageHeight || pageForCanvas?.originalHeight || null;
       setCanvas({
         ...(canvasData || {}),
         imageUrl: canvasData?.imageUrl || canvasData?.image_url || fallbackImageUrl,
@@ -231,6 +234,56 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     loadCanvas(selectedPageId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPageId]);
+
+  useEffect(() => {
+    const nextSeriesId = String(initialSeriesId || "");
+    const nextChapterId = String(initialChapterId || "");
+    const nextPageId = String(initialPageId || "");
+
+    if (nextSeriesId && nextSeriesId !== selectedSeriesId) setSelectedSeriesId(nextSeriesId);
+    if (nextChapterId && nextChapterId !== selectedChapterId) setSelectedChapterId(nextChapterId);
+    if (nextPageId && nextPageId !== selectedPageId) setSelectedPageId(nextPageId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSeriesId, initialChapterId, initialPageId]);
+
+  useEffect(() => {
+    if (!selectedPageId || !selectedPage) return;
+    const fallbackImageUrl = pageImage(selectedPage);
+    if (!fallbackImageUrl) return;
+
+    setCanvas((old) => {
+      if (old?.imageUrl || old?.image_url) return old;
+      return {
+        ...(old || {}),
+        imageUrl: fallbackImageUrl,
+        originalWidth: old?.originalWidth || old?.original_width || selectedPage.width || selectedPage.imageWidth || selectedPage.originalWidth || null,
+        originalHeight: old?.originalHeight || old?.original_height || selectedPage.height || selectedPage.imageHeight || selectedPage.originalHeight || null
+      };
+    });
+  }, [
+    selectedPageId,
+    selectedPage?.id,
+    selectedPage?.imageUrl,
+    selectedPage?.image_url,
+    selectedPage?.width,
+    selectedPage?.height
+  ]);
+
+  useEffect(() => {
+    if (!imageUrl) return;
+    setIsImageReady(false);
+    setImageSize({ width: 0, height: 0 });
+
+    const timer = window.setTimeout(() => {
+      const image = imageRef.current;
+      if (image?.complete && image.naturalWidth > 0) {
+        handleImageLoad({ currentTarget: image });
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUrl, selectedPageId]);
 
   function getImageCoords(event) {
     const image = imageRef.current;
@@ -354,7 +407,6 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   if (loading) return <LoadingBlock label="Loading canvas workspace..." />;
 
-  const imageUrl = resolveMediaUrl(canvas?.imageUrl || canvas?.image_url || pageImage(selectedPage));
   const originalSize = canvasOriginalSize(canvas, selectedPage, imageSize);
 
   return (
