@@ -278,6 +278,11 @@ export const api = {
     remove: (pageId) => apiFetch(`/pages/${pageId}`, { method: "DELETE" })
   },
 
+  pageVersions: {
+    byPage: (pageId) => apiFetch(`/page-versions/pages/${pageId}`),
+    restore: (versionId) => apiFetch(`/page-versions/${versionId}/restore`, { method: "PATCH" })
+  },
+
   workspace: {
     canvasInit: (pageId) => apiFetch(`/workspace/pages/${pageId}/canvas-init`),
     hitboxes: (pageId) => apiFetch(`/workspace/pages/${pageId}/hitboxes`),

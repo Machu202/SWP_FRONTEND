@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { hasRole, roleLabel } from "../api/client";
+import { api, hasRole, roleLabel } from "../api/client";
 import { navigate } from "../utils/router";
 
 function roleGroup(role = "") {
@@ -154,7 +155,7 @@ export function Layout({ children, route }) {
               <span>⌕</span>
               <input type="text" placeholder="Search..." aria-label="Search" />
             </div>
-            <button className="top-icon" title="Notifications">♡</button>
+            <NotificationBell />
             <button className="topbar-avatar plain-user-avatar" onClick={() => navigate("/profile")} title={profile?.email || session.email || roleLabel(role)}>{initials}</button>
           </div>
         </header>
@@ -171,6 +172,66 @@ export function Layout({ children, route }) {
           {children}
         </section>
       </main>
+    </div>
+  );
+}
+
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState([]);
+
+  async function loadNotifications() {
+    try {
+      const data = await api.notifications.unread().catch(() => []);
+      setItems(Array.isArray(data) ? data : data?.content || data?.data || []);
+    } catch {
+      setItems([]);
+    }
+  }
+
+  async function markRead(item) {
+    if (!item?.id) return;
+    try {
+      await api.notifications.markRead(item.id);
+      setItems((old) => old.filter((entry) => String(entry.id) !== String(item.id)));
+    } catch {
+      // Keep the item visible if the backend rejects the update.
+    }
+  }
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = window.setInterval(loadNotifications, 30000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="notification-bell-wrap">
+      <button className="top-icon notification-button" title="Notifications" type="button" onClick={() => setOpen((value) => !value)}>
+        ♡
+        {items.length > 0 && <span className="notification-dot">{items.length > 9 ? "9+" : items.length}</span>}
+      </button>
+      {open && (
+        <div className="notification-menu">
+          <div className="notification-menu-head">
+            <strong>Notifications</strong>
+            <button type="button" onClick={loadNotifications}>Refresh</button>
+          </div>
+          {items.length ? (
+            <div className="notification-list">
+              {items.map((item) => (
+                <button key={item.id} type="button" className="notification-item" onClick={() => markRead(item)}>
+                  <span>{item.message || item.content || `Notification #${item.id}`}</span>
+                  <small>{item.createdAt || item.created_at || "Unread"}</small>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="notification-empty">No unread notifications.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

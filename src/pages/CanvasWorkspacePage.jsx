@@ -20,6 +20,13 @@ function pageImage(page) {
   return resolveMediaUrl(page?.imageUrl || page?.image_url || extractMediaUrl(page));
 }
 
+function formatDateTime(value) {
+  if (!value) return "Unknown date";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString();
+}
+
 function hitboxId(box) {
   return box?.id || `${box?.xCoord}-${box?.yCoord}-${box?.width}-${box?.height}`;
 }
@@ -101,6 +108,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [selectedPageId, setSelectedPageId] = useState(String(initialPageId || ""));
   const [canvas, setCanvas] = useState(null);
   const [hitboxes, setHitboxes] = useState([]);
+  const [versions, setVersions] = useState([]);
+  const [versionBusy, setVersionBusy] = useState(false);
   const [selectedBox, setSelectedBox] = useState(null);
   const [draftBox, setDraftBox] = useState(null);
   const [dragStart, setDragStart] = useState(null);
@@ -180,19 +189,34 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     }
   }
 
+  async function loadVersions(pageId) {
+    if (!pageId) {
+      setVersions([]);
+      return;
+    }
+    try {
+      const data = await api.pageVersions.byPage(pageId).catch(() => []);
+      setVersions(Array.isArray(data) ? data : data?.content || data?.data || []);
+    } catch {
+      setVersions([]);
+    }
+  }
+
   async function loadCanvas(pageId) {
     if (!pageId) {
       setCanvas(null);
       setHitboxes([]);
+      setVersions([]);
       setSelectedBox(null);
       return;
     }
     setError("");
     setMessage("");
     try {
-      const [canvasData, hitboxData] = await Promise.all([
+      const [canvasData, hitboxData, versionData] = await Promise.all([
         api.workspace.canvasInit(pageId).catch(() => null),
-        api.workspace.hitboxes(pageId).catch(() => [])
+        api.workspace.hitboxes(pageId).catch(() => []),
+        api.pageVersions.byPage(pageId).catch(() => [])
       ]);
       const pageForCanvas = pages.find((page) => String(page.id) === String(pageId)) || selectedPage;
       const fallbackImageUrl = pageImage(pageForCanvas);
@@ -205,6 +229,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         originalHeight: canvasData?.originalHeight || canvasData?.original_height || fallbackHeight
       });
       setHitboxes(mergeHitboxLists(hitboxData, canvasData?.hitboxes));
+      setVersions(Array.isArray(versionData) ? versionData : versionData?.content || versionData?.data || []);
       setSelectedBox(null);
       setDraftBox(null);
       setDragStart(null);
@@ -274,20 +299,37 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setIsImageReady(false);
     setImageSize({ width: 0, height: 0 });
 
-    const timer = window.setTimeout(() => {
+    let frameId = 0;
+    const markLoadedIfCached = () => {
       const image = imageRef.current;
       if (image?.complete && image.naturalWidth > 0) {
         handleImageLoad({ currentTarget: image });
       }
-    }, 0);
+    };
 
-    return () => window.clearTimeout(timer);
+    frameId = window.requestAnimationFrame(markLoadedIfCached);
+    const timer = window.setTimeout(markLoadedIfCached, 80);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageUrl, selectedPageId]);
+  }, [
+    imageUrl,
+    selectedPageId,
+    canvas?.imageUrl,
+    canvas?.image_url,
+    canvas?.originalWidth,
+    canvas?.originalHeight
+  ]);
 
   function getImageCoords(event) {
     const image = imageRef.current;
-    if (!image || !canvas || !isImageReady) return null;
+    if (!image || !canvas) return null;
+    if (!isImageReady && image.complete && image.naturalWidth > 0) {
+      handleImageLoad({ currentTarget: image });
+    }
     const rect = image.getBoundingClientRect();
     const displayWidth = rect.width || 1;
     const displayHeight = rect.height || 1;
@@ -405,6 +447,44 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     }
   }
 
+  async function replacePageImage(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !selectedPageId || !canEdit) return;
+    setVersionBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await api.pages.replaceImage(selectedPageId, file);
+      setPages((old) => old.map((page) => String(page.id) === String(selectedPageId) ? { ...page, ...updated } : page));
+      setCanvas((old) => ({ ...(old || {}), imageUrl: updated?.imageUrl || updated?.image_url || pageImage(updated) }));
+      await loadVersions(selectedPageId);
+      setMessage("Page image replaced and archived as a new version.");
+    } catch (err) {
+      setError(err.message || "Could not replace page image.");
+    } finally {
+      setVersionBusy(false);
+    }
+  }
+
+  async function restoreVersion(version) {
+    if (!version?.id || !selectedPageId || !canEdit) return;
+    setVersionBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const restored = await api.pageVersions.restore(version.id);
+      setPages((old) => old.map((page) => String(page.id) === String(selectedPageId) ? { ...page, ...restored } : page));
+      setCanvas((old) => ({ ...(old || {}), imageUrl: restored?.imageUrl || restored?.image_url || version.imageUrl || version.image_url }));
+      await loadVersions(selectedPageId);
+      setMessage(`Restored page to version ${version.versionNumber || version.version_number || version.id}.`);
+    } catch (err) {
+      setError(err.message || "Could not restore this version.");
+    } finally {
+      setVersionBusy(false);
+    }
+  }
+
   if (loading) return <LoadingBlock label="Loading canvas workspace..." />;
 
   const originalSize = canvasOriginalSize(canvas, selectedPage, imageSize);
@@ -461,13 +541,11 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                   onLoad={handleImageLoad}
                   onError={handleImageError}
                 />
-                {isImageReady ? (
+                {isImageReady && (
                   <div className="hitbox-layer-react">
                     {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} />)}
                     {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" />}
                   </div>
-                ) : (
-                  <div className="canvas-image-loading">Loading page image…</div>
                 )}
               </div>
             ) : <EmptyState icon="□" title="Select a page to start" body="Choose a series, chapter, and page from the controls above." />}
@@ -518,6 +596,38 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               ))}
             </div>
           )}
+
+          <div className="page-version-panel">
+            <div className="section-title-row compact-title-row">
+              <h3>Page Versions</h3>
+              <span className="pill-count">{versions.length}</span>
+            </div>
+            {canEdit && (
+              <label className="btn-outline full version-upload-label">
+                Replace Page Image
+                <input type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={replacePageImage} disabled={!selectedPageId || versionBusy} hidden />
+              </label>
+            )}
+            {versions.length ? (
+              <div className="page-version-list">
+                {versions.map((version) => {
+                  const versionNumber = version.versionNumber || version.version_number || version.id;
+                  const versionUrl = resolveMediaUrl(version.imageUrl || version.image_url);
+                  return (
+                    <div className="page-version-row" key={version.id}>
+                      <button type="button" onClick={() => versionUrl && setCanvas((old) => ({ ...(old || {}), imageUrl: versionUrl }))}>
+                        <strong>Version {versionNumber}</strong>
+                        <small>{formatDateTime(version.createdAt || version.created_at)}</small>
+                      </button>
+                      {canEdit && <button className="btn btn-tiny" type="button" disabled={versionBusy} onClick={() => restoreVersion(version)}>Restore</button>}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="muted-note version-empty-note">No page versions found yet.</p>
+            )}
+          </div>
         </div>
       </div>
     </section>

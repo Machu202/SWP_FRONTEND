@@ -8473,3 +8473,238 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 .review-helper {
   line-height: 1.55;
 }
+
+
+/* Canvas image loading text removal */
+.canvas-image-loading {
+  display: none !important;
+}
+
+.hitbox-image-wrap.loading img {
+  opacity: 1 !important;
+  position: relative !important;
+  pointer-events: auto !important;
+}
+
+/* 90-percent completion patch: notifications, page versions, schedule calendar */
+.notification-bell-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.notification-button {
+  position: relative;
+}
+
+.notification-dot {
+  position: absolute;
+  right: -7px;
+  top: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  line-height: 18px;
+  font-weight: 900;
+  border: 2px solid #fff;
+}
+
+.notification-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(360px, 88vw);
+  background: #fff;
+  border: 1px solid #d8ddea;
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  z-index: 5000;
+  overflow: hidden;
+}
+
+.notification-menu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.notification-menu-head button {
+  border: 0;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.notification-list {
+  max-height: 320px;
+  overflow: auto;
+}
+
+.notification-item {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
+  padding: 12px 14px;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.notification-item:hover {
+  background: #f8fafc;
+}
+
+.notification-item span {
+  color: #111827;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.notification-item small,
+.notification-empty {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.notification-empty {
+  padding: 16px;
+  margin: 0;
+}
+
+.page-version-panel {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  display: grid;
+  gap: 10px;
+}
+
+.compact-title-row {
+  margin: 0;
+}
+
+.pill-count {
+  display: inline-flex;
+  min-width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.version-upload-label {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+.page-version-list {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.page-version-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px;
+  background: #f8fafc;
+}
+
+.page-version-row > button:first-child {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.page-version-row small,
+.version-empty-note {
+  color: #64748b;
+}
+
+.schedule-calendar-card {
+  margin-top: 8px;
+}
+
+.schedule-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.schedule-day-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-day-card > strong {
+  font-size: 13px;
+  color: #111827;
+}
+
+.schedule-event {
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.schedule-event span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  background: #e2e8f0;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.schedule-event p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.warning-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.warning-warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.warning-danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}

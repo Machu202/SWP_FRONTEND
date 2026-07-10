@@ -125,11 +125,66 @@ export default function SchedulePage() {
         </form>
       </div>
 
+      <ScheduleCalendar schedules={schedules} deadlines={deadlines} />
+
       <div className="grid two">
         <DataList title="Publishing schedules" items={schedules} empty="No publishing schedules." />
         <DataList title="Deadlines" items={deadlines} empty="No deadlines." />
       </div>
     </section>
+  );
+}
+
+function dateKey(value) {
+  if (!value) return "No date";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
+
+function warningLevel(value) {
+  if (!value) return "muted";
+  const due = new Date(value);
+  if (Number.isNaN(due.getTime())) return "muted";
+  const hours = (due.getTime() - Date.now()) / 36e5;
+  if (hours < 0) return "danger";
+  if (hours <= 48) return "danger";
+  if (hours <= 168) return "warning";
+  return "success";
+}
+
+function ScheduleCalendar({ schedules, deadlines }) {
+  const items = [
+    ...schedules.map((item) => ({ type: "Publish", title: item.frequency || item.title || "Publishing schedule", date: item.publishDate || item.publish_date })),
+    ...deadlines.map((item) => ({ type: "Deadline", title: item.eventName || item.event_name || "Deadline", date: item.deadlineDate || item.deadline_date || item.deadlineDateStr }))
+  ].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+
+  const grouped = items.reduce((acc, item) => {
+    const key = dateKey(item.date);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  return (
+    <div className="card schedule-calendar-card">
+      <div className="card-header"><h3>Calendar view</h3><span>{items.length}</span></div>
+      {items.length ? (
+        <div className="schedule-calendar-grid">
+          {Object.entries(grouped).map(([key, dayItems]) => (
+            <div className="schedule-day-card" key={key}>
+              <strong>{key}</strong>
+              {dayItems.map((item, index) => (
+                <div className={`schedule-event warning-${warningLevel(item.date)}`} key={`${item.type}-${index}`}>
+                  <span>{item.type}</span>
+                  <p>{item.title}</p>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : <EmptyState title="No calendar entries" body="Create schedules or deadlines to populate the calendar." />}
+    </div>
   );
 }
 
