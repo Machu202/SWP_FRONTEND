@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, resolveMediaUrl } from "../api/client";
+import { api, mediaUrlFrom, resolveMediaUrl } from "../api/client";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
@@ -7,9 +7,11 @@ function normalizeList(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function isReviewableSeries(series) {
+function isVisibleForTantou(series) {
   const status = String(series?.status || "").toUpperCase();
-  return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
+  // Do not block DRAFT series: the series status can remain DRAFT while
+  // individual chapters/pages are already approved by Mangaka for Tantou review.
+  return !["ARCHIVED", "CANCELLED"].includes(status);
 }
 
 export default function TantouReviewPage() {
@@ -27,9 +29,9 @@ export default function TantouReviewPage() {
     setMessage("");
     try {
       const visibleSeries = await api.series.list({ size: 100 }).catch(() => []);
-      const reviewableSeries = (visibleSeries || []).filter(isReviewableSeries);
-      setSeries(reviewableSeries);
-      const chapterGroups = await Promise.all(reviewableSeries.map(async (item) => {
+      const assignedSeries = (visibleSeries || []).filter(isVisibleForTantou);
+      setSeries(assignedSeries);
+      const chapterGroups = await Promise.all(assignedSeries.map(async (item) => {
         const list = await api.chapters.bySeries(item.id).catch(() => []);
         return normalizeList(list).map((chapter) => ({
           ...chapter,
@@ -121,7 +123,7 @@ export default function TantouReviewPage() {
         )}
       </div>
 
-      {!series.length && <EmptyState title="No assigned series found" body="Make sure the manga_series.tantou_id value is assigned to this Tantou Editor user." />}
+      {!series.length && <EmptyState title="No assigned series found" body="Make sure manga_series.tantou_id is assigned to this Tantou Editor user. DRAFT series are now allowed here if their chapters/pages are ready for review." />}
     </section>
   );
 }
@@ -146,7 +148,7 @@ function TantouChapterRow({ chapter, pages, onLoadPages, onApprove, onRevision }
         {pages.length ? (
           <div className="page-strip">
             {pages.map((page) => {
-              const url = resolveMediaUrl(page.imageUrl || page.image_url);
+              const url = mediaUrlFrom(page, page.imageUrl, page.image_url);
               return (
                 <button key={page.id} className="page-mini" onClick={() => navigate(`/workspace/${page.id}?seriesId=${chapter.seriesId}&chapterId=${chapter.id}`)}>
                   {url ? <img src={url} alt={`Page ${page.pageNumber}`} /> : <span>No image</span>}

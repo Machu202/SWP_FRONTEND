@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, extractMediaUrl, hasRole, resolveMediaUrl, unwrapList } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom, resolveMediaUrl, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -17,7 +17,7 @@ function pageNumber(page) {
 }
 
 function pageImage(page) {
-  return resolveMediaUrl(page?.imageUrl || page?.image_url || extractMediaUrl(page));
+  return mediaUrlFrom(page, page?.imageUrl, page?.image_url);
 }
 
 function formatDateTime(value) {
@@ -125,7 +125,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const selectedChapter = useMemo(() => chapters.find((chapter) => String(chapter.id) === String(selectedChapterId)), [chapters, selectedChapterId]);
   const selectedPage = useMemo(() => pages.find((page) => String(page.id) === String(selectedPageId)), [pages, selectedPageId]);
 
-  const imageUrl = resolveMediaUrl(canvas?.imageUrl || canvas?.image_url || pageImage(selectedPage));
+  const imageUrl = mediaUrlFrom(canvas, canvas?.imageUrl, canvas?.image_url, pageImage(selectedPage));
 
   async function loadSeriesList() {
     setLoading(true);
@@ -612,7 +612,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               <div className="page-version-list">
                 {versions.map((version) => {
                   const versionNumber = version.versionNumber || version.version_number || version.id;
-                  const versionUrl = resolveMediaUrl(version.imageUrl || version.image_url);
+                  const versionUrl = mediaUrlFrom(version, version.imageUrl, version.image_url);
                   return (
                     <div className="page-version-row" key={version.id}>
                       <button type="button" onClick={() => versionUrl && setCanvas((old) => ({ ...(old || {}), imageUrl: versionUrl }))}>

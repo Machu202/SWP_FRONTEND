@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, hasRole, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -17,7 +17,7 @@ function pageNumber(page) {
 }
 
 function pageImage(page) {
-  return resolveMediaUrl(page?.imageUrl || page?.image_url || extractMediaUrl(page));
+  return mediaUrlFrom(page, page?.imageUrl, page?.image_url);
 }
 
 export default function ManuscriptsPage({ initialSeriesId = "" }) {

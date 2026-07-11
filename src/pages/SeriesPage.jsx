@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, hasRole, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -15,9 +15,11 @@ const DEFAULT_SERIES = {
 
 const GENRES = ["Action", "Adventure", "Comedy", "Romance", "Fantasy", "Sci-Fi", "Horror", "Slice of Life", "Mystery", "Sports"];
 
-function isReviewableSeries(series) {
+function isVisibleForTantou(series) {
   const status = String(series?.status || "").toUpperCase();
-  return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
+  // A series can still be DRAFT while its chapters/pages are approved by Mangaka
+  // and ready for Tantou review. Do not hide DRAFT here.
+  return !["ARCHIVED", "CANCELLED"].includes(status);
 }
 
 function seriesOpenPath(role, series) {
@@ -185,7 +187,7 @@ export default function SeriesPage() {
   }
 
   const displaySeries = useMemo(() => {
-    if (hasRole(role, ["tantou"]) && !status) return series.filter(isReviewableSeries);
+    if (hasRole(role, ["tantou"]) && !status) return series.filter(isVisibleForTantou);
     return series;
   }, [series, role, status]);
 
@@ -214,7 +216,7 @@ export default function SeriesPage() {
         {!canCreate && (
           <select className="form-control compact-select" value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
-            {!hasRole(role, ["tantou"]) && <option value="DRAFT">DRAFT</option>}
+            <option value="DRAFT">DRAFT</option>
             <option value="REVIEWING">REVIEWING</option>
             <option value="APPROVED">APPROVED</option>
             <option value="REJECTED">REJECTED</option>
@@ -299,7 +301,7 @@ export default function SeriesPage() {
       )}
 
       {!displaySeries.length ? (
-        <EmptyState icon="◇" title="No series loaded" body="Check that the backend is running, you are logged in, and series data exists for your role." />
+        <EmptyState icon="◇" title="No series loaded" body="Check that the backend is running, the Tantou account is assigned in manga_series.tantou_id, and the series is not archived/cancelled." />
       ) : (
         <div className="series-groups">
           {Object.entries(grouped).map(([group, items]) => (
@@ -325,7 +327,7 @@ export default function SeriesPage() {
 }
 
 function SeriesCard({ series, role, canDelete, onDelete }) {
-  const cover = resolveMediaUrl(series.coverImageUrl || series.coverUrl || series.imageUrl || series.thumbnailUrl);
+  const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   return (
     <div className="list-card series-card series-card-with-actions">
       <button className="series-card-main" onClick={() => navigate(seriesOpenPath(role, series))}>

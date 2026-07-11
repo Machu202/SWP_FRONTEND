@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
+import { api, mediaUrlFrom, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
@@ -10,11 +10,11 @@ function normalizeList(value) {
 }
 
 function submittedUrl(task) {
-  return task.submittedImageUrl || task.submitted_image_url || task.submissionUrl || task.imageUrl || "";
+  return mediaUrlFrom(task, task.submittedImageUrl, task.submitted_image_url, task.submissionUrl, task.submission_url, task.imageUrl, task.image_url);
 }
 
 function referenceUrl(task) {
-  return task.referenceImageUrl || task.pageImageUrl || task.imageUrl || task.page?.imageUrl || "";
+  return mediaUrlFrom(task, task.referenceImageUrl, task.reference_image_url, task.pageImageUrl, task.page_image_url, task.imageUrl, task.image_url, task.page?.imageUrl, task.page?.image_url);
 }
 
 function isSubmittedForReview(task) {
@@ -363,7 +363,7 @@ function AssistantSubmissionRow({ task, onApprove, onRevision }) {
 
 function TantouFeedbackRow({ feedback, comments, onAddComment, onResolve }) {
   const [comment, setComment] = useState("");
-  const pageUrl = resolveMediaUrl(feedback.pageImageUrl);
+  const pageUrl = mediaUrlFrom(feedback, feedback.pageImageUrl, feedback.page_image_url);
   const resolved = isResolved(feedback);
   const created = feedback.createdAt || feedback.created_at || "";
 

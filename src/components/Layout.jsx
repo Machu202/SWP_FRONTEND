@@ -33,7 +33,7 @@ function navForRole(role) {
   if (group === "tantou") {
     return [
       { path: "/dashboard", label: "Dashboard", icon: "▦" },
-      { path: "/series", label: "Approved Series", icon: "◇" },
+      { path: "/series", label: "Assigned Series", icon: "◇" },
       { path: "/tasks", label: "Kanban Tasks", icon: "▤" },
       { path: "/tantou-review", label: "Chapter Review", icon: "☑" },
       { path: "/schedule", label: "Schedule", icon: "◷" },

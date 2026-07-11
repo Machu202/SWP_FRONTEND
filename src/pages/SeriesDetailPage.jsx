@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, hasRole, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -140,7 +140,7 @@ export default function SeriesDetailPage({ seriesId }) {
   if (loading) return <LoadingBlock label="Loading series detail..." />;
   if (!series) return <EmptyState icon="◇" title="Series not found" body="The backend did not return this series." />;
 
-  const cover = resolveMediaUrl(series.coverImageUrl || series.coverUrl || series.imageUrl || series.thumbnailUrl);
+  const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
 
   return (
     <section className="core-feature-page chapter-manager-screen stack">
@@ -235,7 +235,7 @@ export default function SeriesDetailPage({ seriesId }) {
               {pages.length ? (
                 <div className="page-grid">
                   {pages.map((page) => {
-                    const url = resolveMediaUrl(page.imageUrl || extractMediaUrl(page));
+                    const url = mediaUrlFrom(page, page.imageUrl, page.image_url);
                     return (
                       <div key={page.id} className="page-card">
                         <button onClick={() => navigate(`/workspace/${page.id}?seriesId=${seriesId}&chapterId=${selectedChapterId}`)}>

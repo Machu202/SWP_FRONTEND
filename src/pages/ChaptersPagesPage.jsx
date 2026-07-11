@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, hasRole, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom, resolveMediaUrl } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -17,11 +17,11 @@ function chapterTitle(chapter) {
 }
 
 function pageImage(page) {
-  return resolveMediaUrl(page?.imageUrl || page?.image_url || extractMediaUrl(page));
+  return mediaUrlFrom(page, page?.imageUrl, page?.image_url);
 }
 
 function seriesCover(series) {
-  return resolveMediaUrl(series?.coverImageUrl || series?.cover_image_url || series?.coverUrl || series?.imageUrl || series?.thumbnailUrl);
+  return mediaUrlFrom(series, series?.coverImageUrl, series?.cover_image_url, series?.coverUrl, series?.cover_url, series?.imageUrl, series?.image_url, series?.thumbnailUrl, series?.thumbnail_url);
 }
 
 function isReviewableSeries(series) {

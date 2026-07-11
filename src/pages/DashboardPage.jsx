@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, hasRole, roleLabel } from "../api/client";
+import { api, hasRole, mediaUrlFrom, roleLabel } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -244,9 +244,10 @@ function GenericDashboard({ data, role }) {
 }
 
 function DashboardSeriesCard({ series }) {
+  const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   return (
     <button className="dashboard-series-card series-card" onClick={() => navigate(`/series/${series.id}`)}>
-      <div className="series-cover"><span>{(series.title || "M").slice(0, 1).toUpperCase()}</span></div>
+      <div className="series-cover">{cover ? <img src={cover} alt={series.title || "Series cover"} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}</div>
       <div className="series-body">
         <div className="row-between"><strong>{series.title}</strong><StatusBadge value={series.status} /></div>
         <p>{series.summary || series.description || "No summary provided."}</p>
@@ -257,9 +258,10 @@ function DashboardSeriesCard({ series }) {
 }
 
 function AssistantTaskItem({ task }) {
+  const thumb = mediaUrlFrom(task, task.submittedImageUrl, task.submitted_image_url, task.referenceImageUrl, task.reference_image_url, task.pageImageUrl, task.page_image_url, task.imageUrl, task.image_url, task.page);
   return (
     <button className="ast-task-item" onClick={() => navigate("/tasks")}>
-      <div className="ast-task-thumb">#{task.pageNumber || task.id}</div>
+      <div className="ast-task-thumb">{thumb ? <img src={thumb} alt={task.description || `Task #${task.id}`} /> : <span>#{task.pageNumber || task.id}</span>}</div>
       <div className="ast-task-info">
         <div className="ast-task-title"><span>{task.description || `Task #${task.id}`}</span><StatusBadge value={task.status} /></div>
         <div className="ast-task-sub">{task.seriesTitle || "No series"} • Page {task.pageNumber || "?"}</div>
@@ -276,7 +278,8 @@ function SeriesListCard({ title, series, role = "" }) {
       {series.length ? (
         <div className="list">
           {series.slice(0, 6).map((item) => (
-            <button className="list-row interactive" key={item.id} onClick={() => navigate(dashboardSeriesTarget(role, item))}>
+            <button className="list-row interactive series-list-row-with-cover" key={item.id} onClick={() => navigate(dashboardSeriesTarget(role, item))}>
+              <div className="mini-series-cover">{mediaUrlFrom(item, item.coverImageUrl, item.cover_image_url, item.coverUrl, item.cover_url, item.imageUrl, item.image_url, item.thumbnailUrl, item.thumbnail_url) ? <img src={mediaUrlFrom(item, item.coverImageUrl, item.cover_image_url, item.coverUrl, item.cover_url, item.imageUrl, item.image_url, item.thumbnailUrl, item.thumbnail_url)} alt={item.title || "Series cover"} /> : <span>{String(item.title || "M").slice(0, 1).toUpperCase()}</span>}</div>
               <div><strong>{item.title}</strong><small>{item.genre || item.mangakaName || "No genre"}</small></div>
               <StatusBadge value={item.status} />
             </button>

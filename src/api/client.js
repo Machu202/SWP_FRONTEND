@@ -104,21 +104,69 @@ export function normalizeTaskStatus(status = "") {
   return value || "TODO";
 }
 
+const MEDIA_URL_KEYS = [
+  "url",
+  "fileUrl",
+  "file_url",
+  "imageUrl",
+  "image_url",
+  "resourceUrl",
+  "resource_url",
+  "secureUrl",
+  "secure_url",
+  "downloadUrl",
+  "download_url",
+  "coverImageUrl",
+  "cover_image_url",
+  "coverUrl",
+  "cover_url",
+  "thumbnailUrl",
+  "thumbnail_url",
+  "submittedImageUrl",
+  "submitted_image_url",
+  "submissionUrl",
+  "submission_url",
+  "referenceImageUrl",
+  "reference_image_url",
+  "pageImageUrl",
+  "page_image_url",
+  "path"
+];
+
+const MEDIA_NESTED_KEYS = ["data", "resource", "file", "image", "cover", "thumbnail", "page", "latestVersion"];
+
 export function extractMediaUrl(payload) {
   if (!payload) return "";
-  if (typeof payload === "string") return payload;
-  return payload.url ||
-    payload.fileUrl ||
-    payload.imageUrl ||
-    payload.resourceUrl ||
-    payload.secureUrl ||
-    payload.downloadUrl ||
-    payload.path ||
-    payload.data?.url ||
-    payload.data?.fileUrl ||
-    payload.data?.imageUrl ||
-    payload.data?.resourceUrl ||
-    "";
+  if (typeof payload === "string") return payload.trim();
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const nested = extractMediaUrl(item);
+      if (nested) return nested;
+    }
+    return "";
+  }
+  if (typeof payload !== "object") return "";
+
+  for (const key of MEDIA_URL_KEYS) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  for (const key of MEDIA_NESTED_KEYS) {
+    const nested = extractMediaUrl(payload[key]);
+    if (nested) return nested;
+  }
+
+  return "";
+}
+
+export function mediaUrlFrom(...values) {
+  for (const value of values) {
+    const extracted = extractMediaUrl(value);
+    const resolved = resolveMediaUrl(extracted);
+    if (resolved) return resolved;
+  }
+  return "";
 }
 
 export function resolveMediaUrl(rawUrl) {

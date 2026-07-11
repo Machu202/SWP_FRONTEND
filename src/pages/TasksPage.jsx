@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, extractMediaUrl, hasRole, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 import { navigate, useHashRoute } from "../utils/router";
@@ -52,7 +52,7 @@ function taskPageId(task) {
 }
 
 function taskReferenceUrl(task) {
-  return task?.referenceImageUrl || task?.pageImageUrl || task?.imageUrl || task?.page?.imageUrl || "";
+  return mediaUrlFrom(task, task?.referenceImageUrl, task?.reference_image_url, task?.pageImageUrl, task?.page_image_url, task?.imageUrl, task?.image_url, task?.page?.imageUrl, task?.page?.image_url, task?.hitbox?.page);
 }
 
 function directTaskHitbox(task) {
@@ -470,7 +470,7 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
 
           <div className="reference-panel assignment-reference-panel">
             <HitboxPreview title="Reference image" url={referenceUrl} box={selectedHitbox} loading={hitboxLoading} />
-            <Preview title="Submitted image" url={selected.submittedImageUrl} />
+            <Preview title="Submitted image" url={mediaUrlFrom(selected, selected.submittedImageUrl, selected.submitted_image_url)} />
           </div>
         </div>
       ) : (
@@ -571,7 +571,7 @@ function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile,
 }
 
 function TaskThumbnail({ task }) {
-  const url = resolveMediaUrl(task.submittedImageUrl || task.referenceImageUrl || task.pageImageUrl);
+  const url = mediaUrlFrom(task, task.submittedImageUrl, task.submitted_image_url, task.referenceImageUrl, task.reference_image_url, task.pageImageUrl, task.page_image_url, task.imageUrl, task.image_url);
   if (url) return <img className="ast-task-thumb" src={url} alt="Task preview" />;
   return <div className="ast-task-thumb assignment-task-thumb-placeholder">▧</div>;
 }
