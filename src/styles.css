@@ -9608,3 +9608,20 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-weight: 800;
   text-transform: uppercase;
 }
+
+/* Issue 16: make the chapter -> Tantou handoff visible beside an approved task. */
+.inline-chapter-handoff {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.inline-chapter-handoff .btn-primary {
+  width: 100%;
+  justify-content: center;
+}
+.inline-chapter-handoff.handoff-assign-controls {
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #eff6ff;
+  padding: 11px;
+}

@@ -439,16 +439,17 @@ async function main() {
       await page.getByRole("button", { name: /Assistant Submissions/ }).click();
       const row = page.locator(`[data-testid="assistant-review-task-${state.taskId}"]`);
       await row.waitFor({ state: "visible", timeout: config.timeout });
-      const taskApprovePromise = page.waitForResponse((response) => response.request().method() === "PATCH" && new URL(response.url()).pathname.endsWith(`/tasks/${state.taskId}/status`) && response.url().includes("newStatus=APPROVED"), { timeout: config.timeout });
+      const taskApprovePromise = page.waitForResponse((response) => response.request().method() === "PATCH" && new URL(response.url()).pathname.endsWith(`/tasks/${state.taskId}/review`) && response.url().includes("approved=true"), { timeout: config.timeout });
       await row.locator('[data-testid="approve-assistant-work"]').click();
       const taskApproveResponse = await taskApprovePromise;
       assert.equal(taskApproveResponse.status(), 200, `Mangaka task approval returned ${taskApproveResponse.status()}`);
       await page.locator(`[data-testid="assistant-work-approved-${state.taskId}"]`).waitFor({ state: "visible", timeout: config.timeout });
 
-      await page.locator(`[data-testid="chapter-tantou-select-${state.seriesId}"]`).selectOption(String(accounts.tantou.id));
+      await page.locator(`[data-testid="inline-chapter-handoff-${state.chapterId}"]`).waitFor({ state: "visible", timeout: config.timeout });
+      await page.locator(`[data-testid="inline-chapter-tantou-select-${state.seriesId}"]`).selectOption(String(accounts.tantou.id));
       const assignPromise = page.waitForResponse((response) => response.request().method() === "PATCH" && new URL(response.url()).pathname.endsWith(`/manga-series/${state.seriesId}/tantou`) && response.url().includes(`tantouId=${accounts.tantou.id}`), { timeout: config.timeout });
       const chapterReviewPromise = page.waitForResponse((response) => response.request().method() === "PATCH" && new URL(response.url()).pathname.endsWith(`/chapters/${state.chapterId}/status`) && response.url().includes("newStatus=REVIEWING"), { timeout: config.timeout });
-      await page.locator(`[data-testid="assign-and-send-chapter-${state.chapterId}"]`).click();
+      await page.locator(`[data-testid="inline-assign-and-send-chapter-${state.chapterId}"]`).click();
       const assignResponse = await assignPromise;
       assert.equal(assignResponse.status(), 200, `Tantou assignment returned ${assignResponse.status()}`);
       const chapterReviewResponse = await chapterReviewPromise;

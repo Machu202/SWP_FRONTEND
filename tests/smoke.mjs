@@ -9,6 +9,7 @@ const cssFile = fs.readdirSync(assetDir).find((name) => name.endsWith(".css"));
 if (!jsFile || !cssFile) throw new Error("Build assets are missing. Run npm run build first.");
 const bundleJs = fs.readFileSync(path.join(assetDir, jsFile), "utf8");
 const bundleCss = fs.readFileSync(path.join(assetDir, cssFile), "utf8");
+fs.mkdirSync(path.resolve("test-results"), { recursive: true });
 
 const svg = (label, fill = "e2e8f0") => `data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200"><rect width="100%" height="100%" fill="#${fill}"/><text x="400" y="600" text-anchor="middle" font-size="64" fill="#111827">${label}</text></svg>`).toString("base64")}`;
 const imageCurrent = svg("CURRENT", "dbeafe");
@@ -437,8 +438,10 @@ async function run() {
       await waitText(page, "Send approved chapters to Tantou");
       assert.equal(await page.locator('[data-testid="assistant-work-approved-502"]').count(), 1);
       assert.equal(await page.locator('[data-testid="approve-assistant-work"]').count(), 0, "Approved tasks must not keep an approval button");
-      await page.locator('[data-testid="chapter-tantou-select-1"]').selectOption("4");
-      await page.locator('[data-testid="assign-and-send-chapter-10"]').click();
+      assert.equal(await page.locator('[data-testid="inline-chapter-handoff-10"]').count(), 1, "Approved task card must show its chapter handoff action");
+      await page.screenshot({ path: path.resolve("test-results/issue16-approved-task-handoff.png"), fullPage: true });
+      await page.locator('[data-testid="inline-chapter-tantou-select-1"]').selectOption("4");
+      await page.locator('[data-testid="inline-assign-and-send-chapter-10"]').click();
       await waitText(page, "sent to Taro Editor for review");
       assert.deepEqual((await capture(page)).tantouAssignments, ["4"]);
       assert.equal(await page.locator('[data-testid="chapter-sent-10"]').count(), 1);

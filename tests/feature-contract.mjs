@@ -51,7 +51,7 @@ const contracts = {
   "FE-44": [files.canvas, /VersionComparison/, /type="range"/, /restoreVersion/],
   "FE-46": [files.resources, /resource-grid/, /download=/, /canManage/],
   "FE-48": [files.canvas, /ChapterWorkspaceSidebar/, /chapter-workspace-sidebar/],
-  "FLOW-MANGAKA-TANTOU": [files.mangakaReview, /Chapter handoff/, /Send approved chapters to Tantou/, /assignTantou/, /send-chapter-to-tantou/, /assistant-work-approved/],
+  "FLOW-MANGAKA-TANTOU": [files.mangakaReview, /Chapter handoff/, /Send approved chapters to Tantou/, /assignTantou/, /send-chapter-to-tantou/, /inline-send-chapter-to-tantou/, /inline-assign-and-send-chapter/, /assistant-work-approved/],
   "FLOW-TANTOU-BOARD": [files.tantouReview, /Editorial Board handoff/, /Send series to Editorial Board/, /Send back to Mangaka/, /send-series-to-board-/, files.apiClient, /submitToBoard/]
 };
 

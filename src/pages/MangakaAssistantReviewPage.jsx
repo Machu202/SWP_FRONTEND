@@ -552,8 +552,10 @@ async function loadAssistantSubmissions(ownedSeries) {
       ...chapter,
       seriesId: firstValue(chapter.seriesId, chapter.series_id, item.id),
       seriesTitle: firstValue(chapter.seriesTitle, chapter.series_title, item.title),
-      tantouId: firstValue(chapter.tantouId, chapter.tantou_id),
-      tantouName: firstValue(chapter.tantouName, chapter.tantou_name, item.tantouName, item.tantou_name)
+      // Chapter DTOs from older backend builds did not always repeat the series Tantou.
+      // Inherit it from the owning series so the handoff action is still available.
+      tantouId: firstValue(chapter.tantouId, chapter.tantou_id, chapter.tantou?.id, item.tantouId, item.tantou_id, item.tantou?.id),
+      tantouName: firstValue(chapter.tantouName, chapter.tantou_name, displayName(chapter.tantou), item.tantouName, item.tantou_name, displayName(item.tantou))
     }));
     const chaptersById = new Map(normalizedChapters.map((chapter) => [String(chapter.id), chapter]));
     const normalizedTasks = await Promise.all(normalizeList(list).map(async (task) => {
@@ -619,6 +621,12 @@ async function loadTantouFeedbackQueue(ownedSeries) {
 }
 
 function AssistantSubmissionSection({ tasks, chapterHandoffs, sendingChapterId, tantouUsers, selectedTantouBySeries, onSelectTantou, onSendChapter, onApprove, onRevision }) {
+  const handoffByChapterId = useMemo(() => {
+    const map = new Map();
+    chapterHandoffs.forEach((chapter) => map.set(String(chapter.id), chapter));
+    return map;
+  }, [chapterHandoffs]);
+
   return (
     <div className="stack assistant-submission-workflow">
       <ChapterHandoffSection
@@ -635,6 +643,12 @@ function AssistantSubmissionSection({ tasks, chapterHandoffs, sendingChapterId, 
             <AssistantSubmissionRow
               key={task.id}
               task={task}
+              chapterHandoff={handoffByChapterId.get(String(taskChapterId(task)))}
+              sendingChapterId={sendingChapterId}
+              tantouUsers={tantouUsers}
+              selectedTantouBySeries={selectedTantouBySeries}
+              onSelectTantou={onSelectTantou}
+              onSendChapter={onSendChapter}
               onApprove={() => onApprove(task)}
               onRevision={() => onRevision(task)}
             />
@@ -759,7 +773,17 @@ function TantouFeedbackSection({ feedbackItems, commentMap, feedbackStatus, setF
   );
 }
 
-function AssistantSubmissionRow({ task, onApprove, onRevision }) {
+function AssistantSubmissionRow({
+  task,
+  chapterHandoff,
+  sendingChapterId,
+  tantouUsers,
+  selectedTantouBySeries,
+  onSelectTantou,
+  onSendChapter,
+  onApprove,
+  onRevision
+}) {
   const submitted = resolveMediaUrl(submittedUrl(task));
   const reference = resolveMediaUrl(referenceUrl(task));
   const status = normalizeTaskStatus(task.status);
@@ -791,8 +815,20 @@ function AssistantSubmissionRow({ task, onApprove, onRevision }) {
           <>
             <div className="approved-work-state" data-testid={`assistant-work-approved-${task.id}`}>
               <strong>✓ Assistant work approved</strong>
-              <p>This task is complete. Use the chapter handoff section above to send the whole chapter to Tantou.</p>
+              <p>
+                {chapterHandoff?.allApproved
+                  ? "All Assistant work for this chapter is approved. Send the whole chapter to the assigned Tantou Editor below."
+                  : "This task is complete. The chapter can be sent after every Assistant task in it is approved."}
+              </p>
             </div>
+            <ApprovedTaskChapterHandoff
+              chapter={chapterHandoff}
+              sendingChapterId={sendingChapterId}
+              tantouUsers={tantouUsers}
+              selectedTantouBySeries={selectedTantouBySeries}
+              onSelectTantou={onSelectTantou}
+              onSendChapter={onSendChapter}
+            />
             <div className="button-row vertical-buttons">
               {task.seriesId && <button className="btn" onClick={() => navigate(`/series/${task.seriesId}`)}>Open series</button>}
             </div>
@@ -815,6 +851,70 @@ function AssistantSubmissionRow({ task, onApprove, onRevision }) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function ApprovedTaskChapterHandoff({ chapter, sendingChapterId, tantouUsers, selectedTantouBySeries, onSelectTantou, onSendChapter }) {
+  if (!chapter) {
+    return (
+      <div className="inline-chapter-handoff handoff-state warning">
+        Chapter handoff data is not available yet. Refresh this Review page, then try again.
+      </div>
+    );
+  }
+
+  const sent = ["REVIEWING", "READY_FOR_TANTOU", "TANTOU_REVIEW"].includes(chapter.status);
+  const completed = ["APPROVED", "PUBLISHED"].includes(chapter.status);
+  const busy = String(sendingChapterId) === String(chapter.id);
+
+  if (chapter.eligibleToSend && !chapter.tantouId) {
+    return (
+      <div className="inline-chapter-handoff handoff-assign-controls" data-testid={`inline-chapter-handoff-${chapter.id}`}>
+        <label htmlFor={`inline-tantou-select-${chapter.seriesId}-${chapter.id}`}>Send chapter to Tantou Editor</label>
+        <select
+          id={`inline-tantou-select-${chapter.seriesId}-${chapter.id}`}
+          data-testid={`inline-chapter-tantou-select-${chapter.seriesId}`}
+          value={selectedTantouBySeries[String(chapter.seriesId)] || ""}
+          onChange={(event) => onSelectTantou(chapter.seriesId, event.target.value)}
+        >
+          <option value="">Choose Tantou Editor</option>
+          {tantouUsers.map((user) => <option key={user.id} value={user.id}>{displayName(user) || user.email || `User #${user.id}`}</option>)}
+        </select>
+        <button
+          className="btn btn-primary"
+          type="button"
+          data-testid={`inline-assign-and-send-chapter-${chapter.id}`}
+          disabled={!selectedTantouBySeries[String(chapter.seriesId)] || busy}
+          onClick={() => onSendChapter(chapter)}
+        >
+          {busy ? "Assigning and sending…" : "Assign Tantou and send chapter"}
+        </button>
+      </div>
+    );
+  }
+
+  if (chapter.canSend) {
+    return (
+      <div className="inline-chapter-handoff" data-testid={`inline-chapter-handoff-${chapter.id}`}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          data-testid={`inline-send-chapter-to-tantou-${chapter.id}`}
+          disabled={busy}
+          onClick={() => onSendChapter(chapter)}
+        >
+          {busy ? "Sending…" : `Send chapter to ${chapter.tantouName || "Tantou Editor"}`}
+        </button>
+      </div>
+    );
+  }
+
+  if (sent) return <div className="inline-chapter-handoff handoff-state success">✓ Chapter sent to Tantou for review</div>;
+  if (completed) return <div className="inline-chapter-handoff handoff-state success">✓ Tantou review completed</div>;
+  return (
+    <div className="inline-chapter-handoff handoff-state muted">
+      {chapter.approvedTasks}/{chapter.tasks.length} Assistant tasks approved. Approve every task before sending this chapter.
     </div>
   );
 }

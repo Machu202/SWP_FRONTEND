@@ -18,6 +18,7 @@ const taskRepository = read("../SWP_BACKEND/src/main/java/com/mangastudio/backen
 const authController = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/controller/AuthController.java");
 const authFilter = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/security/AuthTokenFilter.java");
 const userEntity = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/entity/User.java");
+const mangakaReview = read("src/pages/MangakaAssistantReviewPage.jsx");
 
 // 1. One real Mangaka chapter/page and canvas workflow.
 assert.match(app, /\/chapters-pages\?seriesId=/);
@@ -79,4 +80,11 @@ assert.match(login, /showRegisterPassword/);
 assert.match(login, /setShowRegisterPassword/);
 assert.match(login, /autoComplete="new-password"/);
 
-console.log(JSON.stringify({ reportedIssues: 15, result: "PASS" }, null, 2));
+// 16. Approved Assistant work exposes the chapter -> Tantou action directly on the task card.
+assert.match(mangakaReview, /ApprovedTaskChapterHandoff/);
+assert.match(mangakaReview, /inline-send-chapter-to-tantou-/);
+assert.match(mangakaReview, /inline-assign-and-send-chapter-/);
+assert.match(mangakaReview, /Send chapter to \$\{chapter\.tantouName/);
+assert.match(mangakaReview, /item\.tantouId/);
+
+console.log(JSON.stringify({ reportedIssues: 16, result: "PASS" }, null, 2));
