@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, resolveMediaUrl, setWorkspaceSelection } from "../api/client";
+import { api, seriesDisplayNumber, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, resolveMediaUrl, setWorkspaceSelection } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -267,7 +267,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
         <div className="detail-hero chapter-series-hero">
           <div className="detail-cover">{cover ? <img src={cover} alt={series.title} /> : <span>{String(series.title || "M").slice(0, 1)}</span>}</div>
           <div>
-            <p className="eyebrow">Series #{series.id}</p>
+            <p className="eyebrow">Series #{seriesDisplayNumber(series)}</p>
             <h2>{series.title}</h2>
             <p>{series.summary || series.description || "No summary provided."}</p>
             <div className="meta-row">

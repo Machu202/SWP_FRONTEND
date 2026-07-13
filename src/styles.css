@@ -9988,3 +9988,32 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   letter-spacing: 0;
   white-space: nowrap;
 }
+
+
+/* SWP Issues 29-31: clean role branding, wider Tantou navigation, no top search. */
+.brand-card.brand-title-only {
+  display: block;
+  padding: 4px 0;
+}
+.brand-card.brand-title-only .ws-name {
+  font-size: 15px;
+  line-height: 1.35;
+  white-space: normal;
+}
+.feature-screen.tantou-screen .sidebar {
+  width: 280px;
+}
+.feature-screen.tantou-screen .nav-item span {
+  overflow: visible;
+  text-overflow: clip;
+}
+.topbar-right .search-box {
+  display: none !important;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  .feature-screen.tantou-screen .sidebar { width: 260px; }
+}
+@media (max-width: 760px) {
+  .feature-screen.tantou-screen .sidebar { width: 100%; }
+}

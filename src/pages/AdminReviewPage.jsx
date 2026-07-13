@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api/client";
+import { api, seriesDisplayNumber } from "../api/client";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
@@ -132,7 +132,7 @@ function AdminDecisionRow({ item, summary, tantous, selectedTantou, onTantouChan
       <button className="review-main review-clickable" onClick={() => navigate(`/series/${item.id}`)}>
         <div className="row-between">
           <div>
-            <p className="eyebrow">Series #{item.id}</p>
+            <p className="eyebrow">Series #{seriesDisplayNumber(item)}</p>
             <h3>{item.title}</h3>
           </div>
           <StatusBadge value={item.status} />

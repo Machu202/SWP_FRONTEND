@@ -131,28 +131,14 @@ export function Layout({ children, route }) {
   return (
     <div className={`app-shell ${group}-screen feature-screen`}>
       <aside className={`sidebar ${group}-sidebar`}>
-        {group === "assistant" ? (
-          <div className="assistant-profile-box">
-            <div className="topbar-avatar">{initials}</div>
-            <div className="assistant-profile-info">
-              <h3>{brand.title}</h3>
-              <p>{brand.subtitle}</p>
-            </div>
-          </div>
-        ) : (
-          <div className={`${group}-brand-block workspace-title`}>
-            <button className="brand-card" onClick={() => navigate("/dashboard")}>
-              <div className="ws-logo">{brand.avatar}</div>
-              <div>
-                <div className="ws-name">{brand.title}</div>
-                <div className="ws-role">{brand.subtitle}</div>
-              </div>
-            </button>
-            <button className="btn-sidebar-action sidebar-cta" onClick={() => navigate(brand.ctaPath)}>
-              <span>＋</span> {brand.cta}
-            </button>
-          </div>
-        )}
+        <div className={`${group}-brand-block workspace-title`}>
+          <button className="brand-card brand-title-only" onClick={() => navigate("/dashboard")}>
+            <div className="ws-name">{brand.title}</div>
+          </button>
+          <button className="btn-sidebar-action sidebar-cta" onClick={() => navigate(brand.ctaPath)}>
+            <span>＋</span> {brand.cta}
+          </button>
+        </div>
 
         <nav className={`nav-group ${group}-nav`}>
           {nav.map((item, index) => {
@@ -190,10 +176,6 @@ export function Layout({ children, route }) {
             ))}
           </div>
           <div className="topbar-right">
-            <div className={`search-box ${group}-search`}>
-              <span>⌕</span>
-              <input type="text" placeholder="Search..." aria-label="Search" />
-            </div>
             <NotificationBell />
             <button className="topbar-avatar plain-user-avatar" onClick={() => navigate("/profile")} title={profile?.email || session.email || roleLabel(role)}>{initials}</button>
           </div>

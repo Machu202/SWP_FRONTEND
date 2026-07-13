@@ -52,7 +52,19 @@ export default function SeriesPage() {
     setLoading(true);
     setError("");
     try {
-      const data = canCreate ? await api.series.mine() : await api.series.list({ status });
+      const isTantou = hasRole(role, ["tantou"]);
+      let data;
+      if (canCreate) {
+        data = await api.series.mine();
+      } else if (isTantou) {
+        data = await api.series.assigned().catch(async () => {
+          const all = await api.series.list({ size: 100 });
+          const currentUserId = profile?.id || session?.id || session?.userId || session?.user_id;
+          return (all || []).filter((item) => String(item.tantouId ?? item.tantou_id ?? item.tantou?.id ?? "") === String(currentUserId ?? ""));
+        });
+      } else {
+        data = await api.series.list({ status });
+      }
       setSeries(data || []);
     } catch (err) {
       setError(err.message || "Could not load series");
@@ -214,8 +226,10 @@ export default function SeriesPage() {
   }
 
   const displaySeries = useMemo(() => {
-    if (hasRole(role, ["tantou"]) && !status) return series.filter(isVisibleForTantou);
-    return series;
+    let items = [...series];
+    if (hasRole(role, ["tantou"])) items = items.filter(isVisibleForTantou);
+    if (status) items = items.filter((item) => String(item.status || "").toUpperCase() === String(status).toUpperCase());
+    return items;
   }, [series, role, status]);
 
   const grouped = useMemo(() => {

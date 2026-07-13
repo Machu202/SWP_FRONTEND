@@ -154,6 +154,18 @@ function taskChapterLabel(task) {
   return "-";
 }
 
+function taskDisplayNumber(task) {
+  return firstValue(
+    task?.taskNumber,
+    task?.task_number,
+    task?.seriesTaskNumber,
+    task?.series_task_number,
+    task?.displayNumber,
+    task?.display_number,
+    task?.id
+  );
+}
+
 function taskSeriesTitle(task) {
   return firstValue(
     task?.seriesTitle,
@@ -375,7 +387,7 @@ export default function MangakaAssistantReviewPage() {
     const currentStatus = normalizeTaskStatus(task.status);
     const nextStatus = normalizeTaskStatus(status);
     if (currentStatus === nextStatus) {
-      setError(`Task #${task.id} is already ${nextStatus}.`);
+      setError(`Task #${taskDisplayNumber(task)} is already ${nextStatus}.`);
       return;
     }
 
@@ -518,8 +530,8 @@ export default function MangakaAssistantReviewPage() {
             selectedTantouBySeries={selectedTantouBySeries}
             onSelectTantou={(seriesId, tantouId) => setSelectedTantouBySeries((old) => ({ ...old, [String(seriesId)]: tantouId }))}
             onSendChapter={sendChapterToTantou}
-            onApprove={(task) => updateTask(task, "APPROVED", `Task #${task.id} approved. Review the chapter handoff section when all chapter tasks are approved.`)}
-            onRevision={(task) => updateTask(task, "DOING", `Task #${task.id} sent back for revision.`)}
+            onApprove={(task) => updateTask(task, "APPROVED", `Task #${taskDisplayNumber(task)} approved. Review the chapter handoff section when all chapter tasks are approved.`)}
+            onRevision={(task) => updateTask(task, "DOING", `Task #${taskDisplayNumber(task)} sent back for revision.`)}
           />
         )}
       </div>
@@ -808,7 +820,7 @@ function AssistantSubmissionRow({
       <div className="review-main">
         <div className="row-between">
           <div>
-            <p className="eyebrow">Task #{task.id}</p>
+            <p className="eyebrow">Task #{taskDisplayNumber(task)}</p>
             <h3>{task.description || "Assistant submission"}</h3>
           </div>
           <StatusBadge value={task.status} />

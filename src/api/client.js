@@ -29,6 +29,10 @@ export function normalizeRole(role = "") {
     .trim();
 }
 
+export function seriesDisplayNumber(series) {
+  return series?.displayNumber ?? series?.display_number ?? series?.seriesDisplayNumber ?? series?.series_display_number ?? series?.id ?? "";
+}
+
 export function roleLabel(role = "") {
   const normalized = normalizeRole(role);
   if (normalized.includes("admin")) return "Admin";
@@ -377,6 +381,7 @@ export const api = {
 
   series: {
     mine: async () => unwrapList(await apiFetch("/manga-series/my-series")),
+    assigned: async () => unwrapList(await apiFetch("/manga-series/assigned-to-me")),
     list: async (params = {}) => unwrapList(await apiFetch(`/manga-series${objectToQuery({ page: 0, size: 50, ...params })}`)),
     get: (id) => apiFetch(`/manga-series/${id}`),
     create: (payload) => apiFetch("/manga-series", { method: "POST", body: payload }),

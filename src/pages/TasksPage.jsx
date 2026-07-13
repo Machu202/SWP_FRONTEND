@@ -67,6 +67,17 @@ function taskChapterId(task) {
   );
 }
 
+function taskSubmittedUrl(task) {
+  return mediaUrlFrom(
+    task?.submittedImageUrl,
+    task?.submitted_image_url,
+    task?.submissionUrl,
+    task?.submission_url,
+    task?.submittedWorkUrl,
+    task?.submitted_work_url
+  );
+}
+
 function taskReferenceUrl(task) {
   // Never pass the whole task object first: extractMediaUrl would prefer the
   // Assistant's submitted image and accidentally replace the reference page.
@@ -760,7 +771,12 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
                 </button>
               )}
             </div>
-            {!isAssistant && <Preview title="Submitted image" url={mediaUrlFrom(selected.submittedImageUrl, selected.submitted_image_url)} />}
+            {taskSubmittedUrl(selected) ? (
+              <Preview
+                title={isAssistant ? "Your submitted image" : "Submitted image"}
+                url={taskSubmittedUrl(selected)}
+              />
+            ) : null}
           </div>
         </div>
       ) : (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
+import { api, seriesDisplayNumber, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -157,7 +157,7 @@ export default function SeriesDetailPage({ seriesId }) {
         <div className="detail-hero" style={{ padding: 0, border: 0 }}>
           <div className="detail-cover">{cover ? <img src={cover} alt={series.title} /> : <span>{series.title?.slice(0, 1)}</span>}</div>
           <div>
-            <p className="eyebrow">Series #{series.id}</p>
+            <p className="eyebrow">Series #{seriesDisplayNumber(series)}</p>
             <h1>{series.title}</h1>
             <p>{series.description || series.summary || "No description."}</p>
             <div className="meta-row">

@@ -300,7 +300,7 @@ function TantouChapterRow({ chapter, pages, busy, onLoadPages, onApprove, onRevi
           <StatusBadge value={status} />
         </div>
         <div className="meta-row wrap">
-          <span>Series ID: {chapter.seriesId}</span>
+          <span>Series #{chapter.seriesDisplayNumber || chapter.series_display_number || chapter.seriesId}</span>
           <span>Mangaka: {chapter.mangakaName || "-"}</span>
           {chapter.tantouName ? <span>Tantou: {chapter.tantouName}</span> : null}
         </div>

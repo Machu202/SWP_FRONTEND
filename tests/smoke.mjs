@@ -131,7 +131,13 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (path === "/auth/google") return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
 
       if (path === "/manga-series/my-series") return response(f.series);
-      if (path === "/manga-series" && method === "GET") return response(profile.roleName === "Tantou Editor" ? f.series.map((item) => ({ ...item, tantouId: 4, tantouName: "Taro Editor" })) : f.series);
+      if (path === "/manga-series/assigned-to-me") return response(f.series.map((item) => ({ ...item, displayNumber: 1, tantouId: 4, tantouName: "Taro Editor" })));
+      if (path === "/manga-series" && method === "GET") return response(profile.roleName === "Tantou Editor"
+        ? [
+            ...f.series.map((item) => ({ ...item, displayNumber: 1, tantouId: 4, tantouName: "Taro Editor" })),
+            { ...f.series[0], id: 99, displayNumber: 2, title: "Not assigned to this Tantou", tantouId: 88, tantouName: "Another Editor" }
+          ]
+        : f.series.map((item, index) => ({ ...item, displayNumber: index + 1 })));
       if (path === "/manga-series" && method === "POST") return response({ ...f.series[0], id: 2, status: "DRAFT" });
       if (path === "/manga-series/1" && method === "GET") {
         return response(profile.roleName === "Tantou Editor" ? { ...f.series[0], status: "DRAFT", tantouId: 4, tantouName: "Taro Editor" } : f.series[0]);
@@ -461,6 +467,8 @@ async function run() {
       await page.getByRole("button", { name: /Assistant Submissions/ }).click();
       await waitText(page, "Send approved chapters to Tantou");
       assert.equal(await page.locator('[data-testid="assistant-work-approved-502"]').count(), 1);
+      assert.equal(await page.getByText("Task #1", { exact: true }).count(), 1, "Mangaka Review must show the per-series task number rather than task ID 502");
+      assert.equal(await page.getByText("Task #502", { exact: true }).count(), 0);
       assert.equal(await page.locator('[data-testid="approve-assistant-work"]').count(), 0, "Approved tasks must not keep an approval button");
       assert.equal(await page.locator('[data-testid="inline-chapter-handoff-10"]').count(), 1, "Approved task card must show its chapter handoff action");
       const reviewRow = page.locator('[data-testid="assistant-review-task-502"]');
@@ -506,6 +514,10 @@ async function run() {
       }));
       assert.equal(taskAreaStyle.borderRadius, "4px");
       assert.equal(taskAreaStyle.fontSize, "8px");
+      assert.equal(await page.getByText("Your submitted image", { exact: true }).count(), 1, "Assistant must see their submitted result in Task Detail");
+      const detailImages = await page.locator(".assignment-reference-panel img").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("src")));
+      assert.ok(detailImages.includes(fixtures.imageCurrent), "Reference image must remain the original page");
+      assert.ok(detailImages.includes(fixtures.imageOld), "Submitted image must remain separate from the reference");
       await page.getByRole("button", { name: "Download reference image" }).click();
       await waitText(page, "started and moved to Doing");
       assert.equal((await capture(page)).taskStarts, 1);
@@ -524,6 +536,22 @@ async function run() {
       assert.equal(await page.getByLabel("Phone number").count(), 1);
       assert.deepEqual(pageErrors, []);
       passed.push("FE-06 profile editing and FE-46 assistant resource download gallery");
+      await context.close();
+    }
+
+    {
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/series" });
+      await waitText(page, "Assigned Series");
+      assert.equal(await page.getByText("Ink Horizon", { exact: true }).count(), 1);
+      assert.equal(await page.getByText("Not assigned to this Tantou", { exact: true }).count(), 0, "Tantou must not see other editors' series");
+      assert.equal(await page.locator(".sidebar .ws-logo").count(), 0);
+      assert.equal(await page.locator(".sidebar .ws-role").count(), 0);
+      assert.equal(await page.locator(".sidebar").getByText("Tantou Editor Workspace", { exact: true }).count(), 1);
+      assert.equal(await page.locator('.topbar input[placeholder="Search..."]').count(), 0);
+      const sidebarWidth = await page.locator(".sidebar").evaluate((element) => Math.round(element.getBoundingClientRect().width));
+      assert.ok(sidebarWidth >= 260, `Expected Tantou sidebar >= 260px, received ${sidebarWidth}px`);
+      assert.deepEqual(pageErrors, []);
+      passed.push("Tantou Assigned Series is scoped, branding is clean, sidebar is wide, and top search is removed");
       await context.close();
     }
 

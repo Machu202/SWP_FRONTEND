@@ -73,10 +73,10 @@ assert.match(auth, /Duplicated tabs must sign in separately/);
 // 8. Assistant dashboard assignment links always open the Assignments tab.
 assert.match(dashboard, /navigate\("\/tasks\?tab=assignments"\)/);
 
-// 11–13. Immutable reference image, download/start action, hidden submitted image, preview of chosen file.
+// 11–13 and Issue 28. Immutable reference image, download/start action, safe submitted-image preview, chosen-file preview.
 assert.match(tasks, /api\.tasks\.start/);
 assert.match(tasks, /Download reference image/);
-assert.match(tasks, /!isAssistant && <Preview title="Submitted image"/);
+assert.match(tasks, /title=\{isAssistant \? "Your submitted image" : "Submitted image"\}/);
 assert.match(tasks, /assistant-finished-preview/);
 assert.match(tasks, /Never pass the whole task object first/);
 assert.doesNotMatch(tasks.slice(tasks.indexOf("function taskReferenceUrl"), tasks.indexOf("function firstValue")), /submittedImageUrl/);
@@ -162,4 +162,39 @@ assert.match(css, /chapter-workspace-sidebar \.chapter-sidebar-list button[\s\S]
 assert.match(css, /chapter-workspace-sidebar \.chapter-sidebar-button\.active/);
 assert.match(css, /chapter-workspace-sidebar \.chapter-sidebar-pages button\.active/);
 
-console.log(JSON.stringify({ reportedIssues: 27, result: "PASS" }, null, 2));
+// Issues 27-32 (including the duplicated Issue 30 entry).
+// Review uses the per-series task number, not the database primary key.
+assert.match(mangakaReview, /function taskDisplayNumber/);
+assert.match(mangakaReview, /Task #\{taskDisplayNumber\(task\)\}/);
+assert.doesNotMatch(mangakaReview, /<p className="eyebrow">Task #\{task\.id\}<\/p>/);
+
+// Assistant can see a submitted result without replacing the immutable reference image.
+assert.match(tasks, /function taskSubmittedUrl/);
+assert.match(tasks, /Your submitted image/);
+assert.doesNotMatch(tasks.slice(tasks.indexOf("function taskReferenceUrl"), tasks.indexOf("function firstValue")), /submittedImageUrl/);
+
+// Sidebar branding has only the role workspace title; no logo initials/subtitle.
+assert.match(layout, /brand-card brand-title-only/);
+assert.doesNotMatch(layout, /<div className="ws-logo">/);
+assert.doesNotMatch(layout, /<div className="ws-role">/);
+
+// Tantou navigation is wide enough and Assigned Series uses a role-scoped endpoint.
+assert.match(css, /feature-screen\.tantou-screen \.sidebar[\s\S]*width: 280px/);
+assert.match(client, /assigned: async \(\) => unwrapList\(await apiFetch\("\/manga-series\/assigned-to-me"\)\)/);
+const seriesPage = read("src/pages/SeriesPage.jsx");
+assert.match(seriesPage, /api\.series\.assigned\(\)/);
+
+// The top-bar search beside notifications is gone.
+assert.doesNotMatch(layout, /placeholder="Search\.\.\."/);
+
+// User-facing series numbers are dense and separate from real database IDs.
+const seriesDto = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/dto/response/MangaSeriesResponse.java");
+const seriesRepo = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/repository/MangaSeriesRepository.java");
+const seriesService = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/service/impl/MangaSeriesServiceImpl.java");
+const seriesController = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/controller/MangaSeriesController.java");
+assert.match(seriesDto, /displayNumber/);
+assert.match(seriesRepo, /countByIdLessThanEqual/);
+assert.match(seriesService, /displayNumber\(series\.getId\(\) != null \? mangaSeriesRepository\.countByIdLessThanEqual/);
+assert.match(seriesController, /assigned-to-me/);
+
+console.log(JSON.stringify({ reportedIssues: 34, result: "PASS" }, null, 2));
