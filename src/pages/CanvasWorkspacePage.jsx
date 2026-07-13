@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, extractMediaUrl, hasRole, mediaUrlFrom, resolveMediaUrl, unwrapList } from "../api/client";
+import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, resolveMediaUrl, setWorkspaceSelection, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -19,6 +19,10 @@ function pageNumber(page) {
 
 function pageImage(page) {
   return mediaUrlFrom(page, page?.imageUrl, page?.image_url);
+}
+
+function seriesTantouId(series) {
+  return series?.tantouId ?? series?.tantou_id ?? series?.tantou?.id ?? null;
 }
 
 function formatDateTime(value) {
@@ -97,16 +101,19 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const { profile, session } = useAuth();
   const role = profile?.roleName || session.role;
   const canEdit = hasRole(role, ["mangaka"]);
+  const isTantou = hasRole(role, ["tantou"]);
+  const canDraw = canEdit || isTantou;
   const imageRef = useRef(null);
   const wrapRef = useRef(null);
+  const rememberedSelection = getWorkspaceSelection();
 
   const [seriesList, setSeriesList] = useState([]);
   const [chapters, setChapters] = useState([]);
   const [pages, setPages] = useState([]);
   const [assistants, setAssistants] = useState([]);
-  const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || ""));
-  const [selectedChapterId, setSelectedChapterId] = useState(String(initialChapterId || ""));
-  const [selectedPageId, setSelectedPageId] = useState(String(initialPageId || ""));
+  const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || rememberedSelection.seriesId || ""));
+  const [selectedChapterId, setSelectedChapterId] = useState(String(initialChapterId || rememberedSelection.chapterId || ""));
+  const [selectedPageId, setSelectedPageId] = useState(String(initialPageId || rememberedSelection.pageId || ""));
   const [canvas, setCanvas] = useState(null);
   const [hitboxes, setHitboxes] = useState([]);
   const [versions, setVersions] = useState([]);
@@ -128,6 +135,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [contextComments, setContextComments] = useState([]);
   const [contextComment, setContextComment] = useState("");
   const [contextLoading, setContextLoading] = useState(false);
+  const [feedbackContent, setFeedbackContent] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -145,13 +154,19 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setError("");
     try {
       const [seriesData, assistantData] = await Promise.all([
-        canEdit ? api.series.mine() : api.series.list(),
+        canEdit ? api.series.mine() : api.series.list({ size: 100 }),
         api.users.byRole("Assistant").catch(() => [])
       ]);
-      const list = seriesData || [];
+      const rawList = unwrapList(seriesData);
+      const currentUserId = profile?.id || session.id;
+      const list = isTantou
+        ? rawList.filter((item) => String(seriesTantouId(item) || "") === String(currentUserId || ""))
+        : rawList;
       setSeriesList(list);
       setAssistants(Array.isArray(assistantData) ? assistantData : assistantData?.content || assistantData?.data || []);
-      setSelectedSeriesId(String(selectedSeriesId || initialSeriesId || list[0]?.id || ""));
+      const preferred = String(initialSeriesId || selectedSeriesId || getWorkspaceSelection().seriesId || "");
+      const preferredExists = list.some((item) => String(item.id) === preferred);
+      setSelectedSeriesId(String(preferredExists ? preferred : list[0]?.id || ""));
     } catch (err) {
       setError(err.message || "Could not load workspace data.");
     } finally {
@@ -226,9 +241,9 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setError("");
     setMessage("");
     try {
-      const [canvasData, hitboxData, versionData] = await Promise.all([
+      const [canvasData, overlayData, versionData] = await Promise.all([
         api.workspace.canvasInit(pageId).catch(() => null),
-        api.workspace.hitboxes(pageId).catch(() => []),
+        isTantou ? api.feedback.byPage(pageId).catch(() => []) : api.workspace.hitboxes(pageId).catch(() => []),
         api.pageVersions.byPage(pageId).catch(() => [])
       ]);
       const pageForCanvas = pages.find((page) => String(page.id) === String(pageId)) || selectedPage;
@@ -241,12 +256,15 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         originalWidth: canvasData?.originalWidth || canvasData?.original_width || fallbackWidth,
         originalHeight: canvasData?.originalHeight || canvasData?.original_height || fallbackHeight
       });
-      setHitboxes(mergeHitboxLists(hitboxData, canvasData?.hitboxes));
+      setHitboxes(isTantou
+        ? mergeHitboxLists(overlayData)
+        : mergeHitboxLists(overlayData, canvasData?.hitboxes));
       setVersions(Array.isArray(versionData) ? versionData : versionData?.content || versionData?.data || []);
       setCompareVersionId("");
       setComparePosition(50);
       setSelectedBox(null);
       setDraftBox(null);
+      setFeedbackContent("");
       setDragStart(null);
       setImageSize({ width: 0, height: 0 });
       setIsImageReady(false);
@@ -257,16 +275,21 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   useEffect(() => {
     loadSeriesList();
+    // Re-run after the authenticated profile is loaded. Tantou series filtering
+    // depends on the real backend user id, which may not be available on the
+    // first render when only the tab session has been restored.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canEdit]);
+  }, [canEdit, isTantou, profile?.id, session.id]);
 
   useEffect(() => {
     loadChapters(selectedSeriesId);
+    setWorkspaceSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadPages(selectedChapterId);
+    setWorkspaceSelection({ chapterId: selectedChapterId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 
@@ -302,6 +325,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   useEffect(() => {
     loadCanvas(selectedPageId);
+    setWorkspaceSelection({ pageId: selectedPageId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPageId]);
 
@@ -386,7 +410,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   }
 
   function handlePointerDown(event) {
-    if (!canEdit || event.target.closest?.("[data-box=\"true\"]")) return;
+    if (!canDraw || event.target.closest?.("[data-box=\"true\"]")) return;
     const coords = getImageCoords(event);
     if (!coords) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -419,14 +443,25 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     }
     setError("");
     setMessage("");
+    const fallbackBox = {
+      id: `${isTantou ? "local-feedback" : "local"}-${Date.now()}`,
+      xCoord: Number(draftBox.xCoord.toFixed(2)),
+      yCoord: Number(draftBox.yCoord.toFixed(2)),
+      width: Number(draftBox.width.toFixed(2)),
+      height: Number(draftBox.height.toFixed(2)),
+      content: "",
+      isResolved: false
+    };
+
+    if (isTantou) {
+      setSelectedBox(fallbackBox);
+      setDraftBox(fallbackBox);
+      setFeedbackContent("");
+      setMessage("Feedback area drawn. Enter the Tantou note and save it.");
+      return;
+    }
+
     try {
-      const fallbackBox = {
-        id: `local-${Date.now()}`,
-        xCoord: Number(draftBox.xCoord.toFixed(2)),
-        yCoord: Number(draftBox.yCoord.toFixed(2)),
-        width: Number(draftBox.width.toFixed(2)),
-        height: Number(draftBox.height.toFixed(2))
-      };
       const saved = await api.workspace.createHitbox(selectedPageId, {
         x: fallbackBox.xCoord,
         y: fallbackBox.yCoord,
@@ -442,6 +477,41 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     } finally {
       setDraftBox(null);
     }
+  }
+
+  async function saveTantouFeedback(event) {
+    event.preventDefault();
+    if (!isTantou || !selectedPageId || !draftBox || !feedbackContent.trim()) return;
+    setFeedbackBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const saved = await api.feedback.create(selectedPageId, {
+        x: Number(draftBox.xCoord.toFixed(2)),
+        y: Number(draftBox.yCoord.toFixed(2)),
+        width: Number(draftBox.width.toFixed(2)),
+        height: Number(draftBox.height.toFixed(2)),
+        content: feedbackContent.trim()
+      });
+      const savedFeedback = normalizeHitbox(saved || { ...draftBox, content: feedbackContent.trim() });
+      setHitboxes((old) => mergeHitboxLists(old, [savedFeedback]));
+      setSelectedBox(savedFeedback);
+      setDraftBox(null);
+      setFeedbackContent("");
+      setMessage("Tantou feedback saved in the independent review workspace.");
+    } catch (err) {
+      setError(err.message || "Could not save Tantou feedback.");
+    } finally {
+      setFeedbackBusy(false);
+    }
+  }
+
+  function cancelTantouFeedback() {
+    if (!isTantou) return;
+    setDraftBox(null);
+    setSelectedBox(null);
+    setFeedbackContent("");
+    setMessage("Unsaved Tantou feedback area removed.");
   }
 
   function handleImageLoad(event) {
@@ -611,10 +681,12 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
       <div className="feature-header static-feature-header">
         <div>
-          <h1>Canvas Workspace</h1>
-          <p>Open a manga page, draw hitboxes, and create tasks for Assistants.</p>
+          <h1>{isTantou ? "Tantou Review Canvas" : "Canvas Workspace"}</h1>
+          <p>{isTantou
+            ? "Draw independent feedback areas for the assigned chapter. These annotations do not create Mangaka task hitboxes."
+            : "Open a manga page, draw hitboxes, and create tasks for Assistants."}</p>
         </div>
-        <button className="btn-outline" onClick={() => navigate("/chapters-pages")}>Manage Chapters</button>
+        <button className="btn-outline" onClick={() => navigate(isTantou ? "/tantou-review" : "/chapters-pages")}>{isTantou ? "Back to Chapter Review" : "Manage Chapters"}</button>
       </div>
 
       <div className="toolbar-row canvas-toolbar-row">
@@ -643,7 +715,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
           onPageChange={setSelectedPageId}
         />
         <div className="card-box">
-          <div className="section-title-row"><h3>Canvas</h3><span className="muted-note">{selectedPageId ? "Drag on image to draw a hitbox" : "Select a page to start"}</span></div>
+          <div className="section-title-row"><h3>{isTantou ? "Feedback Canvas" : "Canvas"}</h3><span className="muted-note">{selectedPageId ? (isTantou ? "Drag on the image to draw an independent feedback area" : "Drag on image to draw a hitbox") : "Select a page to start"}</span></div>
           <div className="hitbox-stage canvas-hitbox-stage">
             {selectedPageId && imageUrl ? (
               <div
@@ -667,8 +739,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 />
                 {isImageReady && (
                   <div className="hitbox-layer-react">
-                    {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} onContextMenu={(event) => openHitboxContext(event, box)} />)}
-                    {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" />}
+                    {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} kind={isTantou ? "feedback" : "hitbox"} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} onContextMenu={canEdit ? (event) => openHitboxContext(event, box) : undefined} />)}
+                    {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" kind={isTantou ? "feedback" : "hitbox"} />}
                   </div>
                 )}
               </div>
@@ -683,18 +755,35 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             {canEdit && <button className="btn btn-small" type="button" onClick={saveChapterScript} disabled={scriptSaving || !selectedChapterId || !chapterScript.trim()}>{scriptSaving ? "Saving..." : "Save script"}</button>}
           </div>
 
-          <h3>Create Task From Hitbox</h3>
-          <div className="feature-form">
-            <div className="form-row">
-              <div className="form-group"><label>X</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "xCoord", "x_coord").toFixed(2) : ""} readOnly /></div>
-              <div className="form-group"><label>Y</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "yCoord", "y_coord").toFixed(2) : ""} readOnly /></div>
-            </div>
-            <div className="form-row">
-              <div className="form-group"><label>W</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "width", "width").toFixed(2) : ""} readOnly /></div>
-              <div className="form-group"><label>H</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "height", "height").toFixed(2) : ""} readOnly /></div>
-            </div>
-            <button className="btn-publish full" data-testid="open-task-modal" type="button" disabled={!selectedBox?.id || !canEdit || String(selectedBox?.id || "").startsWith("local-")} onClick={() => setTaskModalOpen(true)}>Open Task Assignment Modal</button>
-            {canEdit && (
+          <h3>{isTantou ? "Create Tantou Feedback" : "Create Task From Hitbox"}</h3>
+          {isTantou ? (
+            <form className="feature-form tantou-feedback-form" data-testid="tantou-feedback-form" onSubmit={saveTantouFeedback}>
+              <div className="form-row">
+                <div className="form-group"><label>X</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "xCoord", "x_coord").toFixed(2) : ""} readOnly /></div>
+                <div className="form-group"><label>Y</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "yCoord", "y_coord").toFixed(2) : ""} readOnly /></div>
+              </div>
+              <div className="form-row">
+                <div className="form-group"><label>W</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "width", "width").toFixed(2) : ""} readOnly /></div>
+                <div className="form-group"><label>H</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "height", "height").toFixed(2) : ""} readOnly /></div>
+              </div>
+              <label className="form-group">Feedback note<textarea className="form-control" rows="5" value={feedbackContent} onChange={(event) => setFeedbackContent(event.target.value)} placeholder="Describe the revision needed in this area..." disabled={!draftBox || feedbackBusy} /></label>
+              <div className="button-row">
+                <button className="btn btn-primary" data-testid="save-tantou-feedback" disabled={!draftBox || !feedbackContent.trim() || feedbackBusy}>{feedbackBusy ? "Saving..." : "Save feedback area"}</button>
+                <button className="btn" type="button" onClick={cancelTantouFeedback} disabled={!draftBox || feedbackBusy}>Cancel area</button>
+              </div>
+              {!draftBox && <p className="review-helper">Drag on the page to draw a feedback area. Saved Tantou feedback is stored separately from Mangaka hitboxes.</p>}
+            </form>
+          ) : (
+            <div className="feature-form">
+              <div className="form-row">
+                <div className="form-group"><label>X</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "xCoord", "x_coord").toFixed(2) : ""} readOnly /></div>
+                <div className="form-group"><label>Y</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "yCoord", "y_coord").toFixed(2) : ""} readOnly /></div>
+              </div>
+              <div className="form-row">
+                <div className="form-group"><label>W</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "width", "width").toFixed(2) : ""} readOnly /></div>
+                <div className="form-group"><label>H</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "height", "height").toFixed(2) : ""} readOnly /></div>
+              </div>
+              <button className="btn-publish full" data-testid="open-task-modal" type="button" disabled={!selectedBox?.id || !canEdit || String(selectedBox?.id || "").startsWith("local-")} onClick={() => setTaskModalOpen(true)}>Open Task Assignment Modal</button>
               <button
                 className="btn btn-danger full"
                 data-testid="delete-selected-hitbox"
@@ -704,25 +793,25 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               >
                 {deletingHitboxId && String(deletingHitboxId) === String(selectedBox?.id) ? "Deleting hitbox..." : "Delete selected hitbox"}
               </button>
-            )}
-          </div>
+            </div>
+          )}
           <div className="upload-log">
             {selectedSeries && <div><strong>Series:</strong> {selectedSeries.title}</div>}
             {selectedChapter && <div><strong>Chapter:</strong> {chapterTitle(selectedChapter)}</div>}
             {selectedPage && <div><strong>Page:</strong> {pageNumber(selectedPage)}</div>}
-            <div><strong>Hitboxes:</strong> {hitboxes.length}</div>
+            <div><strong>{isTantou ? "Tantou feedback areas" : "Hitboxes"}:</strong> {hitboxes.length}</div>
           </div>
           {hitboxes.length > 0 && (
             <div className="saved-hitbox-list">
-              <div className="mini-section-label">Saved hitboxes on this page</div>
+              <div className="mini-section-label">{isTantou ? "Saved Tantou feedback on this page" : "Saved hitboxes on this page"}</div>
               {hitboxes.map((box, index) => (
                 <div
                   key={hitboxId(box)}
                   className={`saved-hitbox-row ${selectedBox && String(selectedBox.id) === String(box.id) ? "active" : ""}`}
                 >
                   <button type="button" className="saved-hitbox-select" onClick={() => setSelectedBox(box)}>
-                    <span>#{index + 1}</span>
-                    <small>X {boxValue(box, "xCoord", "x_coord").toFixed(0)} · Y {boxValue(box, "yCoord", "y_coord").toFixed(0)}</small>
+                    <span>#{index + 1}{isTantou && box.isResolved ? " · Resolved" : ""}</span>
+                    <small>{isTantou && box.content ? box.content : `X ${boxValue(box, "xCoord", "x_coord").toFixed(0)} · Y ${boxValue(box, "yCoord", "y_coord").toFixed(0)}`}</small>
                   </button>
                   {canEdit && (
                     <button
@@ -813,7 +902,7 @@ function valueToPercent(value, total) {
   return (number / safeTotal) * 100;
 }
 
-function CanvasBox({ box, originalSize, active, draft, label, onClick, onContextMenu }) {
+function CanvasBox({ box, originalSize, active, draft, label, kind = "hitbox", onClick, onContextMenu }) {
   const originalWidth = Math.max(toFiniteNumber(originalSize?.width, 1), 1);
   const originalHeight = Math.max(toFiniteNumber(originalSize?.height, 1), 1);
   const x = boxValue(box, "xCoord", "x_coord", "x");
@@ -831,7 +920,7 @@ function CanvasBox({ box, originalSize, active, draft, label, onClick, onContext
       type="button"
       data-box="true"
       data-testid={draft ? "draft-hitbox" : `saved-hitbox-${box.id || label}`}
-      className={`${draft ? "drawn-hitbox" : "saved-hitbox"} ${active ? "active" : ""}`}
+      className={`${draft ? "drawn-hitbox" : "saved-hitbox"} ${kind === "feedback" ? "tantou-feedback-box" : "mangaka-hitbox-box"} ${active ? "active" : ""}`}
       style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}
       onClick={onClick}
       onContextMenu={onContextMenu}

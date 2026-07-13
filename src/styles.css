@@ -9625,3 +9625,207 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #eff6ff;
   padding: 11px;
 }
+
+/* =========================================================
+   Issues 17-21: KPI tabs, Tantou canvas, page cards, login,
+   and cross-page series selection
+   ========================================================= */
+
+/* Issue 17: KPI chart tabs are real styled controls, not browser defaults. */
+.dashboard-kpi-card .card-header {
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.dashboard-kpi-card .card-header h3 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -.015em;
+}
+
+.dashboard-kpi-card .compact-chart-tabs {
+  margin: 0;
+  padding: 4px;
+  gap: 5px;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.dashboard-kpi-card .compact-chart-tabs .r-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #64748b;
+  padding: 8px 14px;
+  min-height: 36px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.dashboard-kpi-card .compact-chart-tabs .r-tab:hover {
+  color: #3730a3;
+  background: #eef2ff;
+  transform: translateY(-1px);
+}
+
+.dashboard-kpi-card .compact-chart-tabs .r-tab.active {
+  color: #ffffff;
+  border-color: #4338ca;
+  background: linear-gradient(135deg, #6366f1, #4338ca);
+  box-shadow: 0 6px 14px rgba(79, 70, 229, .25);
+}
+
+/* Issue 18: Tantou annotations are visibly and semantically independent. */
+.canvas-workspace-tab .hitbox-layer-react .tantou-feedback-box {
+  border-color: #e11d48;
+  background: rgba(225, 29, 72, .18);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.95), 0 8px 20px rgba(136, 19, 55, .35);
+}
+
+.canvas-workspace-tab .hitbox-layer-react .drawn-hitbox.tantou-feedback-box {
+  border: 3px dashed #f43f5e;
+  background: rgba(244, 63, 94, .22);
+  animation: tantouFeedbackPulse 1.2s ease-in-out infinite alternate;
+}
+
+.canvas-workspace-tab .hitbox-layer-react .tantou-feedback-box.active {
+  border-color: #9f1239;
+  background: rgba(190, 18, 60, .25);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 5px #e11d48, 0 12px 24px rgba(136, 19, 55, .35);
+}
+
+.canvas-workspace-tab .hitbox-layer-react .tantou-feedback-box span {
+  background: #be123c;
+}
+
+.tantou-feedback-form textarea {
+  min-height: 116px;
+  resize: vertical;
+}
+
+@keyframes tantouFeedbackPulse {
+  from { box-shadow: 0 0 0 1px rgba(255,255,255,.9), 0 0 0 3px rgba(244,63,94,.15); }
+  to { box-shadow: 0 0 0 1px rgba(255,255,255,.9), 0 0 0 7px rgba(244,63,94,.28); }
+}
+
+/* Issue 19: chapter Delete text fits and page images cannot cover controls. */
+.chapter-row-actions .danger-icon-btn {
+  width: auto !important;
+  height: auto !important;
+  min-width: 66px;
+  min-height: 32px;
+  padding: 7px 11px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1 !important;
+  font-size: 11px !important;
+}
+
+.static-page-grid {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  align-items: stretch;
+}
+
+.static-page-grid .page-card {
+  height: 326px;
+  min-height: 326px;
+  max-height: 326px;
+  display: grid;
+  grid-template-rows: 220px 106px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.static-page-grid .page-card > button {
+  width: 100%;
+  height: 220px !important;
+  min-height: 220px;
+  max-height: 220px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: #eef2f7;
+}
+
+.static-page-grid .page-card > button img {
+  width: 100%;
+  height: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  display: block;
+}
+
+.static-page-grid .page-card .page-card-footer {
+  height: 106px;
+  min-height: 106px;
+  padding: 12px;
+  align-content: space-between;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  position: relative;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.static-page-grid .page-card .page-action-row {
+  flex-wrap: nowrap;
+}
+
+/* Issue 20: functional Remember password control. */
+.remember-password-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-password-control input[type="checkbox"] {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  border: 1.5px solid #94a3b8;
+  border-radius: 5px;
+  background: #fff;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.remember-password-control input[type="checkbox"]::before {
+  content: "✓";
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  transform: scale(0);
+  transition: transform .12s ease;
+}
+
+.remember-password-control input[type="checkbox"]:checked {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, .14);
+}
+
+.remember-password-control input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.remember-password-control input[type="checkbox"]:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}

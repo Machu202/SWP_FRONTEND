@@ -19,6 +19,13 @@ const authController = read("../SWP_BACKEND/src/main/java/com/mangastudio/backen
 const authFilter = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/security/AuthTokenFilter.java");
 const userEntity = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/entity/User.java");
 const mangakaReview = read("src/pages/MangakaAssistantReviewPage.jsx");
+const chaptersPages = read("src/pages/ChaptersPagesPage.jsx");
+const manuscripts = read("src/pages/ManuscriptsPage.jsx");
+const schedule = read("src/pages/SchedulePage.jsx");
+const tantouReview = read("src/pages/TantouReviewPage.jsx");
+const rememberedCredentials = read("src/utils/rememberedCredentials.js");
+const feedbackController = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/controller/TantouFeedbackController.java");
+const feedbackService = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/service/impl/TantouFeedbackServiceImpl.java");
 
 // 1. One real Mangaka chapter/page and canvas workflow.
 assert.match(app, /\/chapters-pages\?seriesId=/);
@@ -87,4 +94,48 @@ assert.match(mangakaReview, /inline-assign-and-send-chapter-/);
 assert.match(mangakaReview, /Send chapter to \$\{chapter\.tantouName/);
 assert.match(mangakaReview, /item\.tantouId/);
 
-console.log(JSON.stringify({ reportedIssues: 16, result: "PASS" }, null, 2));
+// 17. KPI chart label cleanup and styled tabs.
+assert.doesNotMatch(dashboard, /FE-22 telemetry/i);
+assert.match(css, /dashboard-kpi-card \.compact-chart-tabs \.r-tab/);
+assert.match(css, /linear-gradient\(135deg, #6366f1, #4338ca\)/);
+
+// 18. Tantou uses a visible, independent feedback canvas and never writes Mangaka hitboxes.
+assert.match(layout, /Review Canvas/);
+assert.match(tantouReview, /\/canvas-workspace\?seriesId=/);
+assert.match(canvas, /isTantou \? api\.feedback\.byPage/);
+assert.match(canvas, /api\.feedback\.create/);
+assert.match(canvas, /Saved Tantou feedback/);
+assert.match(canvas, /tantou-feedback-box/);
+assert.match(feedbackController, /getFeedbacksByPage\(pageId, userDetails\.getId\(\)\)/);
+assert.match(feedbackService, /Only the Tantou Editor assigned to this series can create feedback/);
+
+// 19. Chapter delete control and page cards have fixed, non-overlapping dimensions.
+assert.match(css, /chapter-row-actions \.danger-icon-btn[\s\S]*min-width: 66px/);
+assert.match(css, /static-page-grid \.page-card[\s\S]*height: 326px/);
+assert.match(css, /grid-template-rows: 220px 106px/);
+
+// 20. Functional Remember password with encrypted-at-rest browser storage.
+assert.doesNotMatch(login, /Session stays only in this tab/);
+assert.match(login, /data-testid="remember-password"/);
+assert.match(rememberedCredentials, /AES-GCM/);
+assert.match(rememberedCredentials, /indexedDB/);
+assert.doesNotMatch(rememberedCredentials, /localStorage\.setItem\([^,]+,\s*normalizedPassword/);
+
+// 21. All cross-workspace pages retain the selected series in tab-scoped storage.
+assert.match(client, /getWorkspaceSelection/);
+assert.match(client, /setWorkspaceSelection/);
+assert.match(manuscripts, /setWorkspaceSelection\(\{ seriesId: selectedSeriesId \}\)/);
+assert.match(chaptersPages, /setWorkspaceSelection\(\{ seriesId: selectedSeriesId/);
+assert.match(canvas, /setWorkspaceSelection\(\{ seriesId: selectedSeriesId \}\)/);
+assert.match(schedule, /setWorkspaceSelection\(\{ seriesId \}\)/);
+
+
+// 22. Every role displays a consistent {ROLE} Workspace title in the top-left branding.
+assert.match(layout, /Admin Workspace/);
+assert.match(layout, /Editorial Board Workspace/);
+assert.match(layout, /Tantou Editor Workspace/);
+assert.match(layout, /Assistant Workspace/);
+assert.match(layout, /Mangaka Workspace/);
+assert.match(layout, /function topbarBrand\(group\) \{[\s\S]*return workspaceTitle\(group\)/);
+
+console.log(JSON.stringify({ reportedIssues: 22, result: "PASS" }, null, 2));

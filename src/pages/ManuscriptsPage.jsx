@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
+import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, setWorkspaceSelection } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -26,12 +26,13 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
   const role = profile?.roleName || session.role;
   const canEdit = hasRole(role, ["mangaka"]);
 
+  const rememberedSelection = getWorkspaceSelection();
   const [seriesList, setSeriesList] = useState([]);
-  const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || ""));
+  const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || rememberedSelection.seriesId || ""));
   const [chapters, setChapters] = useState([]);
   const [pagesByChapter, setPagesByChapter] = useState({});
-  const [selectedChapterId, setSelectedChapterId] = useState("");
-  const [selectedPageId, setSelectedPageId] = useState("");
+  const [selectedChapterId, setSelectedChapterId] = useState(String(rememberedSelection.chapterId || ""));
+  const [selectedPageId, setSelectedPageId] = useState(String(rememberedSelection.pageId || ""));
   const [script, setScript] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingChapters, setLoadingChapters] = useState(false);
@@ -57,7 +58,9 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
       const data = canEdit ? await api.series.mine() : await api.series.list();
       const list = data || [];
       setSeriesList(list);
-      setSelectedSeriesId(String(selectedSeriesId || initialSeriesId || list[0]?.id || ""));
+      const preferredSeriesId = String(initialSeriesId || selectedSeriesId || getWorkspaceSelection().seriesId || "");
+      const preferredExists = list.some((item) => String(item.id) === preferredSeriesId);
+      setSelectedSeriesId(String(preferredExists ? preferredSeriesId : list[0]?.id || ""));
     } catch (err) {
       setError(err.message || "Could not load series.");
     } finally {
@@ -113,17 +116,23 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
 
   useEffect(() => {
     loadChapters(selectedSeriesId);
+    setWorkspaceSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadScript(selectedChapterId);
+    setWorkspaceSelection({ chapterId: selectedChapterId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 
   useEffect(() => {
     setSelectedPageId((current) => String(selectedPages.find((page) => String(page.id) === String(current))?.id || selectedPages[0]?.id || ""));
   }, [selectedChapterId, pagesByChapter]);
+
+  useEffect(() => {
+    setWorkspaceSelection({ pageId: selectedPageId });
+  }, [selectedPageId]);
 
   async function saveScript() {
     if (!selectedChapterId) return;

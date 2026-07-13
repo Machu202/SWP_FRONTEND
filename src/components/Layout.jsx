@@ -36,6 +36,7 @@ function navForRole(role) {
       { path: "/series", label: "Assigned Series", icon: "◇" },
       { path: "/tasks?tab=kanban", label: "Kanban Tasks", icon: "▤" },
       { path: "/tantou-review", label: "Chapter Review", icon: "☑" },
+      { path: "/canvas-workspace", label: "Review Canvas", icon: "□" },
       { path: "/schedule", label: "Schedule", icon: "◷" }
     ];
   }
@@ -62,13 +63,21 @@ function navForRole(role) {
   ];
 }
 
+function workspaceTitle(group) {
+  if (group === "admin") return "Admin Workspace";
+  if (group === "board") return "Editorial Board Workspace";
+  if (group === "tantou") return "Tantou Editor Workspace";
+  if (group === "assistant") return "Assistant Workspace";
+  return "Mangaka Workspace";
+}
+
 function brandForRole(role) {
   const group = roleGroup(role);
-  if (group === "admin") return { title: "Manga Admin", subtitle: "Publishing Control", avatar: "AD", cta: "Final Approval", ctaPath: "/admin-review", mode: "Admin Mode" };
-  if (group === "board") return { title: "Manga Board", subtitle: "Management Portal", avatar: "MB", cta: "Vote Queue", ctaPath: "/board-review", mode: "Board Mode" };
-  if (group === "tantou") return { title: "Tantou Editorial", subtitle: "Production Manager", avatar: "TE", cta: "Chapter Review", ctaPath: "/tantou-review", mode: "Editor Mode" };
-  if (group === "assistant") return { title: "Studio Flow", subtitle: "Production Assistant", avatar: "AS", cta: "Open Tasks", ctaPath: "/tasks", mode: "Assistant Mode" };
-  return { title: "Mangaka Workspace", subtitle: "Studio Flow", avatar: "SF", cta: "New Series", ctaPath: "/series", mode: "Creator Mode" };
+  if (group === "admin") return { title: workspaceTitle(group), subtitle: "Publishing Control", avatar: "AD", cta: "Final Approval", ctaPath: "/admin-review", mode: "Admin Mode" };
+  if (group === "board") return { title: workspaceTitle(group), subtitle: "Management Portal", avatar: "MB", cta: "Vote Queue", ctaPath: "/board-review", mode: "Board Mode" };
+  if (group === "tantou") return { title: workspaceTitle(group), subtitle: "Production Manager", avatar: "TE", cta: "Chapter Review", ctaPath: "/tantou-review", mode: "Editor Mode" };
+  if (group === "assistant") return { title: workspaceTitle(group), subtitle: "Production Assistant", avatar: "AS", cta: "Open Tasks", ctaPath: "/tasks", mode: "Assistant Mode" };
+  return { title: workspaceTitle(group), subtitle: "Studio Flow", avatar: "SF", cta: "New Series", ctaPath: "/series", mode: "Creator Mode" };
 }
 
 
@@ -85,6 +94,7 @@ function topbarLinks(group) {
   ];
   if (group === "tantou") return [
     { path: "/tantou-review", label: "Chapter Review" },
+    { path: "/canvas-workspace", label: "Review Canvas" },
     { path: "/series", label: "Assigned Series" },
     { path: "/schedule", label: "Schedule" }
   ];
@@ -284,18 +294,14 @@ function NotificationBell() {
 }
 
 function topbarBrand(group) {
-  if (group === "admin") return "Publishing Administration";
-  if (group === "board") return "Manga Editorial Board";
-  if (group === "tantou") return "MangaFlow Editorial";
-  if (group === "assistant") return "Studio Flow › Asset Library";
-  return "Studio Flow";
+  return workspaceTitle(group);
 }
 
 function pageTitle(pathname, role) {
   if (pathname.startsWith("/series/")) return "Chapter Manager & Page Upload";
   if (pathname.startsWith("/chapters-pages")) return "Chapter Manager & Page Upload";
   if (pathname.startsWith("/manuscripts")) return "Manuscripts";
-  if (pathname.startsWith("/canvas-workspace")) return "Canvas Workspace";
+  if (pathname.startsWith("/canvas-workspace")) return hasRole(role, ["tantou"]) ? "Tantou Review Canvas" : "Canvas Workspace";
   if (pathname.startsWith("/workspace/")) return "Page Canvas";
   if (pathname.startsWith("/admin/users")) return "User Administration";
   if (pathname.startsWith("/admin/system")) return "Admin Settings";
@@ -313,7 +319,9 @@ function pageTitle(pathname, role) {
 
 function pageSubtitle(pathname, role, username = "") {
   if (pathname.startsWith("/workspace/")) return "Draw hitboxes, pin comments, and create assistant tasks.";
-  if (pathname.startsWith("/canvas-workspace")) return "Open a manga page, draw hitboxes, and create assistant tasks.";
+  if (pathname.startsWith("/canvas-workspace")) return hasRole(role, ["tantou"])
+    ? "Draw independent Tantou feedback areas without changing Mangaka task hitboxes."
+    : "Open a manga page, draw hitboxes, and create assistant tasks.";
   if (pathname.startsWith("/chapters-pages")) return "Create chapters and upload manga pages through the backend page API.";
   if (pathname.startsWith("/manuscripts")) return "Browse chapter scripts, page files, and manuscript structure.";
   if (pathname.startsWith("/series/")) return "Create chapters and upload manga pages through the backend page API.";

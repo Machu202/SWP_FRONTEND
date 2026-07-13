@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert } from "../components/Status";
 import { roleHome } from "../api/client";
+import { clearRememberedCredentials, isRememberPasswordEnabled, loadRememberedCredentials, saveRememberedCredentials } from "../utils/rememberedCredentials";
 
 const ROLES = ["Mangaka", "Assistant", "Tantou Editor", "Editorial Board", "Admin"];
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -41,6 +42,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showOtpPassword, setShowOtpPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [rememberPassword, setRememberPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState({ username: "", password: "" });
@@ -56,7 +58,46 @@ export default function LoginPage() {
       setMessage(authMessage);
       window.sessionStorage.removeItem("authMessage");
     }
+
+    let cancelled = false;
+    const remembered = isRememberPasswordEnabled();
+    setRememberPassword(remembered);
+    if (remembered) {
+      loadRememberedCredentials().then((saved) => {
+        if (!cancelled && saved?.username) setCredentials(saved);
+      });
+    }
+
+    return () => { cancelled = true; };
   }, []);
+
+  async function updateRememberedPassword() {
+    const username = credentials.username.trim();
+    if (!rememberPassword) {
+      clearRememberedCredentials();
+      try {
+        await navigator.credentials?.preventSilentAccess?.();
+      } catch {
+        // Some browsers do not implement Credential Management.
+      }
+      return;
+    }
+
+    await saveRememberedCredentials({ username, password: credentials.password });
+
+    if (window.PasswordCredential && navigator.credentials?.store) {
+      try {
+        await navigator.credentials.store(new window.PasswordCredential({
+          id: username,
+          name: username,
+          password: credentials.password
+        }));
+      } catch {
+        // Keep the remembered username and let the browser's native password
+        // manager prompt normally when programmatic storage is unavailable.
+      }
+    }
+  }
 
   async function finishLogin(session) {
     setMessage("Login successful. Redirecting...");
@@ -70,6 +111,7 @@ export default function LoginPage() {
     setMessage("");
     try {
       const session = await login(credentials);
+      await updateRememberedPassword();
       await finishLogin(session);
     } catch (err) {
       setError(err.message || "Login failed");
@@ -244,7 +286,15 @@ export default function LoginPage() {
               </div>
 
               <div className="form-actions">
-                <span className="remember-me session-scope-note">Session stays only in this tab</span>
+                <label className="remember-me remember-password-control">
+                  <input
+                    type="checkbox"
+                    data-testid="remember-password"
+                    checked={rememberPassword}
+                    onChange={(event) => setRememberPassword(event.target.checked)}
+                  />
+                  <span>Remember password</span>
+                </label>
                 <button type="button" className="forgot-link">Forgot password?</button>
               </div>
 

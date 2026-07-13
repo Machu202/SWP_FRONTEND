@@ -24,7 +24,7 @@ const fixtures = {
   imageOld,
   tomorrow,
   nextWeek,
-  series: [{ id: 1, title: "Ink Horizon", status: "REVIEWING", genre: "Action", summary: "A test manga series.", description: "Smoke-test production data.", mangakaName: "Mika", tantouName: "Taro", coverImageUrl: imageCurrent }],
+  series: [{ id: 1, title: "Ink Horizon", status: "REVIEWING", genre: "Action", summary: "A test manga series.", description: "Smoke-test production data.", mangakaName: "Mika", tantouId: null, tantouName: "Unassigned", coverImageUrl: imageCurrent }],
   chapters: [{ id: 10, chapterNumber: 1, title: "Opening", publishStatus: "DRAFT", seriesId: 1, tantouId: null, tantouName: "Unassigned" }],
   pages: [{ id: 100, pageNumber: 1, imageUrl: imageCurrent, width: 800, height: 1200, chapterId: 10 }],
   hitboxes: [{ id: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, pageId: 100 }],
@@ -131,10 +131,10 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (path === "/auth/google") return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
 
       if (path === "/manga-series/my-series") return response(f.series);
-      if (path === "/manga-series" && method === "GET") return response(f.series);
+      if (path === "/manga-series" && method === "GET") return response(profile.roleName === "Tantou Editor" ? f.series.map((item) => ({ ...item, tantouId: 4, tantouName: "Taro Editor" })) : f.series);
       if (path === "/manga-series" && method === "POST") return response({ ...f.series[0], id: 2, status: "DRAFT" });
       if (path === "/manga-series/1" && method === "GET") {
-        return response(profile.roleName === "Tantou Editor" ? { ...f.series[0], status: "DRAFT" } : f.series[0]);
+        return response(profile.roleName === "Tantou Editor" ? { ...f.series[0], status: "DRAFT", tantouId: 4, tantouName: "Taro Editor" } : f.series[0]);
       }
       if (path === "/manga-series/1/submit-to-board" && method === "PATCH") {
         capture.boardSubmissions += 1;
@@ -215,7 +215,15 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (path === "/tantou-feedbacks/pages/100" && method === "GET") return response(f.feedbacks);
       if (path === "/tantou-feedbacks/pages/100" && method === "POST") {
         capture.feedbackCreated += 1;
-        return response({ id: 1002, content: url.searchParams.get("content"), isResolved: false });
+        return response({
+          id: 1002,
+          content: url.searchParams.get("content"),
+          isResolved: false,
+          xCoord: Number(url.searchParams.get("x")),
+          yCoord: Number(url.searchParams.get("y")),
+          width: Number(url.searchParams.get("width")),
+          height: Number(url.searchParams.get("height"))
+        });
       }
       if (/^\/tantou-feedbacks\/\d+\/resolve$/.test(path)) { capture.feedbackResolved += 1; return response({ id: Number(path.split("/")[2]), content: "Resolved feedback", isResolved: true }); }
 
@@ -493,19 +501,24 @@ async function run() {
     }
 
     {
-      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/workspace/100?seriesId=1" });
-      await waitText(page, "Tantou Feedback");
-      await page.locator(".editor-hitbox").first().click();
-      await page.getByPlaceholder("Describe the editorial issue in this selected region.").fill("Correct the border weight");
-      await page.getByRole("button", { name: "Create feedback" }).click();
-      await waitText(page, "Tantou feedback created");
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/canvas-workspace?seriesId=1&chapterId=10&pageId=100" });
+      await waitText(page, "Tantou Review Canvas");
+      await page.locator('[data-testid="canvas-draw-surface"]').waitFor({ state: "visible" });
+      const surface = await page.locator('[data-testid="canvas-draw-surface"]').boundingBox();
+      assert.ok(surface, "Tantou feedback canvas must be visible");
+      await page.mouse.move(surface.x + 120, surface.y + 150);
+      await page.mouse.down();
+      await page.mouse.move(surface.x + 330, surface.y + 350, { steps: 5 });
+      await page.mouse.up();
+      await page.locator('[data-testid="draft-hitbox"]').waitFor({ state: "visible" });
+      await page.getByPlaceholder("Describe the revision needed in this area...").fill("Correct the border weight");
+      await page.getByRole("button", { name: "Save feedback area" }).click();
+      await waitText(page, "independent review workspace");
       assert.equal((await capture(page)).feedbackCreated, 1);
-      const unresolved = page.locator('.feedback-resolution-row input[type="checkbox"]:not(:checked)').first();
-      await unresolved.click();
-      await waitText(page, "Feedback marked resolved");
-      assert.equal((await capture(page)).feedbackResolved, 1);
+      assert.ok(await page.locator(".tantou-feedback-box").count() >= 1);
+      assert.equal(await page.locator(".mangaka-hitbox-box").count(), 0, "Tantou workspace must not display Mangaka hitboxes");
       assert.deepEqual(pageErrors, []);
-      passed.push("FE-26 Tantou feedback create/resolve and FE-34 canvas hitbox overlay");
+      passed.push("FE-26 Tantou feedback creation uses an independent visible review canvas");
       await context.close();
     }
 

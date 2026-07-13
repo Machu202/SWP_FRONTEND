@@ -121,7 +121,7 @@ function renderPage(route, role) {
 
   const workspaceMatch = matchRoute(route.parts, "/workspace/:pageId");
   if (workspaceMatch) {
-    if (hasRole(role, ["mangaka"])) {
+    if (hasRole(role, ["mangaka", "tantou"])) {
       const query = new URLSearchParams();
       query.set("pageId", workspaceMatch.pageId);
       const seriesId = route.params.get("seriesId");

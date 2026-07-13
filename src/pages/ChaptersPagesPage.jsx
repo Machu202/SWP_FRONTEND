@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, hasRole, mediaUrlFrom, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, resolveMediaUrl, setWorkspaceSelection } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -35,9 +35,10 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const canEdit = hasRole(role, ["mangaka"]);
   const isTantou = hasRole(role, ["tantou"]);
 
+  const rememberedSelection = getWorkspaceSelection();
   const [seriesList, setSeriesList] = useState([]);
-  const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || ""));
-  const [selectedChapterId, setSelectedChapterId] = useState("");
+  const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || rememberedSelection.seriesId || ""));
+  const [selectedChapterId, setSelectedChapterId] = useState(String(rememberedSelection.chapterId || ""));
   const [series, setSeries] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [pages, setPages] = useState([]);
@@ -63,7 +64,9 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
       const rawList = data || [];
       const list = isTantou ? rawList.filter(isReviewableSeries) : rawList;
       setSeriesList(list);
-      const nextSeriesId = String(selectedSeriesId || initialSeriesId || list[0]?.id || "");
+      const preferredSeriesId = String(initialSeriesId || selectedSeriesId || getWorkspaceSelection().seriesId || "");
+      const preferredExists = list.some((item) => String(item.id) === preferredSeriesId);
+      const nextSeriesId = String(preferredExists ? preferredSeriesId : list[0]?.id || "");
       setSelectedSeriesId(nextSeriesId);
     } catch (err) {
       setError(err.message || "Could not load series.");
@@ -119,11 +122,13 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
 
   useEffect(() => {
     loadSelectedSeries(selectedSeriesId);
+    setWorkspaceSelection({ seriesId: selectedSeriesId, chapterId: "", pageId: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadPages(selectedChapterId);
+    setWorkspaceSelection({ chapterId: selectedChapterId, pageId: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 

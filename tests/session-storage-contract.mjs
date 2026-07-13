@@ -10,7 +10,9 @@ assert.match(client, /window\.sessionStorage/, "Authentication storage must be t
 assert.match(client, /isTokenExpired/, "Expired JWTs must be rejected during startup");
 assert.match(client, /clearLegacyPersistentSession/, "Legacy persistent auth data must be removed");
 assert.doesNotMatch(client, /localStorage\.setItem\(\s*["'](?:accessToken|token|userId|username|email|role)/, "Auth data must never be written to localStorage");
-assert.match(login, /Session stays only in this tab/, "Login UI must explain the tab-scoped session");
+assert.doesNotMatch(login, /Session stays only in this tab/, "The obsolete session note must be removed from the Login UI");
+assert.match(login, /data-testid="remember-password"/, "Login must expose the functional Remember password checkbox");
+assert.match(login, /saveRememberedCredentials/, "Remember password must use secure browser-side credential storage");
 assert.match(realE2e, /sessionStorage\.clear\(\)/, "Real-data automation must reset the active tab session");
 assert.match(audit, /sessionStorage\.clear\(\)/, "Display audit must reset the active tab session");
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, hasRole, unwrapList } from "../api/client";
+import { api, getWorkspaceSelection, hasRole, setWorkspaceSelection, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { Alert, EmptyState, LoadingBlock } from "../components/Status";
 
@@ -41,7 +41,7 @@ export default function SchedulePage() {
   const role = profile?.roleName || session.role;
   const canManage = hasRole(role, ["mangaka"]);
   const [series, setSeries] = useState([]);
-  const [seriesId, setSeriesId] = useState("");
+  const [seriesId, setSeriesId] = useState(() => String(getWorkspaceSelection().seriesId || ""));
   const [schedules, setSchedules] = useState([]);
   const [deadlines, setDeadlines] = useState([]);
   const [monthCursor, setMonthCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -58,7 +58,11 @@ export default function SchedulePage() {
       const data = canManage ? await api.series.mine() : await api.series.list({ size: 100 });
       const list = unwrapList(data);
       setSeries(list);
-      setSeriesId((current) => String(current || list[0]?.id || ""));
+      setSeriesId((current) => {
+        const preferred = String(current || getWorkspaceSelection().seriesId || "");
+        const preferredExists = list.some((item) => String(item.id) === preferred);
+        return String(preferredExists ? preferred : list[0]?.id || "");
+      });
     } catch (err) {
       setError(err.message || "Could not load series list");
     } finally {
@@ -86,7 +90,10 @@ export default function SchedulePage() {
   }
 
   useEffect(() => { loadSeries(); }, [canManage]);
-  useEffect(() => { loadSchedule(seriesId); }, [seriesId]);
+  useEffect(() => {
+    setWorkspaceSelection({ seriesId });
+    loadSchedule(seriesId);
+  }, [seriesId]);
 
   async function createSchedule(event) {
     event.preventDefault();

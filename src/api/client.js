@@ -14,6 +14,12 @@ const SESSION_KEYS = [
   "activePageId"
 ];
 
+const WORKSPACE_SELECTION_KEYS = {
+  seriesId: "activeSeriesId",
+  chapterId: "activeChapterId",
+  pageId: "activePageId"
+};
+
 export function normalizeRole(role = "") {
   return String(role || "")
     .replace(/^ROLE_/i, "")
@@ -130,6 +136,34 @@ export function clearSession() {
   } finally {
     clearLegacyPersistentSession();
   }
+}
+
+export function getWorkspaceSelection() {
+  try {
+    const store = sessionStore();
+    return {
+      seriesId: store.getItem(WORKSPACE_SELECTION_KEYS.seriesId) || "",
+      chapterId: store.getItem(WORKSPACE_SELECTION_KEYS.chapterId) || "",
+      pageId: store.getItem(WORKSPACE_SELECTION_KEYS.pageId) || ""
+    };
+  } catch {
+    return { seriesId: "", chapterId: "", pageId: "" };
+  }
+}
+
+export function setWorkspaceSelection(next = {}) {
+  try {
+    const store = sessionStore();
+    Object.entries(WORKSPACE_SELECTION_KEYS).forEach(([field, key]) => {
+      if (!(field in next)) return;
+      const value = next[field];
+      if (value === undefined || value === null || value === "") store.removeItem(key);
+      else store.setItem(key, String(value));
+    });
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts.
+  }
+  return getWorkspaceSelection();
 }
 
 export function objectToQuery(params = {}) {

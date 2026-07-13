@@ -314,7 +314,7 @@ function TantouChapterRow({ chapter, pages, busy, onLoadPages, onApprove, onRevi
             {pages.map((page) => {
               const url = mediaUrlFrom(page, page.imageUrl, page.image_url);
               return (
-                <button key={page.id} className="page-mini" onClick={() => navigate(`/workspace/${page.id}?seriesId=${chapter.seriesId}&chapterId=${chapter.id}`)}>
+                <button key={page.id} className="page-mini" onClick={() => navigate(`/canvas-workspace?seriesId=${chapter.seriesId}&chapterId=${chapter.id}&pageId=${page.id}`)}>
                   {url ? <img src={url} alt={`Page ${page.pageNumber}`} /> : <span>No image</span>}
                   <small>Page {page.pageNumber}</small>
                 </button>

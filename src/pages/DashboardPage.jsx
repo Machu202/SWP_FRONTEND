@@ -397,7 +397,7 @@ function KpiCharts({ data }) {
   return (
     <section className="dashboard-kpi-card card" aria-label="Interactive KPI charts">
       <div className="card-header">
-        <div><p className="eyebrow">FE-22 telemetry</p><h3>Workflow KPI charts</h3></div>
+        <div><h3>Workflow KPI charts</h3></div>
         <div className="resource-filter-tabs compact-chart-tabs" role="tablist">
           <button className={activeChart === "tasks" ? "r-tab active" : "r-tab"} onClick={() => setActiveChart("tasks")}>Tasks</button>
           <button className={activeChart === "series" ? "r-tab active" : "r-tab"} onClick={() => setActiveChart("series")}>Series</button>
