@@ -34,7 +34,7 @@ function navForRole(role) {
     return [
       { path: "/dashboard", label: "Dashboard", icon: "▦" },
       { path: "/series", label: "Assigned Series", icon: "◇" },
-      { path: "/tasks", label: "Kanban Tasks", icon: "▤" },
+      { path: "/tasks?tab=kanban", label: "Kanban Tasks", icon: "▤" },
       { path: "/tantou-review", label: "Chapter Review", icon: "☑" },
       { path: "/schedule", label: "Schedule", icon: "◷" }
     ];
@@ -113,7 +113,8 @@ export function Layout({ children, route }) {
   const brand = brandForRole(role);
   const nav = navForRole(role);
   const active = route.pathname;
-  const initials = (profile?.username || profile?.fullName || session.username || brand.avatar).slice(0, 2).toUpperCase();
+  const displayUsername = profile?.username || session.username || profile?.fullName || roleLabel(role);
+  const initials = (displayUsername || brand.avatar).slice(0, 2).toUpperCase();
   const isEditor = active.startsWith("/workspace/");
   const showRouteHeader = !isEditor && !hasInlinePageHeader(route.pathname);
 
@@ -193,7 +194,7 @@ export function Layout({ children, route }) {
             <div className="page-header route-header">
               <div>
                 <h1>{pageTitle(route.pathname, role)}</h1>
-                <p>{pageSubtitle(route.pathname, role)}</p>
+                <p>{pageSubtitle(route.pathname, role, displayUsername)}</p>
               </div>
             </div>
           )}
@@ -310,18 +311,18 @@ function pageTitle(pathname, role) {
   return "Studio Dashboard";
 }
 
-function pageSubtitle(pathname, role) {
+function pageSubtitle(pathname, role, username = "") {
   if (pathname.startsWith("/workspace/")) return "Draw hitboxes, pin comments, and create assistant tasks.";
   if (pathname.startsWith("/canvas-workspace")) return "Open a manga page, draw hitboxes, and create assistant tasks.";
   if (pathname.startsWith("/chapters-pages")) return "Create chapters and upload manga pages through the backend page API.";
   if (pathname.startsWith("/manuscripts")) return "Browse chapter scripts, page files, and manuscript structure.";
   if (pathname.startsWith("/series/")) return "Create chapters and upload manga pages through the backend page API.";
-  if (pathname.startsWith("/series")) return hasRole(role, ["mangaka"]) ? "Logged in as Mangaka." : "View manga series available to your role.";
+  if (pathname.startsWith("/series")) return hasRole(role, ["mangaka"]) ? `Logged in as ${username || "user"}.` : "View manga series available to your role.";
   if (pathname.startsWith("/tasks")) return "Track Todo, Doing, Reviewing, and Approved work.";
   if (pathname.startsWith("/assistant-review")) return "Review Tantou feedback, add comments, and check assistant submissions.";
   if (pathname.startsWith("/tantou-review")) return "Review assigned pages and leave annotation feedback.";
   if (pathname.startsWith("/board-review")) return "Cast approval or rejection votes for submitted manga series.";
   if (pathname.startsWith("/admin-review")) return "Board results and final publishing decisions.";
   if (pathname.startsWith("/schedule")) return "Publishing schedules and deadline events.";
-  return `Logged in as ${roleLabel(role)}.`;
+  return `Logged in as ${username || roleLabel(role)}.`;
 }

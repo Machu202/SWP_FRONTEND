@@ -9506,3 +9506,105 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 .hitbox-inline-delete {
   flex: 0 0 auto;
 }
+
+/* =========================================================
+   SWP workflow consistency patch (15 reported issues)
+   ========================================================= */
+
+/* Canvas Workspace controls must look actionable and consistent. */
+.canvas-workspace-tab .canvas-toolbar-row .btn-publish,
+.canvas-workspace-tab .feature-header .btn-outline,
+.canvas-workspace-tab .hitbox-task-card .btn,
+.canvas-workspace-tab .hitbox-task-card .btn-publish,
+.canvas-workspace-tab .hitbox-task-card .btn-outline {
+  min-height: 40px;
+  border-radius: 9px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.canvas-workspace-tab .canvas-toolbar-row .btn-publish:hover:not(:disabled),
+.canvas-workspace-tab .hitbox-task-card .btn:hover:not(:disabled),
+.canvas-workspace-tab .hitbox-task-card .btn-publish:hover:not(:disabled),
+.canvas-workspace-tab .hitbox-task-card .btn-outline:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 18px rgba(15, 23, 42, .12);
+}
+
+.canvas-workspace-tab .page-version-row .btn-tiny {
+  border: 1px solid #4f46e5;
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.canvas-workspace-tab .page-version-row .btn-tiny:hover:not(:disabled) {
+  background: #4f46e5;
+  color: #fff;
+}
+
+/* Keep the Task Area label compact so it does not cover the artwork. */
+.task-hitbox-label {
+  top: 3px;
+  left: 3px;
+  padding: 2px 5px;
+  font-size: 9px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.task-hitbox-overlay {
+  border-width: 2px;
+}
+
+.assignment-reference-column {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.reference-download-btn {
+  min-height: 40px;
+}
+
+.assistant-finished-preview {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  background: #f0fdf4;
+}
+
+.assistant-finished-preview strong {
+  color: #166534;
+  font-size: 12px;
+}
+
+.assistant-finished-preview img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #dcfce7;
+}
+
+.kanban-readonly-note {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}

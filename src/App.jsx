@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import SeriesPage from "./pages/SeriesPage";
-import SeriesDetailPage from "./pages/SeriesDetailPage";
 import ChaptersPagesPage from "./pages/ChaptersPagesPage";
 import ManuscriptsPage from "./pages/ManuscriptsPage";
 import CanvasWorkspacePage from "./pages/CanvasWorkspacePage";
@@ -96,7 +95,10 @@ function renderPage(route, role) {
       />
     );
   }
-  if (route.pathname === "/tasks") return <TasksPage />;
+  if (route.pathname === "/tasks") {
+    if (!route.params.get("tab")) return <Redirect to="/tasks?tab=kanban" />;
+    return <TasksPage />;
+  }
   if (route.pathname === "/resources") return <ResourcesPage />;
   if (route.pathname === "/profile") return <ProfilePage />;
   if (route.pathname === "/admin/users") return <AdminUsersPage />;
@@ -110,12 +112,26 @@ function renderPage(route, role) {
 
   const seriesMatch = matchRoute(route.parts, "/series/:seriesId");
   if (seriesMatch) {
-    if (hasRole(role, ["mangaka"])) return <SeriesDetailPage seriesId={seriesMatch.seriesId} />;
+    // Mangaka must always use the real Chapters & Pages workspace. The legacy
+    // SeriesDetailPage duplicated chapter/page/canvas screens and caused users
+    // to enter a second, inconsistent workflow.
+    if (hasRole(role, ["mangaka"])) return <Redirect to={`/chapters-pages?seriesId=${seriesMatch.seriesId}`} />;
     return <Redirect to={seriesRouteForRole(role, seriesMatch.seriesId)} />;
   }
 
   const workspaceMatch = matchRoute(route.parts, "/workspace/:pageId");
-  if (workspaceMatch) return <WorkspacePage pageId={workspaceMatch.pageId} query={route.params} />;
+  if (workspaceMatch) {
+    if (hasRole(role, ["mangaka"])) {
+      const query = new URLSearchParams();
+      query.set("pageId", workspaceMatch.pageId);
+      const seriesId = route.params.get("seriesId");
+      const chapterId = route.params.get("chapterId");
+      if (seriesId) query.set("seriesId", seriesId);
+      if (chapterId) query.set("chapterId", chapterId);
+      return <Redirect to={`/canvas-workspace?${query.toString()}`} />;
+    }
+    return <WorkspacePage pageId={workspaceMatch.pageId} query={route.params} />;
+  }
 
   return <EmptyState title="Page not found" body={`No React route exists for ${route.pathname}.`} />;
 }

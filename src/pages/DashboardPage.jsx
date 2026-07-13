@@ -199,7 +199,7 @@ function AssistantDashboard({ data, profile, session }) {
 
       <div className="assistant-home-grid">
         <div>
-          <div className="section-title-row"><h3>Active Assignments</h3><button className="btn btn-small" onClick={() => navigate("/tasks")}>Open All</button></div>
+          <div className="section-title-row"><h3>Active Assignments</h3><button className="btn btn-small" onClick={() => navigate("/tasks?tab=assignments")}>Open All</button></div>
           <div className="ast-task-list">
             {data.tasks.length ? data.tasks.slice(0, 7).map((task) => <AssistantTaskItem key={task.id} task={task} />) : (
               <EmptyState icon="☑" title="No assignments yet" body="Assigned tasks from Mangaka will appear here." />
@@ -216,7 +216,7 @@ function AssistantDashboard({ data, profile, session }) {
             <div className="activity-header"><h3>Quick Resources</h3></div>
             <div className="ast-quick-grid">
               <button className="ast-quick-btn" onClick={() => navigate("/resources")}><i>□</i>Resources</button>
-              <button className="ast-quick-btn" onClick={() => navigate("/tasks")}><i>☁</i>Submit Work</button>
+              <button className="ast-quick-btn" onClick={() => navigate("/tasks?tab=assignments")}><i>☁</i>Submit Work</button>
               <button className="ast-quick-btn" onClick={() => navigate("/schedule")}><i>◷</i>Schedule</button>
               <button className="ast-quick-btn" onClick={() => navigate("/profile")}><i>◎</i>Profile</button>
             </div>
@@ -308,7 +308,7 @@ function GenericDashboard({ data, role }) {
 function DashboardSeriesCard({ series }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   return (
-    <button className="dashboard-series-card series-card" onClick={() => navigate(`/series/${series.id}`)}>
+    <button className="dashboard-series-card series-card" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
       <div className="series-cover">{cover ? <img src={cover} alt={series.title || "Series cover"} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}</div>
       <div className="series-body">
         <div className="row-between"><strong>{series.title}</strong><StatusBadge value={series.status} /></div>
@@ -322,7 +322,7 @@ function DashboardSeriesCard({ series }) {
 function AssistantTaskItem({ task }) {
   const thumb = mediaUrlFrom(task, task.submittedImageUrl, task.submitted_image_url, task.referenceImageUrl, task.reference_image_url, task.pageImageUrl, task.page_image_url, task.imageUrl, task.image_url, task.page);
   return (
-    <button className="ast-task-item" onClick={() => navigate("/tasks")}>
+    <button className="ast-task-item" onClick={() => navigate("/tasks?tab=assignments")}>
       <div className="ast-task-thumb">{thumb ? <img src={thumb} alt={task.description || `Task #${task.id}`} /> : <span>#{task.pageNumber || task.id}</span>}</div>
       <div className="ast-task-info">
         <div className="ast-task-title"><span>{task.description || `Task #${task.id}`}</span><StatusBadge value={task.status} /></div>

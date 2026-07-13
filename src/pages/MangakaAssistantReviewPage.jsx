@@ -366,7 +366,7 @@ export default function MangakaAssistantReviewPage() {
     }
 
     try {
-      const updated = await api.tasks.status(task.id, nextStatus);
+      const updated = await api.tasks.review(task.id, nextStatus === "APPROVED");
       const mergedTask = normalizeTaskForReview({ ...task, ...updated });
       const merge = (items) => items.map((item) => String(item.id) === String(task.id) ? { ...item, ...mergedTask } : item);
       setAllTasks(merge);

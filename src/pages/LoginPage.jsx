@@ -40,6 +40,7 @@ export default function LoginPage() {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showOtpPassword, setShowOtpPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState({ username: "", password: "" });
@@ -48,6 +49,14 @@ export default function LoginPage() {
   const [otpPassword, setOtpPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+
+  useEffect(() => {
+    const authMessage = window.sessionStorage.getItem("authMessage");
+    if (authMessage) {
+      setMessage(authMessage);
+      window.sessionStorage.removeItem("authMessage");
+    }
+  }, []);
 
   async function finishLogin(session) {
     setMessage("Login successful. Redirecting...");
@@ -336,7 +345,26 @@ export default function LoginPage() {
 
               <div className="input-group"><label>Email or name</label><input type="text" placeholder="nguyenhuy@gmail.com or mangaka" value={registration.username} onChange={(event) => setRegistration({ ...registration, username: event.target.value })} /></div>
               <div className="input-group"><label>Email</label><input type="email" placeholder="mangaka@studio.com" value={registration.email} onChange={(event) => setRegistration({ ...registration, email: event.target.value })} /></div>
-              <div className="input-group"><label>Password</label><div className="password-wrapper"><input type="password" placeholder="••••••" value={registration.password} onChange={(event) => setRegistration({ ...registration, password: event.target.value })} /><span className="eye-icon">👁️</span></div></div>
+              <div className="input-group">
+                <label>Password</label>
+                <div className="password-wrapper">
+                  <input
+                    type={showRegisterPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder="••••••"
+                    value={registration.password}
+                    onChange={(event) => setRegistration({ ...registration, password: event.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="eye-icon password-toggle"
+                    aria-label={showRegisterPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowRegisterPassword((value) => !value)}
+                  >
+                    {showRegisterPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
+              </div>
               <div className="input-group"><label>Phone number</label><input type="text" placeholder="0983894738" value={registration.phoneNumber} onChange={(event) => setRegistration({ ...registration, phoneNumber: event.target.value })} /></div>
               <div className="input-group"><label>Role</label><select className="role-select" value={registration.role} onChange={(event) => setRegistration({ ...registration, role: event.target.value })}>{ROLES.map((role) => <option key={role} value={role}>{role}</option>)}</select></div>
 

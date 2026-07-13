@@ -292,6 +292,9 @@ export async function apiFetch(path, options = {}) {
   if (!response.ok) {
     if (response.status === 401) {
       clearSession();
+      window.dispatchEvent(new CustomEvent("swp-auth-invalidated", {
+        detail: { message: payload?.message || "Your session is no longer active." }
+      }));
     }
     const message = typeof payload === "string"
       ? payload
@@ -324,7 +327,9 @@ export const api = {
     google: async (token) => {
       const data = await apiFetch("/auth/google", { method: "POST", body: { token } });
       return setSession(data || {});
-    }
+    },
+    session: () => apiFetch("/auth/session"),
+    logout: () => apiFetch("/auth/logout", { method: "POST" })
   },
 
   users: {
@@ -420,6 +425,8 @@ export const api = {
     mine: () => apiFetch("/tasks/my-tasks"),
     bySeries: (seriesId) => apiFetch(`/tasks/series/${seriesId}`),
     status: (taskId, newStatus) => apiFetch(`/tasks/${taskId}/status${objectToQuery({ newStatus: normalizeTaskStatus(newStatus) })}`, { method: "PATCH" }),
+    start: (taskId) => apiFetch(`/tasks/${taskId}/start`, { method: "PATCH" }),
+    review: (taskId, approved) => apiFetch(`/tasks/${taskId}/review${objectToQuery({ approved })}`, { method: "PATCH" }),
     assign: (taskId, assistantId) => apiFetch(`/tasks/${taskId}/assign${objectToQuery({ assistantId })}`, { method: "PATCH" }),
     submit: (taskId, imageUrl) => apiFetch(`/tasks/${taskId}/submit${objectToQuery({ imageUrl })}`, { method: "PATCH" })
   },

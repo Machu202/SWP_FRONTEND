@@ -68,7 +68,20 @@ function taskChapterId(task) {
 }
 
 function taskReferenceUrl(task) {
-  return mediaUrlFrom(task, task?.referenceImageUrl, task?.reference_image_url, task?.pageImageUrl, task?.page_image_url, task?.imageUrl, task?.image_url, task?.page?.imageUrl, task?.page?.image_url, task?.hitbox?.page);
+  // Never pass the whole task object first: extractMediaUrl would prefer the
+  // Assistant's submitted image and accidentally replace the reference page.
+  return mediaUrlFrom(
+    task?.referenceImageUrl,
+    task?.reference_image_url,
+    task?.pageImageUrl,
+    task?.page_image_url,
+    task?.page?.imageUrl,
+    task?.page?.image_url,
+    task?.hitbox?.page?.imageUrl,
+    task?.hitbox?.page?.image_url,
+    task?.hitboxDto?.page?.imageUrl,
+    task?.hitboxDto?.page?.image_url
+  );
 }
 
 
@@ -139,6 +152,18 @@ function taskSeriesTitle(task) {
   );
 }
 
+function taskDisplayNumber(task) {
+  return firstValue(
+    task?.taskNumber,
+    task?.task_number,
+    task?.seriesTaskNumber,
+    task?.series_task_number,
+    task?.displayNumber,
+    task?.display_number,
+    task?.id
+  );
+}
+
 function taskChapterLabel(task) {
   const title = firstValue(task?.chapterTitle, task?.chapter_title, task?.chapter?.title, task?.hitbox?.page?.chapter?.title);
   const number = firstValue(task?.chapterNumber, task?.chapter_number, task?.chapter?.chapterNumber, task?.chapter?.chapter_number, task?.hitbox?.page?.chapter?.chapterNumber, task?.hitbox?.page?.chapter?.chapter_number);
@@ -197,6 +222,14 @@ function isTaskLockedForAssistant(task) {
   return status === "REVIEWING" || status === "APPROVED";
 }
 
+function allowedKanbanTargets(task, role) {
+  if (!hasRole(role, ["mangaka"])) return [];
+  const status = taskWorkflowStatus(task);
+  if (status === "TODO") return ["DOING"];
+  if (status === "DOING") return ["REVIEWING"];
+  return [];
+}
+
 export default function TasksPage() {
   const route = useHashRoute();
   const activeTab = tabFromRoute(route);
@@ -214,8 +247,10 @@ export default function TasksPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const canAssign = hasRole(role, ["mangaka", "tantou", "admin"]);
-  const canSubmit = hasRole(role, ["assistant"]);
+  const isAssistant = hasRole(role, ["assistant"]);
+  const isMangaka = hasRole(role, ["mangaka"]);
+  const canAssign = isMangaka;
+  const canSubmit = isAssistant;
 
   async function load() {
     setLoading(true);
@@ -223,9 +258,16 @@ export default function TasksPage() {
     try {
       const [taskData, assistantData] = await Promise.all([
         api.tasks.mine().catch(() => []),
-        api.users.byRole("Assistant").catch(() => [])
+        canAssign ? api.users.byRole("Assistant").catch(() => []) : Promise.resolve([])
       ]);
-      setTasks(normalizeTaskList(taskData));
+      const normalizedTasks = normalizeTaskList(taskData);
+      setTasks(normalizedTasks);
+      setSelected((current) => {
+        if (current && normalizedTasks.some((task) => String(task.id) === String(current.id))) {
+          return normalizedTasks.find((task) => String(task.id) === String(current.id));
+        }
+        return normalizedTasks[0] || null;
+      });
       setAssistants(Array.isArray(assistantData) ? assistantData : assistantData?.content || assistantData?.data || []);
     } catch (err) {
       setError(err.message || "Could not load tasks");
@@ -332,6 +374,39 @@ export default function TasksPage() {
     }
   }
 
+  async function startAndDownloadReference(task) {
+    if (!task) return;
+    const referenceUrl = taskReferenceUrl(task);
+    if (!referenceUrl) {
+      setError("This task does not have a reference image yet.");
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    try {
+      let updatedTask = task;
+      if (taskWorkflowStatus(task) === "TODO") {
+        const updated = await api.tasks.start(task.id);
+        updatedTask = normalizeTaskRecord({ ...task, ...updated });
+        setTasks((old) => old.map((item) => String(item.id) === String(task.id) ? updatedTask : item));
+        setSelected(updatedTask);
+        setMessage(`Task #${taskDisplayNumber(task)} started and moved to Doing.`);
+      }
+
+      const anchor = document.createElement("a");
+      anchor.href = referenceUrl;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.download = `task-${taskDisplayNumber(task)}-reference`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (err) {
+      setError(err.message || "Could not start the task or download the reference image.");
+    }
+  }
+
   async function assignAssistant(taskId, assistantId) {
     if (!assistantId) return;
     setError("");
@@ -416,6 +491,7 @@ export default function TasksPage() {
           onSelect={(task) => setSelected(task)}
           onMove={updateStatus}
           totalTasks={tasks.length}
+          role={role}
         />
       ) : (
         <AssignmentsPanel
@@ -434,19 +510,23 @@ export default function TasksPage() {
           onChooseFile={chooseFile}
           onConfirm={setConfirmReady}
           onSubmit={() => submitWork(selected)}
+          role={role}
+          selectedFile={selectedFile}
+          onDownloadReference={startAndDownloadReference}
         />
       )}
     </section>
   );
 }
 
-function KanbanBoard({ grouped, counts, selected, onSelect, onMove, totalTasks }) {
+function KanbanBoard({ grouped, counts, selected, onSelect, onMove, totalTasks, role }) {
   const [draggedTask, setDraggedTask] = useState(null);
   const [dropTarget, setDropTarget] = useState("");
 
   function drop(event, status) {
     event.preventDefault();
-    if (draggedTask && normalizeTaskStatus(draggedTask.status) !== status && !isTaskFinalApproved(draggedTask)) {
+    const allowed = draggedTask ? allowedKanbanTargets(draggedTask, role) : [];
+    if (draggedTask && allowed.includes(status)) {
       onMove(draggedTask, status);
     }
     setDraggedTask(null);
@@ -481,6 +561,7 @@ function KanbanBoard({ grouped, counts, selected, onSelect, onMove, totalTasks }
                   selected={selected && String(selected.id) === String(task.id)}
                   onClick={() => onSelect(task)}
                   onMove={onMove}
+                  role={role}
                   onDragStart={() => setDraggedTask(task)}
                   onDragEnd={() => { setDraggedTask(null); setDropTarget(""); }}
                 />
@@ -509,7 +590,10 @@ function AssignmentsPanel({
   onMove,
   onChooseFile,
   onConfirm,
-  onSubmit
+  onSubmit,
+  role,
+  selectedFile,
+  onDownloadReference
 }) {
   return (
     <div className="assignments-shell">
@@ -532,13 +616,13 @@ function AssignmentsPanel({
                 <TaskThumbnail task={task} />
                 <div className="ast-task-info">
                   <div className="ast-task-title">
-                    <span>{task.description || `Task #${task.id}`}</span>
+                    <span>{task.description || `Task #${taskDisplayNumber(task)}`}</span>
                     <StatusBadge value={task.status} />
                   </div>
                   <div className="ast-task-sub">{taskSeriesTitle(task) || "No series"} • Page {taskPageNumber(task) || "?"}</div>
                   <div className="ast-task-meta">
                     <span>Assistant: {taskAssistantName(task) || "Unassigned"}</span>
-                    <span>#{task.id}</span>
+                    <span>Task #{taskDisplayNumber(task)}</span>
                   </div>
                 </div>
               </button>
@@ -558,6 +642,8 @@ function AssignmentsPanel({
           canAssign={canAssign}
           onAssign={onAssign}
           onMove={onMove}
+          role={role}
+          onDownloadReference={onDownloadReference}
         />
 
         {canSubmit && selected && isTaskLockedForAssistant(selected) ? (
@@ -566,6 +652,7 @@ function AssignmentsPanel({
           <SubmitWorkBox
             disabled={!selected}
             selectedFileName={selectedFileName}
+            selectedFile={selectedFile}
             confirmReady={confirmReady}
             onChooseFile={onChooseFile}
             onConfirm={onConfirm}
@@ -577,8 +664,9 @@ function AssignmentsPanel({
   );
 }
 
-function TaskCard({ task, selected, onClick, onMove, onDragStart, onDragEnd }) {
+function TaskCard({ task, selected, onClick, onMove, onDragStart, onDragEnd, role }) {
   const status = normalizeTaskStatus(task.status);
+  const targets = allowedKanbanTargets(task, role);
   return (
     <div
       className={selected ? "backend-task-card task-card active" : "backend-task-card task-card"}
@@ -586,7 +674,7 @@ function TaskCard({ task, selected, onClick, onMove, onDragStart, onDragEnd }) {
       data-task-id={task.id}
       role="button"
       tabIndex={0}
-      draggable={!isTaskFinalApproved(task)}
+      draggable={targets.length > 0}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", String(task.id));
@@ -599,22 +687,25 @@ function TaskCard({ task, selected, onClick, onMove, onDragStart, onDragEnd }) {
       }}
     >
       <span className="tag">{status}</span>
-      <strong>{task.description || `Task #${task.id}`}</strong>
+      <strong>{task.description || `Task #${taskDisplayNumber(task)}`}</strong>
       <p>{taskSeriesTitle(task) || "No series"} • Page {taskPageNumber(task) || "?"}</p>
       <small>Assistant: {taskAssistantName(task) || "Unassigned"}</small>
-      {!isTaskFinalApproved(task) && (
+      {targets.length > 0 && (
         <div className="button-row" onClick={(event) => event.stopPropagation()}>
-          {COLUMNS.filter((column) => column.key !== status).slice(0, 2).map((column) => (
+          {COLUMNS.filter((column) => targets.includes(column.key)).map((column) => (
             <button key={column.key} type="button" className="btn btn-tiny" onClick={() => onMove(task, column.key)}>{column.label}</button>
           ))}
         </div>
       )}
+      {!targets.length && hasRole(role, ["assistant"]) && <small className="kanban-readonly-note">View only</small>}
     </div>
   );
 }
 
-function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAssign, onAssign, onMove }) {
+function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAssign, onAssign, onMove, role, onDownloadReference }) {
   const referenceUrl = taskReferenceUrl(selected);
+  const isAssistant = hasRole(role, ["assistant"]);
+  const statusTargets = selected ? allowedKanbanTargets(selected, role) : [];
   return (
     <div className="task-box assignment-detail-box">
       <div className="task-box-title">
@@ -625,8 +716,8 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
       {selected ? (
         <div className="stack">
           <div className="task-detail-header compact-task-detail-header">
-            <div className="task-detail-meta"><span>Task #{selected.id}</span><span>{taskSeriesTitle(selected) || "No series"}</span></div>
-            <h1>{selected.description || `Task #${selected.id}`}</h1>
+            <div className="task-detail-meta"><span>Task #{taskDisplayNumber(selected)}</span><span>{taskSeriesTitle(selected) || "No series"}</span></div>
+            <h1>{selected.description || `Task #${taskDisplayNumber(selected)}`}</h1>
             <div className="meta-row wrap">
               <span>Chapter: {taskChapterLabel(selected)}</span>
               <span>Page: {taskPageNumber(selected) || "-"}</span>
@@ -646,19 +737,26 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
             </div>
           )}
 
-          {!isTaskFinalApproved(selected) ? (
+          {statusTargets.length > 0 ? (
             <div className="button-row">
-              {COLUMNS.map((column) => (
+              {COLUMNS.filter((column) => statusTargets.includes(column.key)).map((column) => (
                 <button key={column.key} type="button" data-testid={`task-status-${column.key.toLowerCase()}`} className="btn btn-small" onClick={() => onMove(selected, column.key)}>{column.label}</button>
               ))}
             </div>
-          ) : (
+          ) : isTaskFinalApproved(selected) ? (
             <div className="task-approved-notice compact-approved-notice">This task is approved and locked. It cannot be moved or resubmitted by Assistant.</div>
-          )}
+          ) : null}
 
           <div className="reference-panel assignment-reference-panel">
-            <HitboxPreview title="Reference image" url={referenceUrl} box={selectedHitbox} loading={hitboxLoading} />
-            <Preview title="Submitted image" url={mediaUrlFrom(selected, selected.submittedImageUrl, selected.submitted_image_url)} />
+            <div className="assignment-reference-column">
+              <HitboxPreview key={`${selected.id}-${selectedHitbox?.id || "loading"}`} title="Reference image" url={referenceUrl} box={selectedHitbox} loading={hitboxLoading} />
+              {isAssistant && (
+                <button className="btn btn-primary full reference-download-btn" type="button" onClick={() => onDownloadReference(selected)} disabled={!referenceUrl}>
+                  Download reference image
+                </button>
+              )}
+            </div>
+            {!isAssistant && <Preview title="Submitted image" url={mediaUrlFrom(selected.submittedImageUrl, selected.submitted_image_url)} />}
           </div>
         </div>
       ) : (
@@ -685,8 +783,19 @@ function TaskLockedBox({ task }) {
   );
 }
 
-function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile, onConfirm, onSubmit }) {
+function SubmitWorkBox({ disabled, selectedFileName, selectedFile, confirmReady, onChooseFile, onConfirm, onSubmit }) {
   const inputRef = useRef(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+
+  useEffect(() => {
+    if (!selectedFile || !String(selectedFile.type || "").startsWith("image/")) {
+      setPreviewUrl("");
+      return undefined;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
 
   function choose(file) {
     onChooseFile(file || null);
@@ -758,6 +867,13 @@ function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile,
         {hasFile ? <>Selected: <strong>{selectedFileName}</strong></> : "No file selected yet"}
       </div>
 
+      {previewUrl && (
+        <div className="assistant-finished-preview" data-testid="assistant-finished-preview">
+          <strong>Finished image preview</strong>
+          <img src={previewUrl} alt={selectedFileName || "Finished work preview"} />
+        </div>
+      )}
+
       <label className="assistant-review-check">
         <input type="checkbox" data-testid="assistant-work-confirm" checked={confirmReady} disabled={disabled || !hasFile} onChange={(event) => onConfirm(event.target.checked)} />
         <span>I confirm this file is ready for Mangaka review</span>
@@ -778,7 +894,7 @@ function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile,
 }
 
 function TaskThumbnail({ task }) {
-  const url = mediaUrlFrom(task, task.submittedImageUrl, task.submitted_image_url, task.referenceImageUrl, task.reference_image_url, task.pageImageUrl, task.page_image_url, task.imageUrl, task.image_url);
+  const url = taskReferenceUrl(task);
   if (url) return <img className="ast-task-thumb" src={url} alt="Task preview" />;
   return <div className="ast-task-thumb assignment-task-thumb-placeholder">▧</div>;
 }
@@ -790,10 +906,18 @@ function Preview({ title, url }) {
 
 function HitboxPreview({ title, url, box, loading }) {
   const resolved = resolveMediaUrl(url);
+  const imageRef = useRef(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     setImageSize({ width: 0, height: 0 });
+    const frame = window.requestAnimationFrame(() => {
+      const image = imageRef.current;
+      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [resolved]);
 
   if (!resolved) {
@@ -819,6 +943,7 @@ function HitboxPreview({ title, url, box, loading }) {
       <strong>{title}</strong>
       <div className="preview-image-stage">
         <img
+          ref={imageRef}
           src={resolved}
           alt={title}
           onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })}

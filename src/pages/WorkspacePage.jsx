@@ -269,7 +269,7 @@ export default function WorkspacePage({ pageId, query }) {
             </button>
           ))}
 
-          <button className="btn-add-page-right" onClick={() => seriesId ? navigate(`/series/${seriesId}`) : navigate("/series")}>＋ Back to Chapter</button>
+          <button className="btn-add-page-right" onClick={() => seriesId ? navigate(`/chapters-pages?seriesId=${seriesId}`) : navigate("/chapters-pages")}>＋ Back to Chapter</button>
 
           <div className="form-section" style={{ padding: 14, marginTop: 12 }}>
             <div className="form-section-title">Selected Hitbox</div>

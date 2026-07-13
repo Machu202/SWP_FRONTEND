@@ -279,7 +279,7 @@ export default function SeriesDetailPage({ seriesId }) {
       </div>
 
       <div className="card-box">
-        <div className="section-title-row"><h3>Series Tasks</h3><button className="btn btn-small" onClick={() => navigate("/tasks")}>Open Kanban</button></div>
+        <div className="section-title-row"><h3>Series Tasks</h3><button className="btn btn-small" onClick={() => navigate("/tasks?tab=kanban")}>Open Kanban</button></div>
         {tasks.length ? (
           <div className="task-mini-list">
             {tasks.slice(0, 6).map((task) => (

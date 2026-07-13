@@ -28,8 +28,8 @@ const fixtures = {
   pages: [{ id: 100, pageNumber: 1, imageUrl: imageCurrent, width: 800, height: 1200, chapterId: 10 }],
   hitboxes: [{ id: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, pageId: 100 }],
   versions: [{ id: 901, versionNumber: 1, imageUrl: imageOld, createdAt: tomorrow }],
-  tasks: [{ id: 501, status: "TODO", description: "Ink the background", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent }],
-  reviewTasks: [{ id: 502, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent, submittedImageUrl: imageCurrent }],
+  tasks: [{ id: 501, taskNumber: 1, status: "TODO", description: "Ink the background", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld }],
+  reviewTasks: [{ id: 502, taskNumber: 1, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent, submittedImageUrl: imageCurrent }],
   users: [
     { id: 1, username: "mika", fullName: "Mika Mangaka", email: "mika@example.test", phoneNumber: "0901", roleName: "Mangaka", isActive: true },
     { id: 2, username: "aya", fullName: "Aya Assistant", email: "aya@example.test", phoneNumber: "0902", roleName: "Assistant", isActive: true },
@@ -88,7 +88,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
     window.__DISABLE_NOTIFICATION_STREAM__ = true;
     window.__smokeCapture = {
       lockStates: [], uploads: 0, hitboxesCreated: 0, comments: 0, restores: 0,
-      taskStatuses: [], feedbackCreated: 0, feedbackResolved: 0, votes: [],
+      taskStatuses: [], taskStarts: 0, feedbackCreated: 0, feedbackResolved: 0, votes: [],
       adminDecisions: 0, parameterUpdates: 0, tantouAssignments: [],
       tantouChapterStatus: initialChapterStatus || fixtureData.chapters[0].publishStatus,
       boardSubmissions: 0
@@ -122,6 +122,8 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (/^\/users\/\d+\/role$/.test(path)) return response({ id: Number(path.split("/")[2]), roleName: url.searchParams.get("roleName") });
 
       if (path === "/auth/login") return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
+      if (path === "/auth/session") return response({ active: true, id: profile.id, username: profile.username });
+      if (path === "/auth/logout") return response({ message: "Logged out" });
       if (path === "/auth/request-otp") return response({ message: "sent" });
       if (path === "/auth/verify-otp") return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
       if (path === "/auth/register") return response({ id: 55 });
@@ -202,6 +204,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         return response({ ...f.tasks[0], status });
       }
       if (/^\/tasks\/\d+\/assign$/.test(path)) return response({ ...f.tasks[0], assistantId: Number(url.searchParams.get("assistantId")), assistantName: "Aya Assistant" });
+      if (/^\/tasks\/\d+\/start$/.test(path)) { capture.taskStarts += 1; return response({ ...f.tasks[0], status: "DOING" }); }
       if (/^\/tasks\/\d+\/submit$/.test(path)) return response({ ...f.tasks[0], status: "REVIEWING", submittedImageUrl: url.searchParams.get("imageUrl") });
 
       if (path === "/resources" && method === "GET") return response(f.resources);
@@ -269,8 +272,14 @@ async function run() {
       assert.equal(await page.locator("#login-password").getAttribute("type"), "text");
       await page.getByRole("button", { name: "via OTP" }).click();
       await page.locator('input[type="email"]').waitFor();
+      await page.getByRole("button", { name: "PASSWORD", exact: true }).click();
+      await page.getByRole("button", { name: /create new account/i }).click();
+      const registerPassword = page.locator('#form-register-section input[autocomplete="new-password"]');
+      assert.equal(await registerPassword.getAttribute("type"), "password");
+      await page.locator('#form-register-section').getByRole("button", { name: "Show password" }).click();
+      assert.equal(await registerPassword.getAttribute("type"), "text");
       assert.deepEqual(pageErrors, []);
-      passed.push("FE-02 password/OTP login and password visibility");
+      passed.push("FE-02 password/OTP login and login/register password visibility");
       await context.close();
     }
 
@@ -351,6 +360,10 @@ async function run() {
       await page.getByRole("button", { name: "Continue" }).click();
       await page.locator(".wizard-summary-card").waitFor({ state: "visible" });
 
+      await navigate(page, "/series/1");
+      await waitText(page, "Upload Pages");
+      assert.match(await page.evaluate(() => location.hash), /^#\/chapters-pages\?seriesId=1/, "Mangaka series cards must open the real Chapters & Pages route");
+
       await navigate(page, "/chapters-pages?seriesId=1");
       await waitText(page, "Upload Pages");
       await page.locator('input[type="file"][multiple]').first().setInputFiles([
@@ -367,6 +380,10 @@ async function run() {
       assert.equal(await page.locator(".manuscript-image-pane img").count(), 1);
       assert.equal(await page.locator(".manuscript-tree").count(), 1);
       assert.ok(await page.locator(".tree-page-item").count() >= 1);
+
+      await navigate(page, "/workspace/100?seriesId=1&chapterId=10");
+      await waitText(page, "Page Versions");
+      assert.match(await page.evaluate(() => location.hash), /^#\/canvas-workspace\?/, "Mangaka legacy canvas URLs must redirect to the real Canvas Workspace");
 
       await navigate(page, "/canvas-workspace?seriesId=1&chapterId=10&pageId=100");
       await waitText(page, "Page Versions");
@@ -404,10 +421,16 @@ async function run() {
       await waitText(page, "Kanban Board");
       assert.equal(await page.locator('[data-testid="kanban-task-card"]').count(), fixtures.tasks.length, "Kanban must render every API task exactly once");
       const taskCard = page.locator('.task-card[draggable="true"]').first();
+      assert.equal(await taskCard.getByRole("button", { name: "Doing", exact: true }).count(), 1);
+      assert.equal(await taskCard.getByRole("button", { name: "Approved", exact: true }).count(), 0);
       const doingColumn = page.locator('.kanban-column[data-status="DOING"]');
       await taskCard.dragTo(doingColumn);
       await waitText(page, "moved to DOING");
       assert.ok((await capture(page)).taskStatuses.includes("DOING"));
+      const movedCard = page.locator('.kanban-column[data-status="DOING"] [data-testid="kanban-task-card"]').first();
+      assert.equal(await movedCard.getByRole("button", { name: "Reviewing", exact: true }).count(), 1);
+      assert.equal(await movedCard.getByRole("button", { name: "Todo", exact: true }).count(), 0);
+      assert.equal(await movedCard.getByRole("button", { name: "Approved", exact: true }).count(), 0);
 
       await navigate(page, "/assistant-review");
       await page.getByRole("button", { name: /Assistant Submissions/ }).click();
@@ -436,6 +459,24 @@ async function run() {
       assert.equal(await page.getByText("NOW", { exact: true }).count(), 0);
       assert.equal(await page.getByText("REV", { exact: true }).count(), 0);
       assert.equal(await page.getByRole("button", { name: "Assets", exact: true }).count(), 0);
+      await page.locator(".ast-task-item").first().click();
+      assert.match(await page.evaluate(() => location.hash), /^#\/tasks\?tab=assignments/, "Active Assignment cards must open Assignments");
+      await waitText(page, "Task Detail");
+      await waitText(page, "Task #1");
+      assert.equal(await page.locator('[data-testid^="task-status-"]').count(), 0, "Assistant Assignments must not show task status controls");
+      assert.equal(await page.getByText("Submitted image", { exact: true }).count(), 0, "Assistant must not see the submitted-image panel");
+      assert.equal(await page.locator('.assignment-reference-panel img').first().getAttribute("src"), fixtures.imageCurrent, "Reference image must remain the original page image");
+      await page.locator(".task-hitbox-overlay").waitFor({ state: "visible" });
+      assert.equal(await page.locator(".task-hitbox-overlay").count(), 1, "Task Area overlay must render for the initially selected task");
+      await page.getByRole("button", { name: "Download reference image" }).click();
+      await waitText(page, "started and moved to Doing");
+      assert.equal((await capture(page)).taskStarts, 1);
+      await page.locator('[data-testid="assistant-work-file"]').setInputFiles({ name: "finished.png", mimeType: "image/png", buffer: Buffer.from("finished-image") });
+      assert.equal(await page.locator('[data-testid="assistant-finished-preview"] img').count(), 1, "Chosen finished work must render an image preview");
+      await navigate(page, "/tasks?tab=kanban");
+      await waitText(page, "Kanban Board");
+      assert.equal(await page.locator('[data-testid="kanban-task-card"][draggable="true"]').count(), 0, "Assistant Kanban must be view-only");
+      assert.ok(await page.getByText("View only", { exact: true }).count() >= 1);
       await navigate(page, "/resources");
       await waitText(page, "Resource Library");
       assert.equal(await page.getByRole("link", { name: "Download" }).count(), 1);
