@@ -238,18 +238,6 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
                 <button className="btn-publish" onClick={saveScript} disabled={saving || !canEdit}>{saving ? "Saving..." : "Save Script"}</button>
                 <button className="btn" onClick={() => navigate(`/chapters-pages?seriesId=${selectedSeriesId}`)}>Open Chapter Manager</button>
               </div>
-              <div className="page-grid manuscript-page-preview-grid">
-                {selectedPages.map((page) => {
-                  const url = pageImage(page);
-                  return (
-                    <div className="page-card" key={page.id}>
-                      <button className={String(selectedPageId) === String(page.id) ? "active" : ""} onClick={() => setSelectedPageId(String(page.id))}>{url ? <img src={url} alt={`Page ${pageNumber(page)}`} /> : <span>No image</span>}</button>
-                      <div className="page-card-footer"><strong>Page {pageNumber(page)}</strong></div>
-                    </div>
-                  );
-                })}
-              </div>
-              {!selectedPages.length && <EmptyState icon="▧" title="No page previews" body="Upload page images from Chapters & Pages." />}
             </>
           ) : <EmptyState icon="✎" title="Select a chapter" body="Choose a chapter from the tree to view or edit its script." />}
         </div>

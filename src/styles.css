@@ -9829,3 +9829,162 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   outline: 2px solid #6366f1;
   outline-offset: 2px;
 }
+
+
+/* =========================================================
+   SWP reported display fixes: task metadata, overlays, workspace
+   ========================================================= */
+
+/* Keep the hitbox caption fitted to the words instead of a large oval. */
+.task-hitbox-label {
+  top: 2px;
+  left: 2px;
+  width: max-content;
+  max-width: calc(100% - 4px);
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 8px;
+  line-height: 1.15;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+/* Style every chapter/page control inside the Canvas Workspace sidebar,
+   including buttons generated for chapters and pages added later. */
+.chapter-workspace-sidebar .chapter-sidebar-list button {
+  appearance: none;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  padding: 9px 11px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  transition: border-color .16s ease, background .16s ease, color .16s ease,
+    box-shadow .16s ease, transform .16s ease;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-list button:hover:not(:disabled) {
+  border-color: #818cf8;
+  background: #eef2ff;
+  color: #3730a3;
+  box-shadow: 0 5px 14px rgba(79, 70, 229, .12);
+  transform: translateY(-1px);
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-list button:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, .28);
+  outline-offset: 2px;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-list button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-button {
+  min-height: 52px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-button > span {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-button > small {
+  max-width: 100%;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-button.active {
+  border-color: #4f46e5;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #3730a3;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, .15);
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-button.active > small {
+  color: #4f46e5;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-pages {
+  padding: 2px 0 2px 12px;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-pages button {
+  position: relative;
+  min-height: 34px;
+  padding: 7px 10px 7px 25px;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-pages button::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #94a3b8;
+  transform: translateY(-50%);
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-pages button.active {
+  border-color: #6366f1;
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 5px 13px rgba(79, 70, 229, .2);
+}
+
+.chapter-workspace-sidebar .chapter-sidebar-pages button.active::before {
+  background: #ffffff;
+}
+
+/* Override the generic .preview-box span placeholder rule for the hitbox badge. */
+.preview-box .task-hitbox-label,
+.submission-preview .task-hitbox-label {
+  display: inline-flex;
+  place-items: initial;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100% - 4px);
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 8px;
+  line-height: 1.15;
+  letter-spacing: 0;
+  white-space: nowrap;
+}

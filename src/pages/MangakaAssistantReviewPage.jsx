@@ -84,22 +84,36 @@ function taskChapterId(task) {
 }
 
 function submittedUrl(task) {
-  return mediaUrlFrom(task, task.submittedImageUrl, task.submitted_image_url, task.submissionUrl, task.submission_url, task.imageUrl, task.image_url);
+  return mediaUrlFrom(
+    task?.submittedImageUrl,
+    task?.submitted_image_url,
+    task?.submissionUrl,
+    task?.submission_url,
+    task?.submittedWorkUrl,
+    task?.submitted_work_url,
+    task?.imageUrl,
+    task?.image_url
+  );
 }
 
 function referenceUrl(task) {
+  // Keep the immutable source page separate from the Assistant submission.
+  // Passing the whole task to mediaUrlFrom() would prefer submittedImageUrl.
   return mediaUrlFrom(
-    task,
-    task.referenceImageUrl,
-    task.reference_image_url,
-    task.pageImageUrl,
-    task.page_image_url,
-    task.page?.imageUrl,
-    task.page?.image_url,
-    task.hitbox?.page?.imageUrl,
-    task.hitbox?.page?.image_url,
-    task.hitboxDto?.page?.imageUrl,
-    task.hitboxDto?.page?.image_url
+    task?.referenceImageUrl,
+    task?.reference_image_url,
+    task?.pageImageUrl,
+    task?.page_image_url,
+    task?.page?.imageUrl,
+    task?.page?.image_url,
+    task?.hitbox?.pageImageUrl,
+    task?.hitbox?.page_image_url,
+    task?.hitbox?.page?.imageUrl,
+    task?.hitbox?.page?.image_url,
+    task?.hitboxDto?.pageImageUrl,
+    task?.hitboxDto?.page_image_url,
+    task?.hitboxDto?.page?.imageUrl,
+    task?.hitboxDto?.page?.image_url
   );
 }
 
@@ -1027,7 +1041,7 @@ function HitboxPreview({ title, url, box }) {
         />
         {hasBox && imageSize.width > 0 && imageSize.height > 0 && (
           <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
-            <span className="task-hitbox-label">Task area</span>
+            <span className="task-hitbox-label">Task Area</span>
           </div>
         )}
       </div>

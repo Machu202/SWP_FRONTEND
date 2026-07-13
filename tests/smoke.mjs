@@ -30,7 +30,7 @@ const fixtures = {
   hitboxes: [{ id: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, pageId: 100 }],
   versions: [{ id: 901, versionNumber: 1, imageUrl: imageOld, createdAt: tomorrow }],
   tasks: [{ id: 501, taskNumber: 1, status: "TODO", description: "Ink the background", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld }],
-  reviewTasks: [{ id: 502, taskNumber: 1, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent, submittedImageUrl: imageCurrent }],
+  reviewTasks: [{ id: 502, taskNumber: 1, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld }],
   users: [
     { id: 1, username: "mika", fullName: "Mika Mangaka", email: "mika@example.test", phoneNumber: "0901", roleName: "Mangaka", isActive: true },
     { id: 2, username: "aya", fullName: "Aya Assistant", email: "aya@example.test", phoneNumber: "0902", roleName: "Assistant", isActive: true },
@@ -389,6 +389,7 @@ async function run() {
       assert.equal(await page.locator(".manuscript-image-pane img").count(), 1);
       assert.equal(await page.locator(".manuscript-tree").count(), 1);
       assert.ok(await page.locator(".tree-page-item").count() >= 1);
+      assert.equal(await page.locator(".manuscript-page-preview-grid").count(), 0, "Redundant page thumbnail strip must be removed below script actions");
 
       await navigate(page, "/workspace/100?seriesId=1&chapterId=10");
       await waitText(page, "Page Versions");
@@ -398,6 +399,17 @@ async function run() {
       await waitText(page, "Page Versions");
       assert.equal(await page.locator(".chapter-workspace-sidebar").count(), 1);
       assert.ok(await page.locator(".chapter-sidebar-pages button").count() >= 1);
+      const chapterWorkspaceStyle = await page.locator(".chapter-sidebar-button").first().evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { borderRadius: style.borderRadius, backgroundImage: style.backgroundImage, minHeight: style.minHeight };
+      });
+      assert.equal(chapterWorkspaceStyle.borderRadius, "10px");
+      assert.match(chapterWorkspaceStyle.backgroundImage, /linear-gradient/);
+      const pageWorkspaceStyle = await page.locator(".chapter-sidebar-pages button").first().evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { borderRadius: style.borderRadius, minHeight: style.minHeight };
+      });
+      assert.equal(pageWorkspaceStyle.borderRadius, "8px");
       const canvasStage = page.locator(".hitbox-image-wrap");
       const stageBox = await canvasStage.boundingBox();
       assert.ok(stageBox, "Canvas image must have a measurable drawing area");
@@ -441,12 +453,19 @@ async function run() {
       assert.equal(await movedCard.getByRole("button", { name: "Todo", exact: true }).count(), 0);
       assert.equal(await movedCard.getByRole("button", { name: "Approved", exact: true }).count(), 0);
 
+      await navigate(page, "/tasks?tab=assignments");
+      await waitText(page, "Task Detail");
+      assert.equal(await page.locator('[data-testid="task-chapter-meta"]').textContent(), "Chapter 1: Opening", "Task Detail must not show Chapter: Chapter ...");
+
       await navigate(page, "/assistant-review");
       await page.getByRole("button", { name: /Assistant Submissions/ }).click();
       await waitText(page, "Send approved chapters to Tantou");
       assert.equal(await page.locator('[data-testid="assistant-work-approved-502"]').count(), 1);
       assert.equal(await page.locator('[data-testid="approve-assistant-work"]').count(), 0, "Approved tasks must not keep an approval button");
       assert.equal(await page.locator('[data-testid="inline-chapter-handoff-10"]').count(), 1, "Approved task card must show its chapter handoff action");
+      const reviewRow = page.locator('[data-testid="assistant-review-task-502"]');
+      assert.equal(await reviewRow.locator('img[alt="Reference"]').getAttribute("src"), fixtures.imageCurrent, "Mangaka Review reference must remain the original page image");
+      assert.equal(await reviewRow.locator('img[alt="Submitted work"]').getAttribute("src"), fixtures.imageOld, "Mangaka Review submitted work must remain separate");
       await page.screenshot({ path: path.resolve("test-results/issue16-approved-task-handoff.png"), fullPage: true });
       await page.locator('[data-testid="inline-chapter-tantou-select-1"]').selectOption("4");
       await page.locator('[data-testid="inline-assign-and-send-chapter-10"]').click();
@@ -479,6 +498,14 @@ async function run() {
       assert.equal(await page.locator('.assignment-reference-panel img').first().getAttribute("src"), fixtures.imageCurrent, "Reference image must remain the original page image");
       await page.locator(".task-hitbox-overlay").waitFor({ state: "visible" });
       assert.equal(await page.locator(".task-hitbox-overlay").count(), 1, "Task Area overlay must render for the initially selected task");
+      const taskAreaBox = await page.locator(".task-hitbox-label").first().boundingBox();
+      assert.ok(taskAreaBox && taskAreaBox.width <= 60 && taskAreaBox.height <= 18, "Task Area label must fit the text instead of using an oversized oval");
+      const taskAreaStyle = await page.locator(".task-hitbox-label").first().evaluate((element) => ({
+        borderRadius: getComputedStyle(element).borderRadius,
+        fontSize: getComputedStyle(element).fontSize
+      }));
+      assert.equal(taskAreaStyle.borderRadius, "4px");
+      assert.equal(taskAreaStyle.fontSize, "8px");
       await page.getByRole("button", { name: "Download reference image" }).click();
       await waitText(page, "started and moved to Doing");
       assert.equal((await capture(page)).taskStarts, 1);

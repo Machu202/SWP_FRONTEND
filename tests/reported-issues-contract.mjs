@@ -138,4 +138,28 @@ assert.match(layout, /Assistant Workspace/);
 assert.match(layout, /Mangaka Workspace/);
 assert.match(layout, /function topbarBrand\(group\) \{[\s\S]*return workspaceTitle\(group\)/);
 
-console.log(JSON.stringify({ reportedIssues: 22, result: "PASS" }, null, 2));
+// 23. Task Detail does not duplicate the word Chapter.
+assert.match(tasks, /data-testid="task-chapter-meta">\{taskChapterLabel\(selected\)\}<\/span>/);
+assert.doesNotMatch(tasks, /Chapter:\s*\{taskChapterLabel\(selected\)\}/);
+
+// 24. Mangaka Review keeps the immutable reference page separate from submitted work.
+const reviewReferenceHelper = mangakaReview.slice(mangakaReview.indexOf("function referenceUrl"), mangakaReview.indexOf("function taskAssistantName"));
+assert.doesNotMatch(reviewReferenceHelper, /mediaUrlFrom\(\s*task,/);
+assert.match(reviewReferenceHelper, /task\?\.referenceImageUrl/);
+assert.match(reviewReferenceHelper, /task\?\.hitboxDto\?\.pageImageUrl/);
+
+// 25. Task Area badge is compact and no longer rendered as an oversized oval.
+assert.match(css, /SWP reported display fixes:[\s\S]*\.task-hitbox-label[\s\S]*border-radius: 4px[\s\S]*font-size: 8px/);
+assert.match(tasks, />Task Area<\/span>/);
+assert.match(mangakaReview, />Task Area<\/span>/);
+
+// 26. Manuscripts no longer duplicates page thumbnails below the script actions.
+assert.doesNotMatch(manuscripts, /manuscript-page-preview-grid/);
+assert.match(manuscripts, /Open Chapter Manager/);
+
+// 27. Every current/future chapter and page button in Canvas Workspace is styled.
+assert.match(css, /chapter-workspace-sidebar \.chapter-sidebar-list button[\s\S]*linear-gradient/);
+assert.match(css, /chapter-workspace-sidebar \.chapter-sidebar-button\.active/);
+assert.match(css, /chapter-workspace-sidebar \.chapter-sidebar-pages button\.active/);
+
+console.log(JSON.stringify({ reportedIssues: 27, result: "PASS" }, null, 2));

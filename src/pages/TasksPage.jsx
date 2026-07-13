@@ -77,8 +77,12 @@ function taskReferenceUrl(task) {
     task?.page_image_url,
     task?.page?.imageUrl,
     task?.page?.image_url,
+    task?.hitbox?.pageImageUrl,
+    task?.hitbox?.page_image_url,
     task?.hitbox?.page?.imageUrl,
     task?.hitbox?.page?.image_url,
+    task?.hitboxDto?.pageImageUrl,
+    task?.hitboxDto?.page_image_url,
     task?.hitboxDto?.page?.imageUrl,
     task?.hitboxDto?.page?.image_url
   );
@@ -719,7 +723,7 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
             <div className="task-detail-meta"><span>Task #{taskDisplayNumber(selected)}</span><span>{taskSeriesTitle(selected) || "No series"}</span></div>
             <h1>{selected.description || `Task #${taskDisplayNumber(selected)}`}</h1>
             <div className="meta-row wrap">
-              <span>Chapter: {taskChapterLabel(selected)}</span>
+              <span data-testid="task-chapter-meta">{taskChapterLabel(selected)}</span>
               <span>Page: {taskPageNumber(selected) || "-"}</span>
               <span>Assistant: {taskAssistantName(selected) || "Unassigned"}</span>
             </div>
@@ -950,7 +954,7 @@ function HitboxPreview({ title, url, box, loading }) {
         />
         {hasBox && imageSize.width > 0 && imageSize.height > 0 && (
           <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
-            <span className="task-hitbox-label">Task area</span>
+            <span className="task-hitbox-label">Task Area</span>
           </div>
         )}
       </div>
