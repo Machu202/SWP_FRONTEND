@@ -2,7 +2,7 @@
 
 React + Vite frontend for the SWP391 Manga Studio workflow system.
 
-This version is prepared for Git/GitHub publishing. It does not include `node_modules`, `dist`, `.env`, or backend secrets.
+This corrected version includes a ready-to-run `.env` with the original local API, WebSocket, and Google client configuration. Keep the archive private and do not publish `.env` to a public repository.
 
 ## Main features
 

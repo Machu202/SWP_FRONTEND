@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, resolveMediaUrl } from "../api/client";
+import { api, hasRole, resolveMediaUrl, unwrapList } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
@@ -8,6 +9,11 @@ function hitboxId(box) {
 }
 
 export default function WorkspacePage({ pageId, query }) {
+  const { profile, session } = useAuth();
+  const role = profile?.roleName || session.role;
+  const canCreateTask = hasRole(role, ["mangaka"]);
+  const canCreateFeedback = hasRole(role, ["tantou"]);
+  const canResolveFeedback = hasRole(role, ["tantou", "mangaka"]);
   const imageRef = useRef(null);
   const [canvas, setCanvas] = useState(null);
   const [hitboxes, setHitboxes] = useState([]);
@@ -15,8 +21,13 @@ export default function WorkspacePage({ pageId, query }) {
   const [dragStart, setDragStart] = useState(null);
   const [draftBox, setDraftBox] = useState(null);
   const [description, setDescription] = useState("");
+  const [assistants, setAssistants] = useState([]);
+  const [assistantId, setAssistantId] = useState("");
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackContent, setFeedbackContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -27,9 +38,15 @@ export default function WorkspacePage({ pageId, query }) {
     setLoading(true);
     setError("");
     try {
-      const data = await api.workspace.canvasInit(pageId);
+      const [data, assistantData, feedbackData] = await Promise.all([
+        api.workspace.canvasInit(pageId),
+        canCreateTask ? api.users.byRole("Assistant").catch(() => []) : Promise.resolve([]),
+        api.feedback.byPage(pageId).catch(() => [])
+      ]);
       setCanvas(data);
       setHitboxes(data?.hitboxes || []);
+      setAssistants(unwrapList(assistantData));
+      setFeedbacks(unwrapList(feedbackData));
     } catch (err) {
       setError(err.message || "Could not load canvas");
     } finally {
@@ -40,7 +57,7 @@ export default function WorkspacePage({ pageId, query }) {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageId]);
+  }, [pageId, canCreateTask]);
 
   async function loadComments(box) {
     setSelected(box);
@@ -134,11 +151,45 @@ export default function WorkspacePage({ pageId, query }) {
     setError("");
     setMessage("");
     try {
-      await api.workspace.createTask(selected.id, description.trim());
+      const created = await api.workspace.createTask(selected.id, description.trim());
+      if (assistantId && created?.id) await api.tasks.assign(created.id, assistantId);
       setDescription("");
-      setMessage("Task created from hitbox. Assign an assistant from the Kanban Tasks page.");
+      setAssistantId("");
+      setTaskModalOpen(false);
+      setMessage(assistantId ? "Task created and assigned to an Assistant." : "Task created from hitbox.");
     } catch (err) {
       setError(err.message || "Could not create task. Maybe this hitbox already has a task.");
+    }
+  }
+
+  async function createFeedback() {
+    if (!selected?.id || !feedbackContent.trim() || !canCreateFeedback) return;
+    setError("");
+    try {
+      const saved = await api.feedback.create(pageId, {
+        content: feedbackContent.trim(),
+        x: Number(selected.xCoord || selected.x || 0),
+        y: Number(selected.yCoord || selected.y || 0),
+        width: Number(selected.width || 0),
+        height: Number(selected.height || 0)
+      });
+      setFeedbacks((old) => [saved, ...old]);
+      setFeedbackContent("");
+      setMessage("Tantou feedback created for the selected region.");
+    } catch (err) {
+      setError(err.message || "Could not create Tantou feedback");
+    }
+  }
+
+  async function resolveFeedback(item) {
+    if (!item?.id || !canResolveFeedback) return;
+    setError("");
+    try {
+      const updated = await api.feedback.resolve(item.id);
+      setFeedbacks((old) => old.map((entry) => String(entry.id) === String(item.id) ? { ...entry, ...(updated || {}), isResolved: true } : entry));
+      setMessage("Feedback marked resolved.");
+    } catch (err) {
+      setError(err.message || "Could not resolve feedback");
     }
   }
 
@@ -174,6 +225,7 @@ export default function WorkspacePage({ pageId, query }) {
         <Alert type="danger">{error}</Alert>
         <div className="canvas-view">
           <div
+            data-testid="review-canvas"
             className="manga-page"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -229,9 +281,8 @@ export default function WorkspacePage({ pageId, query }) {
                   <span>W <strong>{Number(selected.width).toFixed(1)}</strong></span>
                   <span>H <strong>{Number(selected.height).toFixed(1)}</strong></span>
                 </div>
-                <label>Task description<textarea className="form-control" rows="4" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe what the assistant needs to draw or revise." /></label>
-                <button className="btn-publish full" onClick={createTask} disabled={!description.trim()}>Create task</button>
-                <button className="btn btn-danger full" onClick={deleteSelected}>Delete hitbox</button>
+                {canCreateTask && <button className="btn-publish full" onClick={() => setTaskModalOpen(true)}>Create / Assign Task</button>}
+                {canCreateTask && <button className="btn btn-danger full" onClick={deleteSelected}>Delete hitbox</button>}
 
                 <div className="divider-line" />
                 <label>Comment<textarea className="form-control" rows="3" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Pin a note/comment to this hitbox." /></label>
@@ -239,8 +290,24 @@ export default function WorkspacePage({ pageId, query }) {
                 <div className="list" style={{ marginTop: 12 }}>
                   {comments.map((item) => <div className="list-row" key={item.id || item.content}><div><strong>{item.content}</strong><small>{item.createdAt || item.user?.username || "comment"}</small></div></div>)}
                 </div>
+
+                {canCreateFeedback && (
+                  <>
+                    <div className="divider-line" />
+                    <label>Tantou feedback<textarea className="form-control" data-testid="tantou-feedback-input" rows="4" value={feedbackContent} onChange={(event) => setFeedbackContent(event.target.value)} placeholder="Describe the editorial issue in this selected region." /></label>
+                    <button className="btn-publish full" data-testid="tantou-feedback-submit" onClick={createFeedback} disabled={!feedbackContent.trim()}>Create feedback</button>
+                  </>
+                )}
               </>
             ) : <EmptyState icon="□" title="No hitbox selected" body="Drag on the image to create a hitbox, or click an existing one." />}
+          </div>
+
+          <div className="form-section feedback-resolution-panel" style={{ padding: 14, marginTop: 12 }}>
+            <div className="form-section-title">Tantou Feedback</div>
+            {feedbacks.length ? feedbacks.map((item) => {
+              const resolved = item.isResolved === true || item.is_resolved === true;
+              return <div className="feedback-resolution-row" key={item.id}><div><strong>{item.content || `Feedback #${item.id}`}</strong><small>{resolved ? "Resolved" : "Open"}</small></div><label><input type="checkbox" checked={resolved} disabled={resolved || !canResolveFeedback} onChange={() => resolveFeedback(item)} /> Resolved</label></div>;
+            }) : <small>No feedback for this page.</small>}
           </div>
         </div>
 
@@ -250,6 +317,17 @@ export default function WorkspacePage({ pageId, query }) {
           <div className="info-row"><span className="info-label">Backend</span><span className="info-val"><StatusBadge value="Connected" /></span></div>
         </div>
       </aside>
+
+      {taskModalOpen && (
+        <div className="feature-modal-backdrop" role="presentation" onMouseDown={() => setTaskModalOpen(false)}>
+          <div className="feature-modal-card" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="card-header"><div><p className="eyebrow">Task assignment</p><h3>Create task from hitbox</h3></div><button className="btn-icon-only" onClick={() => setTaskModalOpen(false)}>×</button></div>
+            <label>Assistant<select className="form-control" value={assistantId} onChange={(event) => setAssistantId(event.target.value)}><option value="">Leave unassigned</option>{assistants.map((assistant) => <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email}</option>)}</select></label>
+            <label>Task description<textarea className="form-control" rows="5" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe what the assistant needs to draw or revise." /></label>
+            <div className="button-row modal-actions"><button className="btn" onClick={() => setTaskModalOpen(false)}>Cancel</button><button className="btn-publish" onClick={createTask} disabled={!description.trim()}>Create task</button></div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -264,6 +342,7 @@ function HitboxOverlay({ box, canvas, active, draft, onClick, label }) {
   return (
     <button
       data-box="true"
+      data-testid={`review-hitbox-${box.id || "new"}`}
       type="button"
       className={`editor-hitbox ${active ? "active" : ""} ${draft ? "selection-box" : ""}`}
       style={{ left, top, width, height }}

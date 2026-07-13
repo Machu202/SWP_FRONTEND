@@ -39,6 +39,7 @@ export default function SeriesPage() {
   const [coverPreview, setCoverPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -105,6 +106,22 @@ export default function SeriesPage() {
     setForm({ ...DEFAULT_SERIES });
     setCoverFile(null);
     setCoverPreview("");
+    setWizardStep(1);
+  }
+
+  function goToWizardStep(nextStep) {
+    setError("");
+    if (nextStep > wizardStep) {
+      if (wizardStep === 1 && (!form.title.trim() || !form.genre.trim())) {
+        setError("Title and genre are required before continuing.");
+        return;
+      }
+      if (wizardStep === 2 && (!form.summary.trim() || !form.description.trim())) {
+        setError("Summary and description are required before continuing.");
+        return;
+      }
+    }
+    setWizardStep(Math.max(1, Math.min(3, nextStep)));
   }
 
   function validateCreateSeriesForm() {
@@ -148,7 +165,17 @@ export default function SeriesPage() {
         const uploaded = await api.resources.upload(coverFile, "SERIES_COVER");
         const uploadedUrl = extractMediaUrl(uploaded);
         if (!uploadedUrl) throw new Error("Cover uploaded, but the backend did not return an image URL.");
-        payload = { ...payload, coverImageUrl: uploadedUrl, coverUrl: uploadedUrl, imageUrl: uploadedUrl, thumbnailUrl: uploadedUrl };
+        payload = {
+          ...payload,
+          coverImageUrl: uploadedUrl,
+          cover_image_url: uploadedUrl,
+          coverUrl: uploadedUrl,
+          cover_url: uploadedUrl,
+          imageUrl: uploadedUrl,
+          image_url: uploadedUrl,
+          thumbnailUrl: uploadedUrl,
+          thumbnail_url: uploadedUrl
+        };
       }
 
       const created = await api.series.create(payload);
@@ -225,78 +252,75 @@ export default function SeriesPage() {
       </div>
 
       {canCreate && (
-        <form className="form-section create-series-simple-form" onSubmit={createSeries} noValidate>
+        <form className="form-section create-series-simple-form series-wizard" data-testid="series-create-form" onSubmit={createSeries} noValidate>
           <div className="form-section-title">Create new series</div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Title <span className="required-mark">*</span></label>
-              <input
-                type="text"
-                className="form-control"
-                value={form.title}
-                onChange={(event) => updateForm("title", event.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Genre <span className="required-mark">*</span></label>
-              <select
-                className="form-control"
-                value={form.genre}
-                onChange={(event) => updateForm("genre", event.target.value)}
-                required
-              >
-                <option value="">Select genre</option>
-                {GENRES.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
-              </select>
-            </div>
+          <div className="wizard-steps" aria-label="Series creation progress">
+            {["Basics", "Story", "Cover & Review"].map((label, index) => {
+              const step = index + 1;
+              return <button key={label} type="button" className={wizardStep === step ? "active" : wizardStep > step ? "complete" : ""} onClick={() => step < wizardStep && goToWizardStep(step)}><span>{step}</span>{label}</button>;
+            })}
           </div>
 
-          <div className="form-group">
-            <label>Cover image</label>
-            <label className="upload-box series-cover-upload-inline">
-              {coverPreview ? (
-                <img src={coverPreview} alt="Cover preview" />
-              ) : (
-                <span>Choose cover image</span>
-              )}
-              <input type="file" accept="image/*" onChange={handleCoverChange} />
-            </label>
-            {coverFile && (
-              <div className="upload-selected-row">
-                <span>{coverFile.name}</span>
-                <button type="button" className="btn btn-small" onClick={clearCover}>Remove</button>
+          {wizardStep === 1 && (
+            <div className="wizard-panel">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="series-title">Title <span className="required-mark">*</span></label>
+                  <input id="series-title" type="text" className="form-control" value={form.title} onChange={(event) => updateForm("title", event.target.value)} required autoFocus />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="series-genre">Genre <span className="required-mark">*</span></label>
+                  <select id="series-genre" className="form-control" value={form.genre} onChange={(event) => updateForm("genre", event.target.value)} required>
+                    <option value="">Select genre</option>
+                    {GENRES.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
+                  </select>
+                </div>
               </div>
+              <p className="form-required-note">Choose the project identity first.</p>
+            </div>
+          )}
+
+          {wizardStep === 2 && (
+            <div className="wizard-panel">
+              <div className="form-group">
+                <label htmlFor="series-summary">Summary <span className="required-mark">*</span></label>
+                <textarea id="series-summary" className="form-control" value={form.summary} onChange={(event) => updateForm("summary", event.target.value)} placeholder="Short synopsis or logline..." required autoFocus />
+              </div>
+              <div className="form-group">
+                <label htmlFor="series-description">Description <span className="required-mark">*</span></label>
+                <textarea id="series-description" className="form-control" value={form.description} onChange={(event) => updateForm("description", event.target.value)} placeholder="Longer premise and production notes..." required />
+              </div>
+            </div>
+          )}
+
+          {wizardStep === 3 && (
+            <div className="wizard-panel wizard-review-grid">
+              <div className="form-group">
+                <label>Cover image</label>
+                <label className="upload-box series-cover-upload-inline">
+                  {coverPreview ? <img src={coverPreview} alt="Cover preview" /> : <span>Choose cover image</span>}
+                  <input type="file" accept="image/*" data-testid="series-cover-input" onChange={handleCoverChange} />
+                </label>
+                {coverFile && <div className="upload-selected-row"><span>{coverFile.name}</span><button type="button" className="btn btn-small" onClick={clearCover}>Remove</button></div>}
+              </div>
+              <div className="wizard-summary-card">
+                <p className="eyebrow">Review before creation</p>
+                <h3>{form.title || "Untitled series"}</h3>
+                <p><strong>Genre:</strong> {form.genre || "-"}</p>
+                <p>{form.summary || "No summary"}</p>
+                <small>{form.description || "No description"}</small>
+              </div>
+            </div>
+          )}
+
+          <div className="wizard-actions">
+            <button type="button" className="btn" disabled={wizardStep === 1 || saving} onClick={() => goToWizardStep(wizardStep - 1)}>Back</button>
+            {wizardStep < 3 ? (
+              <button key="wizard-continue" type="button" className="btn-publish" data-testid="series-wizard-continue" onClick={(event) => { event.preventDefault(); goToWizardStep(wizardStep + 1); }}>Continue</button>
+            ) : (
+              <button key="wizard-create" type="submit" className="btn-publish create-series-submit" data-testid="series-create-submit" disabled={saving}>{saving ? "Creating..." : "Create series"}</button>
             )}
           </div>
-
-          <div className="form-group">
-            <label>Summary <span className="required-mark">*</span></label>
-            <textarea
-              className="form-control"
-              value={form.summary}
-              onChange={(event) => updateForm("summary", event.target.value)}
-              placeholder="Required: short synopsis or logline for this series..."
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Description <span className="required-mark">*</span></label>
-            <textarea
-              className="form-control"
-              value={form.description}
-              onChange={(event) => updateForm("description", event.target.value)}
-              placeholder="Required: longer description, premise, or production notes..."
-              required
-            />
-          </div>
-
-          <p className="form-required-note">* Title, genre, summary, and description are required before creating a series.</p>
-          <button className="btn-publish create-series-submit" disabled={saving}>
-            {saving ? "Creating..." : "Create series"}
-          </button>
         </form>
       )}
 
@@ -329,7 +353,7 @@ export default function SeriesPage() {
 function SeriesCard({ series, role, canDelete, onDelete }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   return (
-    <div className="list-card series-card series-card-with-actions">
+    <div className="list-card series-card series-card-with-actions" data-testid={`series-card-${series.id}`}>
       <button className="series-card-main" onClick={() => navigate(seriesOpenPath(role, series))}>
         <div className="list-card-img series-cover">
           {cover ? <img src={cover} alt={series.title} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}

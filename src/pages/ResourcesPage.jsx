@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, resolveMediaUrl } from "../api/client";
+import { api, extractMediaUrl, hasRole, resolveMediaUrl, unwrapList } from "../api/client";
 import { Alert, EmptyState, LoadingBlock } from "../components/Status";
+import { useAuth } from "../context/AuthContext";
 
 const TABS = [
   { key: "ALL", label: "All Assets" },
@@ -22,6 +23,9 @@ function normalizeResourceType(item) {
 }
 
 export default function ResourcesPage() {
+  const { profile, session } = useAuth();
+  const role = profile?.roleName || session.role;
+  const canManage = hasRole(role, ["mangaka", "admin"]);
   const [resources, setResources] = useState([]);
   const [activeTab, setActiveTab] = useState("ALL");
   const [resourceType, setResourceType] = useState("PAGE_IMAGE");
@@ -34,7 +38,7 @@ export default function ResourcesPage() {
     setLoading(true);
     setError("");
     try {
-      setResources(await api.resources.list());
+      setResources(unwrapList(await api.resources.list()));
     } catch (err) {
       setError(err.message || "Could not load resources");
     } finally {
@@ -94,15 +98,17 @@ export default function ResourcesPage() {
           <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 5 }}>Resource Library</h1>
           <p style={{ color: "#6b7280", fontSize: 14 }}>Tải về cọ vẽ, screentone và các tài liệu tham khảo chung của Studio.</p>
         </div>
-        <div className="button-row">
-          <select value={resourceType} onChange={(event) => setResourceType(event.target.value)}>
-            <option>PAGE_IMAGE</option><option>REFERENCE</option><option>BRUSH</option><option>SCREENTONE</option>
-          </select>
-          <label className="btn-publish file-button">
-            {uploading ? "Uploading..." : "Upload files"}
-            <input type="file" multiple onChange={upload} disabled={uploading} />
-          </label>
-        </div>
+        {canManage && (
+          <div className="button-row">
+            <select value={resourceType} onChange={(event) => setResourceType(event.target.value)}>
+              <option>PAGE_IMAGE</option><option>REFERENCE</option><option>BRUSH</option><option>SCREENTONE</option>
+            </select>
+            <label className="btn-publish file-button">
+              {uploading ? "Uploading..." : "Upload files"}
+              <input type="file" multiple onChange={upload} disabled={uploading} />
+            </label>
+          </div>
+        )}
       </div>
 
       <div className="resource-filter-tabs" style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "2px solid #e5e7eb", paddingBottom: 10 }}>
@@ -111,14 +117,14 @@ export default function ResourcesPage() {
 
       {filtered.length ? (
         <div className="resource-grid" id="resource-grid-container" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
-          {filtered.map((resource) => <ResourceCard key={resource.id} resource={resource} onRemove={() => remove(resource.id)} />)}
+          {filtered.map((resource) => <ResourceCard key={resource.id} resource={resource} canManage={canManage} onRemove={() => remove(resource.id)} />)}
         </div>
       ) : <EmptyState icon="□" title="No resources yet" body="Upload images, references, brush files, or screentones." />}
     </section>
   );
 }
 
-function ResourceCard({ resource, onRemove }) {
+function ResourceCard({ resource, canManage, onRemove }) {
   const url = resolveMediaUrl(extractMediaUrl(resource));
   const type = resource.resourceType || resource.type || "FILE";
   const isImage = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url) || String(type).includes("IMAGE") || String(type).includes("COVER");
@@ -130,11 +136,11 @@ function ResourceCard({ resource, onRemove }) {
         <div className="rs-status">Available</div>
       </div>
       <div className="rs-info">
-        <div className="rs-title"><span>Resource #{resource.id}</span><button className="btn-icon-only" onClick={onRemove}>×</button></div>
+        <div className="rs-title"><span>{resource.fileName || resource.filename || resource.name || `Resource #${resource.id}`}</span>{canManage && <button className="btn-icon-only" onClick={onRemove} title="Delete resource">×</button>}</div>
         <div className="rs-desc">{url || "No URL was returned from backend."}</div>
         <div className="rs-meta">
           <span className="rs-author"><span className="topbar-avatar" style={{ width: 16, height: 16, fontSize: 9 }}>SF</span> Studio</span>
-          {url && <a className="btn btn-small" href={url} target="_blank" rel="noreferrer">Open</a>}
+          {url && <div className="button-row"><a className="btn btn-small" href={url} target="_blank" rel="noreferrer">Open</a><a className="btn btn-small btn-primary" href={url} download={resource.fileName || resource.filename || `resource-${resource.id}`}>Download</a></div>}
         </div>
       </div>
     </div>

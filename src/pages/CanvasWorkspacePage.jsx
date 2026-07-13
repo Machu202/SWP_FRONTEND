@@ -3,6 +3,7 @@ import { api, extractMediaUrl, hasRole, mediaUrlFrom, resolveMediaUrl, unwrapLis
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
+import ScriptEditor from "../components/ScriptEditor";
 
 function chapterNumber(chapter) {
   return chapter?.chapterNumber ?? chapter?.chapter_number ?? chapter?.number ?? chapter?.id;
@@ -110,6 +111,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [hitboxes, setHitboxes] = useState([]);
   const [versions, setVersions] = useState([]);
   const [versionBusy, setVersionBusy] = useState(false);
+  const [compareVersionId, setCompareVersionId] = useState("");
+  const [comparePosition, setComparePosition] = useState(50);
   const [selectedBox, setSelectedBox] = useState(null);
   const [draftBox, setDraftBox] = useState(null);
   const [dragStart, setDragStart] = useState(null);
@@ -117,6 +120,14 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [isImageReady, setIsImageReady] = useState(false);
   const [taskDescription, setTaskDescription] = useState("");
   const [assistantId, setAssistantId] = useState("");
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [deletingHitboxId, setDeletingHitboxId] = useState("");
+  const [chapterScript, setChapterScript] = useState("");
+  const [scriptSaving, setScriptSaving] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [contextComments, setContextComments] = useState([]);
+  const [contextComment, setContextComment] = useState("");
+  const [contextLoading, setContextLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -126,6 +137,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const selectedPage = useMemo(() => pages.find((page) => String(page.id) === String(selectedPageId)), [pages, selectedPageId]);
 
   const imageUrl = mediaUrlFrom(canvas, canvas?.imageUrl, canvas?.image_url, pageImage(selectedPage));
+  const compareVersion = versions.find((version) => String(version.id) === String(compareVersionId));
+  const compareImageUrl = mediaUrlFrom(compareVersion, compareVersion?.imageUrl, compareVersion?.image_url);
 
   async function loadSeriesList() {
     setLoading(true);
@@ -230,6 +243,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       });
       setHitboxes(mergeHitboxLists(hitboxData, canvasData?.hitboxes));
       setVersions(Array.isArray(versionData) ? versionData : versionData?.content || versionData?.data || []);
+      setCompareVersionId("");
+      setComparePosition(50);
       setSelectedBox(null);
       setDraftBox(null);
       setDragStart(null);
@@ -254,6 +269,36 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     loadPages(selectedChapterId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadScript() {
+      if (!selectedChapterId) {
+        setChapterScript("");
+        return;
+      }
+      const data = await api.chapterScripts.get(selectedChapterId).catch(() => null);
+      if (!cancelled) setChapterScript(data?.content || data?.script || data?.text || (typeof data === "string" ? data : ""));
+    }
+    loadScript();
+    return () => { cancelled = true; };
+  }, [selectedChapterId]);
+
+  useEffect(() => {
+    if (!contextMenu) return undefined;
+    const close = (event) => {
+      if (!event.target.closest?.(".hitbox-context-menu")) setContextMenu(null);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setContextMenu(null);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     loadCanvas(selectedPageId);
@@ -417,19 +462,36 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setError("Could not load this page image. Check the image URL stored for this page.");
   }
 
-  async function deleteSelectedHitbox() {
-    if (!selectedBox?.id || String(selectedBox.id).startsWith("local-")) return;
-    if (!window.confirm("Delete this hitbox? Any task connected to it may also be affected by backend rules.")) return;
+  async function deleteHitbox(box = selectedBox) {
+    if (!canEdit || !box?.id) return;
+
+    if (String(box.id).startsWith("local-")) {
+      setHitboxes((old) => old.filter((item) => String(item.id) !== String(box.id)));
+      if (String(selectedBox?.id) === String(box.id)) setSelectedBox(null);
+      setDraftBox(null);
+      setMessage("Unsaved hitbox removed.");
+      return;
+    }
+
+    if (!window.confirm("Delete this hitbox? A hitbox that already has a task cannot be deleted until that task is removed or cancelled.")) return;
+    setDeletingHitboxId(String(box.id));
     setError("");
     setMessage("");
     try {
-      await api.workspace.deleteHitbox(selectedBox.id);
-      setHitboxes((old) => old.filter((box) => String(box.id) !== String(selectedBox.id)));
-      setSelectedBox(null);
+      await api.workspace.deleteHitbox(box.id);
+      setHitboxes((old) => old.filter((item) => String(item.id) !== String(box.id)));
+      if (String(selectedBox?.id) === String(box.id)) setSelectedBox(null);
+      if (String(contextMenu?.box?.id) === String(box.id)) setContextMenu(null);
       setMessage("Hitbox deleted.");
     } catch (err) {
       setError(err.message || "Could not delete hitbox.");
+    } finally {
+      setDeletingHitboxId("");
     }
+  }
+
+  async function deleteSelectedHitbox() {
+    await deleteHitbox(selectedBox);
   }
 
   async function createTask(event) {
@@ -441,9 +503,62 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       const createdTask = await api.workspace.createTask(selectedBox.id, taskDescription.trim());
       if (assistantId && createdTask?.id) await api.tasks.assign(createdTask.id, assistantId);
       setTaskDescription("");
+      setTaskModalOpen(false);
       setMessage(assistantId ? "Task created and assigned." : "Task created. Assign an assistant from Assignments if needed.");
     } catch (err) {
       setError(err.message || "Could not create task from hitbox.");
+    }
+  }
+
+  async function saveChapterScript() {
+    if (!selectedChapterId || !chapterScript.trim() || !canEdit) return;
+    setScriptSaving(true);
+    setError("");
+    try {
+      const saved = await api.chapterScripts.save(selectedChapterId, chapterScript.trim());
+      setChapterScript(saved?.content || chapterScript.trim());
+      setMessage("Chapter script saved.");
+    } catch (err) {
+      setError(err.message || "Could not save chapter script.");
+    } finally {
+      setScriptSaving(false);
+    }
+  }
+
+  async function openHitboxContext(event, box) {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedBox(box);
+    const menuWidth = Math.min(340, window.innerWidth - 24);
+    const menuHeight = Math.min(520, window.innerHeight - 24);
+    setContextMenu({
+      box,
+      x: Math.max(12, Math.min(event.clientX, window.innerWidth - menuWidth - 12)),
+      y: Math.max(12, Math.min(event.clientY, window.innerHeight - menuHeight - 12))
+    });
+    setContextComments([]);
+    setContextComment("");
+    if (!box?.id || String(box.id).startsWith("local-")) return;
+    setContextLoading(true);
+    try {
+      const comments = await api.hitboxComments.list(box.id).catch(() => []);
+      setContextComments(unwrapList(comments));
+    } finally {
+      setContextLoading(false);
+    }
+  }
+
+  async function addContextComment(event) {
+    event.preventDefault();
+    const box = contextMenu?.box;
+    if (!box?.id || !contextComment.trim()) return;
+    try {
+      const saved = await api.hitboxComments.create(box.id, contextComment.trim());
+      setContextComments((old) => [saved, ...old]);
+      setContextComment("");
+      setMessage("Hitbox comment added.");
+    } catch (err) {
+      setError(err.message || "Could not add hitbox comment.");
     }
   }
 
@@ -503,15 +618,15 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       </div>
 
       <div className="toolbar-row canvas-toolbar-row">
-        <select className="form-control" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
+        <select className="form-control" data-testid="canvas-series-select" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
           <option value="">Choose series</option>
           {seriesList.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
-        <select className="form-control" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)} disabled={!selectedSeriesId}>
+        <select className="form-control" data-testid="canvas-chapter-select" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)} disabled={!selectedSeriesId}>
           <option value="">Choose chapter</option>
           {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</option>)}
         </select>
-        <select className="form-control" value={selectedPageId} onChange={(event) => setSelectedPageId(event.target.value)} disabled={!selectedChapterId}>
+        <select className="form-control" data-testid="canvas-page-select" value={selectedPageId} onChange={(event) => setSelectedPageId(event.target.value)} disabled={!selectedChapterId}>
           <option value="">Choose page</option>
           {pages.map((page) => <option key={page.id} value={page.id}>Page {pageNumber(page)}</option>)}
         </select>
@@ -519,6 +634,14 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       </div>
 
       <div className="workspace-split canvas-static-split">
+        <ChapterWorkspaceSidebar
+          chapters={chapters}
+          pages={pages}
+          selectedChapterId={selectedChapterId}
+          selectedPageId={selectedPageId}
+          onChapterChange={setSelectedChapterId}
+          onPageChange={setSelectedPageId}
+        />
         <div className="card-box">
           <div className="section-title-row"><h3>Canvas</h3><span className="muted-note">{selectedPageId ? "Drag on image to draw a hitbox" : "Select a page to start"}</span></div>
           <div className="hitbox-stage canvas-hitbox-stage">
@@ -526,6 +649,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               <div
                 ref={wrapRef}
                 key={`canvas-wrap-${selectedPageId}-${imageUrl}`}
+                data-testid="canvas-draw-surface"
                 className={`hitbox-image-wrap ${isImageReady ? "ready" : "loading"}`}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -543,7 +667,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 />
                 {isImageReady && (
                   <div className="hitbox-layer-react">
-                    {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} />)}
+                    {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} onContextMenu={(event) => openHitboxContext(event, box)} />)}
                     {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" />}
                   </div>
                 )}
@@ -553,8 +677,14 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         </div>
 
         <div className="card-box hitbox-task-card">
+          <div className="script-sync-panel">
+            <div className="section-title-row compact-title-row"><h3>Chapter Script</h3><span className="muted-note">Synchronized with the selected chapter</span></div>
+            <ScriptEditor value={chapterScript} onChange={setChapterScript} rows={7} disabled={!canEdit} />
+            {canEdit && <button className="btn btn-small" type="button" onClick={saveChapterScript} disabled={scriptSaving || !selectedChapterId || !chapterScript.trim()}>{scriptSaving ? "Saving..." : "Save script"}</button>}
+          </div>
+
           <h3>Create Task From Hitbox</h3>
-          <form className="feature-form" onSubmit={createTask}>
+          <div className="feature-form">
             <div className="form-row">
               <div className="form-group"><label>X</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "xCoord", "x_coord").toFixed(2) : ""} readOnly /></div>
               <div className="form-group"><label>Y</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "yCoord", "y_coord").toFixed(2) : ""} readOnly /></div>
@@ -563,17 +693,19 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               <div className="form-group"><label>W</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "width", "width").toFixed(2) : ""} readOnly /></div>
               <div className="form-group"><label>H</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "height", "height").toFixed(2) : ""} readOnly /></div>
             </div>
-            <div className="form-group">
-              <label>Assistant</label>
-              <select className="form-control" value={assistantId} onChange={(event) => setAssistantId(event.target.value)}>
-                <option value="">Leave unassigned</option>
-                {assistants.map((assistant) => <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email || `Assistant #${assistant.id}`}</option>)}
-              </select>
-            </div>
-            <div className="form-group"><label>Task Description</label><textarea className="form-control" required value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Describe what the Assistant must fix or draw..." /></div>
-            <button className="btn-publish full" type="submit" disabled={!selectedBox?.id || !taskDescription.trim() || !canEdit}>Create Hitbox Task</button>
-            <button className="btn-outline full" type="button" onClick={deleteSelectedHitbox} disabled={!selectedBox?.id || String(selectedBox?.id || "").startsWith("local-")}>Delete Selected Hitbox</button>
-          </form>
+            <button className="btn-publish full" data-testid="open-task-modal" type="button" disabled={!selectedBox?.id || !canEdit || String(selectedBox?.id || "").startsWith("local-")} onClick={() => setTaskModalOpen(true)}>Open Task Assignment Modal</button>
+            {canEdit && (
+              <button
+                className="btn btn-danger full"
+                data-testid="delete-selected-hitbox"
+                type="button"
+                onClick={deleteSelectedHitbox}
+                disabled={!selectedBox?.id || Boolean(deletingHitboxId)}
+              >
+                {deletingHitboxId && String(deletingHitboxId) === String(selectedBox?.id) ? "Deleting hitbox..." : "Delete selected hitbox"}
+              </button>
+            )}
+          </div>
           <div className="upload-log">
             {selectedSeries && <div><strong>Series:</strong> {selectedSeries.title}</div>}
             {selectedChapter && <div><strong>Chapter:</strong> {chapterTitle(selectedChapter)}</div>}
@@ -584,15 +716,27 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             <div className="saved-hitbox-list">
               <div className="mini-section-label">Saved hitboxes on this page</div>
               {hitboxes.map((box, index) => (
-                <button
+                <div
                   key={hitboxId(box)}
-                  type="button"
                   className={`saved-hitbox-row ${selectedBox && String(selectedBox.id) === String(box.id) ? "active" : ""}`}
-                  onClick={() => setSelectedBox(box)}
                 >
-                  <span>#{index + 1}</span>
-                  <small>X {boxValue(box, "xCoord", "x_coord").toFixed(0)} · Y {boxValue(box, "yCoord", "y_coord").toFixed(0)}</small>
-                </button>
+                  <button type="button" className="saved-hitbox-select" onClick={() => setSelectedBox(box)}>
+                    <span>#{index + 1}</span>
+                    <small>X {boxValue(box, "xCoord", "x_coord").toFixed(0)} · Y {boxValue(box, "yCoord", "y_coord").toFixed(0)}</small>
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="btn btn-small btn-danger hitbox-inline-delete"
+                      data-testid={`delete-hitbox-${box.id}`}
+                      onClick={() => deleteHitbox(box)}
+                      disabled={Boolean(deletingHitboxId)}
+                      aria-label={`Delete hitbox ${index + 1}`}
+                    >
+                      {String(deletingHitboxId) === String(box.id) ? "Deleting..." : "Delete"}
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -615,7 +759,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                   const versionUrl = mediaUrlFrom(version, version.imageUrl, version.image_url);
                   return (
                     <div className="page-version-row" key={version.id}>
-                      <button type="button" onClick={() => versionUrl && setCanvas((old) => ({ ...(old || {}), imageUrl: versionUrl }))}>
+                      <button type="button" className={String(compareVersionId) === String(version.id) ? "active" : ""} onClick={() => versionUrl && setCompareVersionId(String(version.id))}>
                         <strong>Version {versionNumber}</strong>
                         <small>{formatDateTime(version.createdAt || version.created_at)}</small>
                       </button>
@@ -627,9 +771,38 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             ) : (
               <p className="muted-note version-empty-note">No page versions found yet.</p>
             )}
+            {compareImageUrl && imageUrl && (
+              <VersionComparison currentUrl={imageUrl} versionUrl={compareImageUrl} position={comparePosition} onPositionChange={setComparePosition} />
+            )}
           </div>
         </div>
       </div>
+
+      {taskModalOpen && (
+        <div className="feature-modal-backdrop" role="presentation" onMouseDown={() => setTaskModalOpen(false)}>
+          <form className="feature-modal-card" data-testid="task-assignment-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title" onSubmit={createTask} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="card-header"><div><p className="eyebrow">FE-38 task assignment</p><h3 id="task-modal-title">Create task from selected hitbox</h3></div><button className="btn-icon-only" type="button" onClick={() => setTaskModalOpen(false)}>×</button></div>
+            <div className="metric-grid compact">
+              <span>X <strong>{selectedBox ? boxValue(selectedBox, "xCoord", "x_coord").toFixed(1) : "-"}</strong></span>
+              <span>Y <strong>{selectedBox ? boxValue(selectedBox, "yCoord", "y_coord").toFixed(1) : "-"}</strong></span>
+              <span>W <strong>{selectedBox ? boxValue(selectedBox, "width", "width").toFixed(1) : "-"}</strong></span>
+              <span>H <strong>{selectedBox ? boxValue(selectedBox, "height", "height").toFixed(1) : "-"}</strong></span>
+            </div>
+            <label>Assistant<select className="form-control" data-testid="task-assistant-select" value={assistantId} onChange={(event) => setAssistantId(event.target.value)}><option value="">Leave unassigned</option>{assistants.map((assistant) => <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email || `Assistant #${assistant.id}`}</option>)}</select></label>
+            <label>Task details<textarea className="form-control" data-testid="task-description-input" rows="5" required value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Describe what the Assistant must fix or draw..." /></label>
+            <div className="button-row modal-actions"><button className="btn" type="button" onClick={() => setTaskModalOpen(false)}>Cancel</button><button className="btn-publish" data-testid="task-create-submit" disabled={!taskDescription.trim()}>Create and assign</button></div>
+          </form>
+        </div>
+      )}
+
+      {contextMenu && (
+        <form className="hitbox-context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onSubmit={addContextComment} onContextMenu={(event) => event.preventDefault()}>
+          <div className="card-header"><strong>Hitbox comments</strong><button type="button" className="btn-icon-only" onClick={() => setContextMenu(null)}>×</button></div>
+          {contextLoading ? <small>Loading comments...</small> : contextComments.length ? <div className="context-comment-list">{contextComments.map((item) => <p key={item.id || item.content}><strong>{item.userName || item.username || "User"}</strong>{item.content || item.message}</p>)}</div> : <small>No comments yet.</small>}
+          <textarea rows="3" value={contextComment} onChange={(event) => setContextComment(event.target.value)} placeholder="Add a comment..." />
+          <button className="btn btn-small btn-primary" disabled={!contextComment.trim()}>Add comment</button>
+        </form>
+      )}
     </section>
   );
 }
@@ -640,7 +813,7 @@ function valueToPercent(value, total) {
   return (number / safeTotal) * 100;
 }
 
-function CanvasBox({ box, originalSize, active, draft, label, onClick }) {
+function CanvasBox({ box, originalSize, active, draft, label, onClick, onContextMenu }) {
   const originalWidth = Math.max(toFiniteNumber(originalSize?.width, 1), 1);
   const originalHeight = Math.max(toFiniteNumber(originalSize?.height, 1), 1);
   const x = boxValue(box, "xCoord", "x_coord", "x");
@@ -657,12 +830,50 @@ function CanvasBox({ box, originalSize, active, draft, label, onClick }) {
     <button
       type="button"
       data-box="true"
+      data-testid={draft ? "draft-hitbox" : `saved-hitbox-${box.id || label}`}
       className={`${draft ? "drawn-hitbox" : "saved-hitbox"} ${active ? "active" : ""}`}
       style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       title={`Hitbox ${label}: X ${x.toFixed(0)}, Y ${y.toFixed(0)}, W ${width.toFixed(0)}, H ${height.toFixed(0)}`}
     >
       {!draft && <span>{label}</span>}
     </button>
+  );
+}
+
+function ChapterWorkspaceSidebar({ chapters, pages, selectedChapterId, selectedPageId, onChapterChange, onPageChange }) {
+  return (
+    <aside className="card-box chapter-workspace-sidebar" aria-label="Chapter workspace navigation">
+      <div className="section-title-row compact-title-row"><h3>Workspace</h3><span className="pill-count">{chapters.length}</span></div>
+      <div className="chapter-sidebar-list">
+        {chapters.map((chapter) => {
+          const active = String(chapter.id) === String(selectedChapterId);
+          return (
+            <div className="chapter-sidebar-group" key={chapter.id}>
+              <button type="button" className={active ? "chapter-sidebar-button active" : "chapter-sidebar-button"} onClick={() => onChapterChange(String(chapter.id))}>
+                <span>Chapter {chapterNumber(chapter)}</span><small>{chapterTitle(chapter)}</small>
+              </button>
+              {active && <div className="chapter-sidebar-pages">{pages.map((page) => <button type="button" key={page.id} className={String(page.id) === String(selectedPageId) ? "active" : ""} onClick={() => onPageChange(String(page.id))}>Page {pageNumber(page)}</button>)}</div>}
+            </div>
+          );
+        })}
+        {!chapters.length && <small>No chapters in the selected series.</small>}
+      </div>
+    </aside>
+  );
+}
+
+function VersionComparison({ currentUrl, versionUrl, position, onPositionChange }) {
+  return (
+    <div className="version-comparison">
+      <div className="version-comparison-stage">
+        <img src={currentUrl} alt="Current page version" />
+        <div className="version-comparison-overlay" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}><img src={versionUrl} alt="Historical page version" /></div>
+        <span className="version-divider" style={{ left: `${position}%` }} />
+        <span className="version-label current">Current</span><span className="version-label historical">Historical</span>
+      </div>
+      <label>Compare current and historical version<input type="range" min="0" max="100" value={position} onChange={(event) => onPositionChange(Number(event.target.value))} /></label>
+    </div>
   );
 }

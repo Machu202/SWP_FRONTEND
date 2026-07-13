@@ -51,12 +51,150 @@ function taskPageId(task) {
   return task?.pageId ?? task?.page_id ?? task?.page?.id ?? task?.hitbox?.pageId ?? task?.hitbox?.page_id ?? null;
 }
 
+function taskChapterId(task) {
+  return firstValue(
+    task?.chapterId,
+    task?.chapter_id,
+    task?.chapter?.id,
+    task?.page?.chapterId,
+    task?.page?.chapter_id,
+    task?.page?.chapter?.id,
+    task?.hitbox?.page?.chapterId,
+    task?.hitbox?.page?.chapter_id,
+    task?.hitbox?.page?.chapter?.id,
+    task?.hitboxDto?.page?.chapterId,
+    task?.hitboxDto?.page?.chapter_id
+  );
+}
+
 function taskReferenceUrl(task) {
   return mediaUrlFrom(task, task?.referenceImageUrl, task?.reference_image_url, task?.pageImageUrl, task?.page_image_url, task?.imageUrl, task?.image_url, task?.page?.imageUrl, task?.page?.image_url, task?.hitbox?.page);
 }
 
+
+function firstValue(...values) {
+  for (const value of values) {
+    if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  return "";
+}
+
+function displayName(user) {
+  if (!user || typeof user !== "object") return "";
+  return firstValue(user.fullName, user.full_name, user.username, user.email, user.name);
+}
+
+function taskAssistantId(task) {
+  return firstValue(
+    task?.assistantId,
+    task?.assistant_id,
+    task?.assistant?.id,
+    task?.assignedAssistant?.id,
+    task?.assigned_assistant?.id,
+    task?.assistantDto?.id
+  );
+}
+
+function taskAssistantName(task) {
+  return firstValue(
+    task?.assistantName,
+    task?.assistant_name,
+    task?.assistantUsername,
+    task?.assistant_username,
+    task?.assistantEmail,
+    task?.assistant_email,
+    displayName(task?.assistant),
+    displayName(task?.assignedAssistant),
+    displayName(task?.assigned_assistant),
+    displayName(task?.assistantDto)
+  );
+}
+
+function taskPageNumber(task) {
+  return firstValue(
+    task?.pageNumber,
+    task?.page_number,
+    task?.page?.pageNumber,
+    task?.page?.page_number,
+    task?.hitbox?.pageNumber,
+    task?.hitbox?.page_number,
+    task?.hitbox?.page?.pageNumber,
+    task?.hitbox?.page?.page_number
+  );
+}
+
+function taskSeriesTitle(task) {
+  return firstValue(
+    task?.seriesTitle,
+    task?.series_title,
+    task?.mangaTitle,
+    task?.manga_title,
+    task?.series?.title,
+    task?.mangaSeries?.title,
+    task?.manga_series?.title,
+    task?.chapter?.seriesTitle,
+    task?.chapter?.series_title,
+    task?.hitbox?.page?.chapter?.mangaSeries?.title,
+    task?.hitbox?.page?.chapter?.manga_series?.title
+  );
+}
+
+function taskChapterLabel(task) {
+  const title = firstValue(task?.chapterTitle, task?.chapter_title, task?.chapter?.title, task?.hitbox?.page?.chapter?.title);
+  const number = firstValue(task?.chapterNumber, task?.chapter_number, task?.chapter?.chapterNumber, task?.chapter?.chapter_number, task?.hitbox?.page?.chapter?.chapterNumber, task?.hitbox?.page?.chapter?.chapter_number);
+  if (title && number) return `Chapter ${number}: ${title}`;
+  if (title) return title;
+  if (number) return `Chapter ${number}`;
+  return "-";
+}
+
+function normalizeTaskRecord(task) {
+  if (!task || typeof task !== "object") return task;
+  const assistantId = taskAssistantId(task);
+  const assistantName = taskAssistantName(task);
+  const pageNumber = taskPageNumber(task);
+  const seriesTitle = taskSeriesTitle(task);
+  const chapterId = taskChapterId(task);
+  const chapterLabel = taskChapterLabel(task);
+  return {
+    ...task,
+    assistantId: assistantId || task.assistantId,
+    assistantName: assistantName || task.assistantName,
+    chapterId: chapterId || task.chapterId,
+    pageNumber: pageNumber || task.pageNumber,
+    seriesTitle: seriesTitle || task.seriesTitle,
+    chapterDisplay: chapterLabel
+  };
+}
+
+function normalizeTaskList(payload) {
+  const tasks = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.content)
+      ? payload.content
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.items)
+          ? payload.items
+          : [];
+  return tasks.map(normalizeTaskRecord);
+}
+
 function directTaskHitbox(task) {
   return normalizeHitbox(task?.hitbox || task?.hitboxDto || task);
+}
+
+function taskWorkflowStatus(task) {
+  return normalizeTaskStatus(task?.status);
+}
+
+function isTaskFinalApproved(task) {
+  return taskWorkflowStatus(task) === "APPROVED";
+}
+
+function isTaskLockedForAssistant(task) {
+  const status = taskWorkflowStatus(task);
+  return status === "REVIEWING" || status === "APPROVED";
 }
 
 export default function TasksPage() {
@@ -87,8 +225,8 @@ export default function TasksPage() {
         api.tasks.mine().catch(() => []),
         api.users.byRole("Assistant").catch(() => [])
       ]);
-      setTasks(taskData || []);
-      setAssistants(assistantData || []);
+      setTasks(normalizeTaskList(taskData));
+      setAssistants(Array.isArray(assistantData) ? assistantData : assistantData?.content || assistantData?.data || []);
     } catch (err) {
       setError(err.message || "Could not load tasks");
     } finally {
@@ -163,9 +301,9 @@ export default function TasksPage() {
   const grouped = useMemo(() => {
     const groups = Object.fromEntries(COLUMNS.map((column) => [column.key, []]));
     tasks.forEach((task) => {
-      const key = normalizeTaskStatus(task.status);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(task);
+      const normalized = normalizeTaskStatus(task.status);
+      const key = COLUMNS.some((column) => column.key === normalized) ? normalized : "TODO";
+      groups[key].push({ ...task, normalizedStatus: key });
     });
     return groups;
   }, [tasks]);
@@ -182,9 +320,13 @@ export default function TasksPage() {
     setMessage("");
     try {
       const updated = await api.tasks.status(task.id, newStatus);
-      setTasks((old) => old.map((item) => String(item.id) === String(task.id) ? updated : item));
-      if (selected && String(selected.id) === String(task.id)) setSelected(updated);
-      setMessage(`Task #${task.id} moved to ${newStatus}.`);
+      const normalized = normalizeTaskRecord({ ...task, ...updated });
+
+      setTasks((old) => old.map((item) => String(item.id) === String(task.id) ? normalized : item));
+      if (selected && String(selected.id) === String(task.id)) setSelected(normalized);
+      setMessage(newStatus === "APPROVED"
+        ? `Task #${task.id} approved. Send its chapter from the Mangaka Review center after all chapter tasks are approved.`
+        : `Task #${task.id} moved to ${newStatus}.`);
     } catch (err) {
       setError(err.message || "Could not update task status");
     }
@@ -196,8 +338,9 @@ export default function TasksPage() {
     setMessage("");
     try {
       const updated = await api.tasks.assign(taskId, assistantId);
-      setTasks((old) => old.map((item) => String(item.id) === String(taskId) ? updated : item));
-      setSelected(updated);
+      const normalized = normalizeTaskRecord(updated);
+      setTasks((old) => old.map((item) => String(item.id) === String(taskId) ? normalized : item));
+      setSelected(normalized);
       setMessage("Assistant assigned.");
     } catch (err) {
       setError(err.message || "Could not assign assistant");
@@ -224,8 +367,9 @@ export default function TasksPage() {
       const imageUrl = extractMediaUrl(resource);
       if (!imageUrl) throw new Error("Upload succeeded but no image URL was returned.");
       const updated = await api.tasks.submit(task.id, imageUrl);
-      setTasks((old) => old.map((item) => String(item.id) === String(task.id) ? updated : item));
-      setSelected(updated);
+      const normalized = normalizeTaskRecord(updated);
+      setTasks((old) => old.map((item) => String(item.id) === String(task.id) ? normalized : item));
+      setSelected(normalized);
       setSelectedFile(null);
       setSelectedFileName("");
       setConfirmReady(false);
@@ -271,6 +415,7 @@ export default function TasksPage() {
           selected={selected}
           onSelect={(task) => setSelected(task)}
           onMove={updateStatus}
+          totalTasks={tasks.length}
         />
       ) : (
         <AssignmentsPanel
@@ -295,12 +440,35 @@ export default function TasksPage() {
   );
 }
 
-function KanbanBoard({ grouped, counts, selected, onSelect, onMove }) {
+function KanbanBoard({ grouped, counts, selected, onSelect, onMove, totalTasks }) {
+  const [draggedTask, setDraggedTask] = useState(null);
+  const [dropTarget, setDropTarget] = useState("");
+
+  function drop(event, status) {
+    event.preventDefault();
+    if (draggedTask && normalizeTaskStatus(draggedTask.status) !== status && !isTaskFinalApproved(draggedTask)) {
+      onMove(draggedTask, status);
+    }
+    setDraggedTask(null);
+    setDropTarget("");
+  }
+
+  if (!totalTasks) {
+    return <EmptyState icon="▤" title="No tasks assigned" body="Tasks created from page hitboxes will appear here." />;
+  }
+
   return (
-    <div className="task-kanban-panel">
+    <div className="task-kanban-panel" data-testid="kanban-board" data-task-count={totalTasks}>
       <div className="kanban-grid backend-kanban task-kanban-grid">
         {COLUMNS.map((column) => (
-          <div className="kanban-column" key={column.key} data-status={column.key}>
+          <div
+            className={`kanban-column ${dropTarget === column.key ? "drag-over" : ""}`}
+            key={column.key}
+            data-status={column.key}
+            onDragOver={(event) => { event.preventDefault(); setDropTarget(column.key); }}
+            onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setDropTarget(""); }}
+            onDrop={(event) => drop(event, column.key)}
+          >
             <h3>
               <span>{column.label}</span>
               <span className="task-count">{counts[column.key] || 0}</span>
@@ -313,9 +481,11 @@ function KanbanBoard({ grouped, counts, selected, onSelect, onMove }) {
                   selected={selected && String(selected.id) === String(task.id)}
                   onClick={() => onSelect(task)}
                   onMove={onMove}
+                  onDragStart={() => setDraggedTask(task)}
+                  onDragEnd={() => { setDraggedTask(null); setDropTarget(""); }}
                 />
               ))}
-              {!grouped[column.key]?.length && <div className="empty-column">No tasks</div>}
+              {!grouped[column.key]?.length && <div className="empty-column">Empty column</div>}
             </div>
           </div>
         ))}
@@ -355,6 +525,7 @@ function AssignmentsPanel({
               <button
                 type="button"
                 key={task.id}
+                data-testid={`assignment-task-${task.id}`}
                 className={selected && String(selected.id) === String(task.id) ? "ast-task-item assignment-task-item active" : "ast-task-item assignment-task-item"}
                 onClick={() => onSelect(task)}
               >
@@ -364,9 +535,9 @@ function AssignmentsPanel({
                     <span>{task.description || `Task #${task.id}`}</span>
                     <StatusBadge value={task.status} />
                   </div>
-                  <div className="ast-task-sub">{task.seriesTitle || "No series"} • Page {task.pageNumber || "?"}</div>
+                  <div className="ast-task-sub">{taskSeriesTitle(task) || "No series"} • Page {taskPageNumber(task) || "?"}</div>
                   <div className="ast-task-meta">
-                    <span>Assistant: {task.assistantName || "Unassigned"}</span>
+                    <span>Assistant: {taskAssistantName(task) || "Unassigned"}</span>
                     <span>#{task.id}</span>
                   </div>
                 </div>
@@ -389,7 +560,9 @@ function AssignmentsPanel({
           onMove={onMove}
         />
 
-        {canSubmit && (
+        {canSubmit && selected && isTaskLockedForAssistant(selected) ? (
+          <TaskLockedBox task={selected} />
+        ) : canSubmit ? (
           <SubmitWorkBox
             disabled={!selected}
             selectedFileName={selectedFileName}
@@ -398,19 +571,28 @@ function AssignmentsPanel({
             onConfirm={onConfirm}
             onSubmit={onSubmit}
           />
-        )}
+        ) : null}
       </div>
     </div>
   );
 }
 
-function TaskCard({ task, selected, onClick, onMove }) {
+function TaskCard({ task, selected, onClick, onMove, onDragStart, onDragEnd }) {
   const status = normalizeTaskStatus(task.status);
   return (
     <div
       className={selected ? "backend-task-card task-card active" : "backend-task-card task-card"}
+      data-testid="kanban-task-card"
+      data-task-id={task.id}
       role="button"
       tabIndex={0}
+      draggable={!isTaskFinalApproved(task)}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(task.id));
+        onDragStart?.();
+      }}
+      onDragEnd={onDragEnd}
       onClick={onClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") onClick();
@@ -418,13 +600,15 @@ function TaskCard({ task, selected, onClick, onMove }) {
     >
       <span className="tag">{status}</span>
       <strong>{task.description || `Task #${task.id}`}</strong>
-      <p>{task.seriesTitle || "No series"} • Page {task.pageNumber || "?"}</p>
-      <small>Assistant: {task.assistantName || "Unassigned"}</small>
-      <div className="button-row" onClick={(event) => event.stopPropagation()}>
-        {COLUMNS.filter((column) => column.key !== status).slice(0, 2).map((column) => (
-          <button key={column.key} type="button" className="btn btn-tiny" onClick={() => onMove(task, column.key)}>{column.label}</button>
-        ))}
-      </div>
+      <p>{taskSeriesTitle(task) || "No series"} • Page {taskPageNumber(task) || "?"}</p>
+      <small>Assistant: {taskAssistantName(task) || "Unassigned"}</small>
+      {!isTaskFinalApproved(task) && (
+        <div className="button-row" onClick={(event) => event.stopPropagation()}>
+          {COLUMNS.filter((column) => column.key !== status).slice(0, 2).map((column) => (
+            <button key={column.key} type="button" className="btn btn-tiny" onClick={() => onMove(task, column.key)}>{column.label}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -441,19 +625,19 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
       {selected ? (
         <div className="stack">
           <div className="task-detail-header compact-task-detail-header">
-            <div className="task-detail-meta"><span>Task #{selected.id}</span><span>{selected.seriesTitle || "No series"}</span></div>
+            <div className="task-detail-meta"><span>Task #{selected.id}</span><span>{taskSeriesTitle(selected) || "No series"}</span></div>
             <h1>{selected.description || `Task #${selected.id}`}</h1>
             <div className="meta-row wrap">
-              <span>Chapter: {selected.chapterTitle || selected.chapterNumber || "-"}</span>
-              <span>Page: {selected.pageNumber || "-"}</span>
-              <span>Assistant: {selected.assistantName || "Unassigned"}</span>
+              <span>Chapter: {taskChapterLabel(selected)}</span>
+              <span>Page: {taskPageNumber(selected) || "-"}</span>
+              <span>Assistant: {taskAssistantName(selected) || "Unassigned"}</span>
             </div>
           </div>
 
           {canAssign && (
             <div className="form-group">
               <label>Assign assistant</label>
-              <select className="form-control" value={selected.assistantId || ""} onChange={(event) => onAssign(selected.id, event.target.value)}>
+              <select className="form-control" value={taskAssistantId(selected) || ""} onChange={(event) => onAssign(selected.id, event.target.value)}>
                 <option value="">Choose assistant</option>
                 {assistants.map((assistant) => (
                   <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email}</option>
@@ -462,11 +646,15 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
             </div>
           )}
 
-          <div className="button-row">
-            {COLUMNS.map((column) => (
-              <button key={column.key} type="button" className="btn btn-small" onClick={() => onMove(selected, column.key)}>{column.label}</button>
-            ))}
-          </div>
+          {!isTaskFinalApproved(selected) ? (
+            <div className="button-row">
+              {COLUMNS.map((column) => (
+                <button key={column.key} type="button" data-testid={`task-status-${column.key.toLowerCase()}`} className="btn btn-small" onClick={() => onMove(selected, column.key)}>{column.label}</button>
+              ))}
+            </div>
+          ) : (
+            <div className="task-approved-notice compact-approved-notice">This task is approved and locked. It cannot be moved or resubmitted by Assistant.</div>
+          )}
 
           <div className="reference-panel assignment-reference-panel">
             <HitboxPreview title="Reference image" url={referenceUrl} box={selectedHitbox} loading={hitboxLoading} />
@@ -476,6 +664,23 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
       ) : (
         <EmptyState icon="☑" title="Select a task" body="Open the Assignments tab and select a card to assign an assistant, move status, or submit work." />
       )}
+    </div>
+  );
+}
+
+function TaskLockedBox({ task }) {
+  const status = taskWorkflowStatus(task);
+  const isApproved = status === "APPROVED";
+  return (
+    <div className={isApproved ? "task-box assistant-submit-box task-locked-box approved" : "task-box assistant-submit-box task-locked-box"}>
+      <div className="task-box-title assistant-submit-title">
+        <span>{isApproved ? "✓ Work approved" : "⏳ Submitted for review"}</span>
+        <span className="assistant-submit-step">Locked</span>
+      </div>
+      <div className="assistant-submit-help locked-submit-help">
+        <strong>{isApproved ? "Mangaka approved this work." : "This work is already waiting for Mangaka review."}</strong>
+        <span>{isApproved ? "The upload form is hidden because the task is final." : "The upload form is locked until Mangaka requests a revision."}</span>
+      </div>
     </div>
   );
 }
@@ -514,6 +719,7 @@ function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile,
       <input
         ref={inputRef}
         className="assistant-hidden-file-input"
+        data-testid="assistant-work-file"
         type="file"
         accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
         disabled={disabled}
@@ -553,12 +759,13 @@ function SubmitWorkBox({ disabled, selectedFileName, confirmReady, onChooseFile,
       </div>
 
       <label className="assistant-review-check">
-        <input type="checkbox" checked={confirmReady} disabled={disabled || !hasFile} onChange={(event) => onConfirm(event.target.checked)} />
+        <input type="checkbox" data-testid="assistant-work-confirm" checked={confirmReady} disabled={disabled || !hasFile} onChange={(event) => onConfirm(event.target.checked)} />
         <span>I confirm this file is ready for Mangaka review</span>
       </label>
 
       <button
         type="button"
+        data-testid="assistant-work-submit"
         className={hasFile && confirmReady ? "btn btn-dark full assistant-final-submit-btn is-ready" : "btn btn-dark full assistant-final-submit-btn"}
         disabled={disabled || !hasFile || !confirmReady}
         onClick={onSubmit}

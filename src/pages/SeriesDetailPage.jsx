@@ -21,6 +21,12 @@ export default function SeriesDetailPage({ seriesId }) {
 
   const canEdit = hasRole(role, ["mangaka"]);
   const selectedChapter = useMemo(() => chapters.find((chapter) => String(chapter.id) === String(selectedChapterId)), [chapters, selectedChapterId]);
+  const currentSeriesStatus = String(series?.status || "DRAFT").trim().toUpperCase();
+  const allChaptersApprovedForBoard = chapters.length > 0 && chapters.every((chapter) =>
+    String(chapter.publishStatus || chapter.publish_status || "DRAFT").trim().toUpperCase() === "APPROVED"
+  );
+  const hasAssignedTantou = Boolean(series?.tantouId || series?.tantou_id);
+  const readyForEditorialBoard = allChaptersApprovedForBoard && hasAssignedTantou;
 
   async function load() {
     setLoading(true);
@@ -162,11 +168,28 @@ export default function SeriesDetailPage({ seriesId }) {
             </div>
           </div>
         </div>
-        <div className="button-row">
+        <div className="button-row series-board-submit-actions">
           <button className="btn" onClick={() => navigate("/series")}>← Back</button>
-          {canEdit && <button className="btn-publish" onClick={() => setSeriesStatus("REVIEWING")}>Send to Review</button>}
+          {canEdit && currentSeriesStatus === "DRAFT" ? (
+            <button
+              className="btn-publish"
+              data-testid="series-send-review"
+              disabled={!readyForEditorialBoard}
+              title={readyForEditorialBoard ? "Send the Tantou-approved series to Editorial Board" : "Assign a Tantou and obtain approval for every chapter first"}
+              onClick={() => setSeriesStatus("REVIEWING")}
+            >
+              Send approved series to Editorial Board
+            </button>
+          ) : null}
+          {canEdit && currentSeriesStatus === "REVIEWING" ? <span className="status-pill success">Waiting for Editorial Board</span> : null}
         </div>
       </div>
+
+      {canEdit && currentSeriesStatus === "DRAFT" && !readyForEditorialBoard ? (
+        <div className="alert alert-info series-board-readiness-note">
+          Editorial Board submission is locked until a Tantou Editor is assigned and every chapter is Tantou-approved.
+        </div>
+      ) : null}
 
       <div className="feature-grid two-cols">
         <div className="card-box">

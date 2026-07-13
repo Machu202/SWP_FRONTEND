@@ -32,6 +32,9 @@ export function AuthProvider({ children }) {
       return data;
     } catch (err) {
       setProfile(null);
+      // apiFetch clears persisted credentials after a 401. Mirror that change in
+      // React state so an expired session cannot remain visually authenticated.
+      if (!getSession().token) setSessionState(getSession());
       return null;
     } finally {
       setProfileLoading(false);

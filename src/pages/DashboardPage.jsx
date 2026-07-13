@@ -19,8 +19,27 @@ function asList(value) {
 }
 
 function isReviewableSeries(series) {
-  const status = String(series?.status || "").toUpperCase();
-  return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
+  return String(series?.status || "").trim().toUpperCase() === "REVIEWING";
+}
+
+function taskSeriesId(task) {
+  return task?.seriesId ?? task?.series_id ?? task?.series?.id ?? task?.mangaSeries?.id ?? task?.manga_series?.id ?? null;
+}
+
+function deadlineDate(item) {
+  return item?.deadlineDate || item?.deadline_date || item?.deadlineDateStr || item?.date || "";
+}
+
+function validDate(value) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function dashboardQueuePath(role) {
+  if (hasRole(role, ["tantou"])) return "/tantou-review";
+  if (hasRole(role, ["editorial", "board"])) return "/board-review";
+  if (hasRole(role, ["admin"])) return "/admin-review";
+  return "/series";
 }
 
 function dashboardSeriesTarget(role, series) {
@@ -33,7 +52,7 @@ function dashboardSeriesTarget(role, series) {
 export default function DashboardPage() {
   const { profile, session } = useAuth();
   const role = profile?.roleName || session.role;
-  const [data, setData] = useState({ series: [], tasks: [], notifications: [] });
+  const [data, setData] = useState({ series: [], tasks: [], notifications: [], reviewChapters: [], deadlines: [], telemetry: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,19 +64,38 @@ export default function DashboardPage() {
         ? api.series.mine()
         : api.series.list({ size: 50 });
 
-      const [series, tasks, notifications] = await Promise.all([
+      const reviewChaptersPromise = hasRole(role, ["tantou"])
+        ? api.chapters.tantouReview()
+        : Promise.resolve([]);
+
+      const [series, tasks, notifications, reviewChapters] = await Promise.all([
         safeDashboardCall(seriesPromise, []),
         safeDashboardCall(api.tasks.mine(), []),
-        safeDashboardCall(api.notifications.unread(), [])
+        safeDashboardCall(api.notifications.unread(), []),
+        safeDashboardCall(reviewChaptersPromise, [])
       ]);
 
+      const seriesList = asList(series);
+      const taskList = asList(tasks);
+      const deadlineSeriesIds = [...new Set(taskList.map(taskSeriesId).filter(Boolean).map(String))];
+      const deadlineLists = hasRole(role, ["assistant"]) && deadlineSeriesIds.length
+        ? await Promise.all(deadlineSeriesIds.map((id) => safeDashboardCall(api.deadlines.bySeries(id), [])))
+        : [];
+      const deadlines = deadlineLists.flatMap(asList);
+      const telemetry = seriesList[0]?.id
+        ? await safeDashboardCall(api.telemetry.bySeries(seriesList[0].id), null, 4000)
+        : null;
+
       setData({
-        series: asList(series),
-        tasks: asList(tasks),
-        notifications: asList(notifications)
+        series: seriesList,
+        tasks: taskList,
+        notifications: asList(notifications),
+        reviewChapters: asList(reviewChapters),
+        deadlines,
+        telemetry
       });
     } catch (err) {
-      setData({ series: [], tasks: [], notifications: [] });
+      setData({ series: [], tasks: [], notifications: [], reviewChapters: [], deadlines: [], telemetry: null });
       setError(err.message || "Dashboard failed to load");
     } finally {
       setLoading(false);
@@ -80,6 +118,7 @@ export default function DashboardPage() {
       {hasRole(role, ["editorial", "board"]) ? <EditorialDashboard data={data} role="Editorial Board" /> : null}
       {hasRole(role, ["admin"]) ? <AdminDashboard data={data} /> : null}
       {!role && <GenericDashboard data={data} role={role} />}
+      <KpiCharts data={data} />
     </>
   );
 }
@@ -93,7 +132,7 @@ function MangakaDashboard({ data }) {
           <h3 style={{ marginBottom: 15, fontSize: 16, fontWeight: 700 }}>Active Series</h3>
           <div className="series-grid" id="active-series-container">
             {activeSeries.length ? activeSeries.slice(0, 4).map((series) => <DashboardSeriesCard key={series.id} series={series} />) : (
-              <EmptyState icon="◇" title="Không có series nào đang hoạt động" body="Vui lòng tạo mới để bắt đầu quy trình Mangaka." />
+              <EmptyState icon="◇" title="No active series" body="Create a series to begin the Mangaka workflow." />
             )}
           </div>
         </div>
@@ -105,9 +144,9 @@ function MangakaDashboard({ data }) {
             </div>
             <div className="quick-actions-grid">
               <button className="action-btn" onClick={() => navigate("/series")}><i>＋</i><span>+ New Series</span></button>
-              <button className="action-btn" onClick={() => navigate("/series")}><i>▧</i><span>Chapters</span></button>
-              <button className="action-btn" onClick={() => navigate("/series")}><i>□</i><span>Canvas</span></button>
-              <button className="action-btn" onClick={() => navigate("/tasks")}><i>▤</i><span>Kanban</span></button>
+              <button className="action-btn" onClick={() => navigate("/chapters-pages")}><i>▧</i><span>Chapters</span></button>
+              <button className="action-btn" onClick={() => navigate("/canvas-workspace")}><i>□</i><span>Canvas</span></button>
+              <button className="action-btn" onClick={() => navigate("/tasks?tab=kanban")}><i>▤</i><span>Kanban</span></button>
               <button className="action-btn" onClick={() => navigate("/schedule")}><i>◷</i><span>Schedule</span></button>
               <button className="action-btn" onClick={() => navigate("/assistant-review")}><i>☰</i><span>Review</span></button>
             </div>
@@ -170,9 +209,8 @@ function AssistantDashboard({ data, profile, session }) {
 
         <aside>
           <div className="ast-side-card">
-            <div className="activity-header"><h3>Deadlines</h3></div>
-            <div className="ast-deadline-item"><div className="date-box"><div className="date-month">NOW</div><div className="date-day">{data.tasks.length}</div></div><div><strong>Open tasks</strong><p className="review-helper">Work through your assigned queue.</p></div></div>
-            <div className="ast-deadline-item"><div className="date-box"><div className="date-month">REV</div><div className="date-day">{review.length}</div></div><div><strong>In review</strong><p className="review-helper">Submissions waiting for Mangaka checks.</p></div></div>
+            <div className="activity-header"><h3>Upcoming Deadlines</h3><button className="btn btn-small" onClick={() => navigate("/schedule")}>Calendar</button></div>
+            <AssistantDeadlineList deadlines={data.deadlines || []} />
           </div>
           <div className="ast-side-card">
             <div className="activity-header"><h3>Quick Resources</h3></div>
@@ -189,25 +227,49 @@ function AssistantDashboard({ data, profile, session }) {
   );
 }
 
+function AssistantDeadlineList({ deadlines }) {
+  const upcoming = [...deadlines]
+    .map((item) => ({ item, date: validDate(deadlineDate(item)) }))
+    .filter((entry) => entry.date)
+    .sort((a, b) => a.date - b.date)
+    .slice(0, 3);
+
+  if (!upcoming.length) {
+    return <div className="assistant-deadline-empty"><strong>No scheduled deadlines</strong><p className="review-helper">Deadlines for your assigned series will appear here.</p></div>;
+  }
+
+  return upcoming.map(({ item, date }) => (
+    <div className="ast-deadline-item" key={item.id || `${item.eventName}-${date.toISOString()}`}>
+      <div className="date-box"><div className="date-month">{date.toLocaleDateString(undefined, { month: "short" }).toUpperCase()}</div><div className="date-day">{date.getDate()}</div></div>
+      <div><strong>{item.eventName || item.event_name || "Deadline"}</strong><p className="review-helper">{date.toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
+    </div>
+  ));
+}
+
 function EditorialDashboard({ data, role }) {
   const waiting = data.series.filter(isReviewableSeries);
+  const isTantou = role === "Tantou Editor";
+  const pendingChapters = (data.reviewChapters || []).filter((chapter) => !["APPROVED", "PUBLISHED", "ARCHIVED"].includes(String(chapter.publishStatus || "").toUpperCase()));
+  const assignedSeriesCount = new Set((data.reviewChapters || []).map((chapter) => String(chapter.seriesId))).size;
   return (
     <section className="stack">
       <div className="hero-card">
         <div>
           <p className="eyebrow">{role} workspace</p>
-          <h2>{role === "Tantou Editor" ? "Production Review" : "Voting Dashboard"}</h2>
-          <p>{role === "Tantou Editor" ? "Check assigned chapters, page quality, and editor feedback." : "Review submitted series and vote on board approval."}</p>
+          <h2>{isTantou ? "Production Review" : "Voting Dashboard"}</h2>
+          <p>{isTantou ? "Check assigned chapters, page quality, and editor feedback." : "Review submitted series and vote on board approval."}</p>
         </div>
-        <button className="btn-publish" onClick={() => navigate(role === "Tantou Editor" ? "/tantou-review" : "/board-review")}>{role === "Tantou Editor" ? "Open Review" : "Open Voting"}</button>
+        <button className="btn-publish" onClick={() => navigate(isTantou ? "/tantou-review" : "/board-review")}>{isTantou ? "Open Review" : "Open Voting"}</button>
       </div>
       <div className="stats-grid">
-        <Stat label="Visible series" value={data.series.length} tone="info" />
-        <Stat label="Reviewing" value={waiting.length} tone="warning" />
+        <Stat label={isTantou ? "Assigned series" : "Visible series"} value={isTantou ? assignedSeriesCount : data.series.length} tone="info" />
+        <Stat label={isTantou ? "Chapter reviews" : "Reviewing"} value={isTantou ? pendingChapters.length : waiting.length} tone="warning" />
         <Stat label="My tasks" value={data.tasks.length} tone="success" />
         <Stat label="Unread" value={data.notifications.length} tone="danger" />
       </div>
-      <SeriesListCard title="Review queue" series={waiting} role={role} />
+      {isTantou
+        ? <ChapterReviewListCard chapters={pendingChapters} />
+        : <SeriesListCard title="Review queue" series={waiting} role={role} />}
     </section>
   );
 }
@@ -227,7 +289,7 @@ function AdminDashboard({ data }) {
         <Stat label="Series" value={data.series.length} tone="info" />
         <Stat label="Tasks" value={data.tasks.length} tone="warning" />
         <Stat label="Unread" value={data.notifications.length} tone="danger" />
-        <Stat label="Control" value="✓" tone="success" />
+        <Stat label="Pending final" value={data.series.filter(isReviewableSeries).length} tone="success" />
       </div>
       <SeriesListCard title="Latest series" series={data.series} role="Admin" />
     </section>
@@ -271,10 +333,28 @@ function AssistantTaskItem({ task }) {
   );
 }
 
+function ChapterReviewListCard({ chapters }) {
+  return (
+    <div className="card">
+      <div className="card-header"><h3>Chapter review queue</h3><button className="btn btn-small" onClick={() => navigate("/tantou-review")}>Open</button></div>
+      {chapters.length ? (
+        <div className="list">
+          {chapters.slice(0, 6).map((chapter) => (
+            <button className="list-row interactive" key={chapter.id} onClick={() => navigate(`/tantou-review?seriesId=${chapter.seriesId}`)}>
+              <div><strong>{chapter.seriesTitle || `Series #${chapter.seriesId}`}</strong><small>Chapter {chapter.chapterNumber}: {chapter.title || "Untitled"}</small></div>
+              <StatusBadge value={chapter.publishStatus || "READY_FOR_TANTOU"} />
+            </button>
+          ))}
+        </div>
+      ) : <EmptyState icon="✓" title="No chapter reviews waiting" body="Chapters appear after Mangaka approves Assistant work and sends them to Tantou review." />}
+    </div>
+  );
+}
+
 function SeriesListCard({ title, series, role = "" }) {
   return (
     <div className="card">
-      <div className="card-header"><h3>{title}</h3><button className="btn btn-small" onClick={() => navigate("/series")}>Open</button></div>
+      <div className="card-header"><h3>{title}</h3><button className="btn btn-small" onClick={() => navigate(dashboardQueuePath(role))}>Open</button></div>
       {series.length ? (
         <div className="list">
           {series.slice(0, 6).map((item) => (
@@ -292,4 +372,48 @@ function SeriesListCard({ title, series, role = "" }) {
 
 function Stat({ label, value, tone }) {
   return <div className={`stat-card stat-${tone}`}><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function KpiCharts({ data }) {
+  const [activeChart, setActiveChart] = useState("tasks");
+  const taskStatuses = ["TODO", "DOING", "REVIEWING", "APPROVED"].map((status) => ({
+    label: status,
+    value: data.tasks.filter((task) => String(task.status || "").toUpperCase().replace(/[\s-]+/g, "_") === status).length
+  }));
+  const seriesStatuses = ["DRAFT", "REVIEWING", "APPROVED", "REJECTED"].map((status) => ({
+    label: status,
+    value: data.series.filter((item) => String(item.status || "").toUpperCase() === status).length
+  }));
+  const telemetry = data.telemetry && typeof data.telemetry === "object"
+    ? Object.entries(data.telemetry)
+      .filter(([, value]) => Number.isFinite(Number(value)))
+      .slice(0, 6)
+      .map(([label, value]) => ({ label, value: Number(value) }))
+    : [];
+  const datasets = { tasks: taskStatuses, series: seriesStatuses, telemetry };
+  const current = datasets[activeChart].length ? datasets[activeChart] : taskStatuses;
+  const max = Math.max(...current.map((item) => item.value), 1);
+
+  return (
+    <section className="dashboard-kpi-card card" aria-label="Interactive KPI charts">
+      <div className="card-header">
+        <div><p className="eyebrow">FE-22 telemetry</p><h3>Workflow KPI charts</h3></div>
+        <div className="resource-filter-tabs compact-chart-tabs" role="tablist">
+          <button className={activeChart === "tasks" ? "r-tab active" : "r-tab"} onClick={() => setActiveChart("tasks")}>Tasks</button>
+          <button className={activeChart === "series" ? "r-tab active" : "r-tab"} onClick={() => setActiveChart("series")}>Series</button>
+          <button className={activeChart === "telemetry" ? "r-tab active" : "r-tab"} onClick={() => setActiveChart("telemetry")}>Telemetry</button>
+        </div>
+      </div>
+      <div className="kpi-chart" role="img" aria-label={`${activeChart} bar chart`}>
+        {current.map((item) => (
+          <button className="kpi-bar-item" key={item.label} title={`${item.label}: ${item.value}`}>
+            <span className="kpi-value">{item.value}</span>
+            <span className="kpi-bar-track"><span className="kpi-bar-fill" style={{ height: `${Math.max(6, (item.value / max) * 100)}%` }} /></span>
+            <small>{String(item.label).replace(/_/g, " ")}</small>
+          </button>
+        ))}
+      </div>
+      {activeChart === "telemetry" && !telemetry.length && <p className="muted-note">The telemetry endpoint returned no numeric KPI fields; task KPIs are shown as a safe fallback.</p>}
+    </section>
+  );
 }

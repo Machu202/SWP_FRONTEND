@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api, hasRole, roleLabel } from "../api/client";
 import { navigate } from "../utils/router";
+import { connectNotificationStream } from "../utils/notificationStream";
 
 function roleGroup(role = "") {
   if (hasRole(role, ["admin"])) return "admin";
@@ -26,8 +27,7 @@ function navForRole(role) {
     return [
       { path: "/dashboard", label: "Dashboard", icon: "▦" },
       { path: "/board-review", label: "Voting Center", icon: "⚖" },
-      { path: "/schedule", label: "Schedule", icon: "◷" },
-      { path: "/profile", label: "Settings", icon: "◎" }
+      { path: "/schedule", label: "Schedule", icon: "◷" }
     ];
   }
   if (group === "tantou") {
@@ -36,8 +36,7 @@ function navForRole(role) {
       { path: "/series", label: "Assigned Series", icon: "◇" },
       { path: "/tasks", label: "Kanban Tasks", icon: "▤" },
       { path: "/tantou-review", label: "Chapter Review", icon: "☑" },
-      { path: "/schedule", label: "Schedule", icon: "◷" },
-      { path: "/profile", label: "Settings", icon: "◎" }
+      { path: "/schedule", label: "Schedule", icon: "◷" }
     ];
   }
   if (group === "assistant") {
@@ -70,6 +69,35 @@ function brandForRole(role) {
   if (group === "tantou") return { title: "Tantou Editorial", subtitle: "Production Manager", avatar: "TE", cta: "Chapter Review", ctaPath: "/tantou-review", mode: "Editor Mode" };
   if (group === "assistant") return { title: "Studio Flow", subtitle: "Production Assistant", avatar: "AS", cta: "Open Tasks", ctaPath: "/tasks", mode: "Assistant Mode" };
   return { title: "Mangaka Workspace", subtitle: "Studio Flow", avatar: "SF", cta: "New Series", ctaPath: "/series", mode: "Creator Mode" };
+}
+
+
+function topbarLinks(group) {
+  if (group === "admin") return [
+    { path: "/admin/users", label: "Users" },
+    { path: "/admin-review", label: "Final Approval" },
+    { path: "/admin/system", label: "System Settings" }
+  ];
+  if (group === "board") return [
+    { path: "/board-review", label: "Vote Queue" },
+    { path: "/schedule", label: "Schedule" },
+    { path: "/profile", label: "Profile" }
+  ];
+  if (group === "tantou") return [
+    { path: "/tantou-review", label: "Chapter Review" },
+    { path: "/series", label: "Assigned Series" },
+    { path: "/schedule", label: "Schedule" }
+  ];
+  if (group === "assistant") return [
+    { path: "/tasks?tab=assignments", label: "Assignments" },
+    { path: "/tasks?tab=kanban", label: "Kanban" },
+    { path: "/resources", label: "Resources" }
+  ];
+  return [
+    { path: "/dashboard", label: "Workflow" },
+    { path: "/schedule", label: "Schedule" },
+    { path: "/resources", label: "Assets" }
+  ];
 }
 
 function hasInlinePageHeader(pathname = "") {
@@ -138,7 +166,7 @@ export function Layout({ children, route }) {
         <div className="sidebar-divider" />
         <nav className={`nav-group ${group}-nav footer-nav`}>
           <button className="nav-item" onClick={() => navigate("/profile")}><i>⚙</i><span>Profile</span></button>
-          <button className="nav-item" onClick={logout}><i>↪</i><span>Logout</span></button>
+          <button className="nav-item" data-testid="logout-button" onClick={logout}><i>↪</i><span>Logout</span></button>
         </nav>
       </aside>
 
@@ -146,9 +174,9 @@ export function Layout({ children, route }) {
         <header className={`topbar ${group}-topbar ${group === "mangaka" ? "mangaka-clean-topbar" : ""}`}>
           <div className="topbar-left">
             <strong>{topbarBrand(group)}</strong>
-            <button onClick={() => navigate("/dashboard")}>Workflow</button>
-            <button onClick={() => navigate("/schedule")}>Schedule</button>
-            <button onClick={() => navigate("/resources")}>Assets</button>
+            {topbarLinks(group).map((item) => (
+              <button key={item.path} onClick={() => navigate(item.path)}>{item.label}</button>
+            ))}
           </div>
           <div className="topbar-right">
             <div className={`search-box ${group}-search`}>
@@ -180,6 +208,7 @@ export function Layout({ children, route }) {
 function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
+  const [connectionState, setConnectionState] = useState("connecting");
 
   async function loadNotifications() {
     try {
@@ -202,20 +231,37 @@ function NotificationBell() {
 
   useEffect(() => {
     loadNotifications();
+    const disconnect = window.__DISABLE_NOTIFICATION_STREAM__
+      ? (() => { setConnectionState("polling"); return () => {}; })()
+      : connectNotificationStream({
+        onNotification: (item) => {
+          setItems((old) => {
+            const itemId = item?.id ?? `${item?.message || item?.content || "notification"}-${item?.createdAt || Date.now()}`;
+            if (old.some((entry) => String(entry?.id) === String(itemId))) return old;
+            return [{ ...item, id: item?.id ?? itemId }, ...old];
+          });
+        },
+        onState: setConnectionState
+      });
+    // Polling remains as a fallback for deployments where the WebSocket broker
+    // is disabled or temporarily unavailable.
     const interval = window.setInterval(loadNotifications, 30000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      disconnect();
+    };
   }, []);
 
   return (
     <div className="notification-bell-wrap">
       <button className="top-icon notification-button" title="Notifications" type="button" onClick={() => setOpen((value) => !value)}>
-        ♡
+        🔔
         {items.length > 0 && <span className="notification-dot">{items.length > 9 ? "9+" : items.length}</span>}
       </button>
       {open && (
         <div className="notification-menu">
           <div className="notification-menu-head">
-            <strong>Notifications</strong>
+            <div><strong>Notifications</strong><small className={`notification-connection ${connectionState}`}>{connectionState}</small></div>
             <button type="button" onClick={loadNotifications}>Refresh</button>
           </div>
           {items.length ? (

@@ -38,6 +38,8 @@ export default function LoginPage() {
   const [mode, setMode] = useState("login");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showOtpPassword, setShowOtpPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState({ username: "", password: "" });
@@ -195,7 +197,7 @@ export default function LoginPage() {
           <Alert type="danger">{error}</Alert>
 
           {mode === "login" && (
-            <form id="form-password-section" className="form-section plain-form" onSubmit={submitLogin}>
+            <form id="form-password-section" data-testid="login-form" className="form-section plain-form" onSubmit={submitLogin}>
               <div className="input-group">
                 <label>Email hoặc Tên đăng nhập</label>
                 <input
@@ -215,22 +217,29 @@ export default function LoginPage() {
                   <input
                     id="login-password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="••••••"
                     value={credentials.password}
                     onChange={(event) => setCredentials({ ...credentials, password: event.target.value })}
                   />
-                  <span className="eye-icon">👁️</span>
+                  <button
+                    type="button"
+                    className="eye-icon password-toggle"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
                 </div>
               </div>
 
               <div className="form-actions">
-                <label className="remember-me"><input type="checkbox" /> Remember password</label>
+                <span className="remember-me session-scope-note">Session stays only in this tab</span>
                 <button type="button" className="forgot-link">Forgot password?</button>
               </div>
 
-              <button className="btn-primary" id="btn-login" disabled={busy || !credentials.username || !credentials.password}>{busy ? "Logging in..." : "Login"}</button>
+              <button className="btn-primary" id="btn-login" data-testid="login-submit" disabled={busy || !credentials.username || !credentials.password}>{busy ? "Logging in..." : "Login"}</button>
 
               <div className="divider">Or login with</div>
               <div className="social-login google-login-box">
@@ -273,7 +282,7 @@ export default function LoginPage() {
                 <label>Password</label>
                 <div className="password-wrapper">
                   <input
-                    type="password"
+                    type={showOtpPassword ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="••••••"
                     value={otpPassword}
@@ -282,7 +291,14 @@ export default function LoginPage() {
                       setOtpSent(false);
                     }}
                   />
-                  <span className="eye-icon">👁️</span>
+                  <button
+                    type="button"
+                    className="eye-icon password-toggle"
+                    aria-label={showOtpPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowOtpPassword((value) => !value)}
+                  >
+                    {showOtpPassword ? "🙈" : "👁️"}
+                  </button>
                 </div>
               </div>
 

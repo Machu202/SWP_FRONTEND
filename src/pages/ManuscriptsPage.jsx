@@ -3,6 +3,7 @@ import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
+import ScriptEditor from "../components/ScriptEditor";
 
 function chapterNumber(chapter) {
   return chapter?.chapterNumber ?? chapter?.chapter_number ?? chapter?.number ?? chapter?.id;
@@ -30,6 +31,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
   const [chapters, setChapters] = useState([]);
   const [pagesByChapter, setPagesByChapter] = useState({});
   const [selectedChapterId, setSelectedChapterId] = useState("");
+  const [selectedPageId, setSelectedPageId] = useState("");
   const [script, setScript] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingChapters, setLoadingChapters] = useState(false);
@@ -46,6 +48,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
     [chapters, selectedChapterId]
   );
   const selectedPages = selectedChapterId ? (pagesByChapter[selectedChapterId] || []) : [];
+  const selectedPage = selectedPages.find((page) => String(page.id) === String(selectedPageId)) || selectedPages[0] || null;
 
   async function loadSeriesList() {
     setLoading(true);
@@ -117,6 +120,10 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
     loadScript(selectedChapterId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
+
+  useEffect(() => {
+    setSelectedPageId((current) => String(selectedPages.find((page) => String(page.id) === String(current))?.id || selectedPages[0]?.id || ""));
+  }, [selectedChapterId, pagesByChapter]);
 
   async function saveScript() {
     if (!selectedChapterId) return;
@@ -191,9 +198,9 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
                     {active && (
                       <div className="tree-page-list">
                         {chapterPages.length ? chapterPages.map((page) => (
-                          <button key={page.id} className="tree-page-item" onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${chapter.id}&pageId=${page.id}`)}>
+                          <button key={page.id} className={String(selectedPageId) === String(page.id) ? "tree-page-item active" : "tree-page-item"} onClick={() => { setSelectedChapterId(String(chapter.id)); setSelectedPageId(String(page.id)); }}>
                             <span>Page {pageNumber(page)}</span>
-                            <span>Open Canvas</span>
+                            <span>Preview</span>
                           </button>
                         )) : <div className="tree-page-empty">No pages uploaded for this chapter.</div>}
                       </div>
@@ -209,7 +216,15 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
           <div className="section-title-row"><h3>{selectedChapter ? `Chapter ${chapterNumber(selectedChapter)} Script` : "Chapter Script"}</h3>{selectedChapter && <StatusBadge value={selectedChapter.publishStatus || selectedChapter.publish_status || "DRAFT"} />}</div>
           {selectedChapter ? (
             <>
-              <textarea className="form-control manuscript-script-area" value={script} onChange={(event) => setScript(event.target.value)} placeholder="Write chapter script or instructions here." />
+              <div className="manuscript-split-review">
+                <div className="manuscript-script-pane">
+                  <ScriptEditor value={script} onChange={setScript} placeholder="Write chapter script or instructions here." disabled={!canEdit} />
+                </div>
+                <div className="manuscript-image-pane">
+                  {selectedPage && pageImage(selectedPage) ? <img src={pageImage(selectedPage)} alt={`Page ${pageNumber(selectedPage)}`} /> : <EmptyState icon="▧" title="No selected page image" body="Choose a page from the chapter tree." />}
+                  {selectedPage && <div className="button-row"><strong>Page {pageNumber(selectedPage)}</strong><button className="btn btn-small" onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${selectedPage.id}`)}>Open Canvas</button></div>}
+                </div>
+              </div>
               <div className="button-row">
                 <button className="btn-publish" onClick={saveScript} disabled={saving || !canEdit}>{saving ? "Saving..." : "Save Script"}</button>
                 <button className="btn" onClick={() => navigate(`/chapters-pages?seriesId=${selectedSeriesId}`)}>Open Chapter Manager</button>
@@ -219,7 +234,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
                   const url = pageImage(page);
                   return (
                     <div className="page-card" key={page.id}>
-                      <button onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}`)}>{url ? <img src={url} alt={`Page ${pageNumber(page)}`} /> : <span>No image</span>}</button>
+                      <button className={String(selectedPageId) === String(page.id) ? "active" : ""} onClick={() => setSelectedPageId(String(page.id))}>{url ? <img src={url} alt={`Page ${pageNumber(page)}`} /> : <span>No image</span>}</button>
                       <div className="page-card-footer"><strong>Page {pageNumber(page)}</strong></div>
                     </div>
                   );

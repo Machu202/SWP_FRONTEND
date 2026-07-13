@@ -78,7 +78,7 @@ export default function EditorialBoardReviewPage() {
 
 function BoardVoteRow({ item, summary, onVote }) {
   return (
-    <div className="review-row board-review-row">
+    <div className="review-row board-review-row" data-testid={`board-series-${item.id}`}>
       <button className="review-main review-clickable" onClick={() => navigate(`/series/${item.id}`)}>
         <div className="row-between">
           <div>
@@ -102,7 +102,7 @@ function BoardVoteRow({ item, summary, onVote }) {
           <span>Pending <strong>{summary?.pendingVotes ?? "-"}</strong></span>
         </div>
         <div className="button-row vertical-buttons">
-          <button className="btn btn-primary" onClick={() => onVote(item.id, true)}>Vote approve</button>
+          <button className="btn btn-primary" data-testid="board-vote-approve" onClick={() => onVote(item.id, true)}>Vote approve</button>
           <button className="btn btn-danger" onClick={() => onVote(item.id, false)}>Vote reject</button>
           <button className="btn" onClick={() => navigate(`/series/${item.id}`)}>Open details</button>
         </div>

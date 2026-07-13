@@ -43,6 +43,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const [pages, setPages] = useState([]);
   const [chapterForm, setChapterForm] = useState({ chapterNumber: "", title: "" });
   const [uploading, setUploading] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -149,22 +150,50 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   async function uploadPages(event) {
     const files = Array.from(event.target.files || []);
     if (!selectedChapterId || !files.length) return;
+
+    const invalid = files.filter((file) => !String(file.type || "").startsWith("image/"));
+    if (invalid.length) {
+      setError(`Only image files are allowed. Remove: ${invalid.map((file) => file.name).join(", ")}`);
+      event.target.value = "";
+      return;
+    }
+
     setUploading(true);
     setError("");
     setMessage("");
-    try {
-      const currentMax = pages.reduce((max, page) => Math.max(max, Number(pageNumber(page) || 0)), 0);
-      for (let index = 0; index < files.length; index += 1) {
+    const currentMax = pages.reduce((max, page) => Math.max(max, Number(pageNumber(page) || 0)), 0);
+    const initialQueue = files.map((file, index) => ({
+      id: `${file.name}-${file.lastModified}-${index}`,
+      name: file.name,
+      pageNumber: currentMax + index + 1,
+      status: "queued",
+      error: ""
+    }));
+    setUploadQueue(initialQueue);
+
+    let successCount = 0;
+    const failures = [];
+    for (let index = 0; index < files.length; index += 1) {
+      const queueId = initialQueue[index].id;
+      setUploadQueue((items) => items.map((item) => item.id === queueId ? { ...item, status: "uploading" } : item));
+      try {
         await api.pages.upload(selectedChapterId, currentMax + index + 1, files[index]);
+        successCount += 1;
+        setUploadQueue((items) => items.map((item) => item.id === queueId ? { ...item, status: "complete" } : item));
+      } catch (err) {
+        const reason = err.message || "Upload failed";
+        failures.push(`${files[index].name}: ${reason}`);
+        setUploadQueue((items) => items.map((item) => item.id === queueId ? { ...item, status: "failed", error: reason } : item));
       }
-      setMessage(`Uploaded ${files.length} page(s).`);
-      await loadPages(selectedChapterId);
-    } catch (err) {
-      setError(err.message || "Page upload failed.");
-    } finally {
-      event.target.value = "";
-      setUploading(false);
     }
+
+    if (successCount) {
+      setMessage(`Uploaded ${successCount} of ${files.length} page(s).`);
+      await loadPages(selectedChapterId);
+    }
+    if (failures.length) setError(`${failures.length} upload(s) failed. ${failures.join(" | ")}`);
+    event.target.value = "";
+    setUploading(false);
   }
 
   function requestDeleteChapter(chapter) {
@@ -250,7 +279,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
           <h3>Select Series</h3>
           <div className="form-group">
             <label>Manga Series</label>
-            <select className="form-control" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
+            <select className="form-control" data-testid="chapter-series-select" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
               <option value="">Choose series</option>
               {seriesList.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
             </select>
@@ -262,14 +291,14 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
               <div className="form-row">
                 <div className="form-group">
                   <label>Chapter Number</label>
-                  <input className="form-control" type="number" min="1" required value={chapterForm.chapterNumber} onChange={(event) => setChapterForm({ ...chapterForm, chapterNumber: event.target.value })} />
+                  <input className="form-control" data-testid="chapter-number-input" type="number" min="1" required value={chapterForm.chapterNumber} onChange={(event) => setChapterForm({ ...chapterForm, chapterNumber: event.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>Chapter Title</label>
-                  <input className="form-control" placeholder="Chapter title" value={chapterForm.title} onChange={(event) => setChapterForm({ ...chapterForm, title: event.target.value })} />
+                  <input className="form-control" data-testid="chapter-title-input" placeholder="Chapter title" value={chapterForm.title} onChange={(event) => setChapterForm({ ...chapterForm, title: event.target.value })} />
                 </div>
               </div>
-              <button className="btn-publish" type="submit" disabled={!selectedSeriesId}>＋ Create Chapter</button>
+              <button className="btn-publish" data-testid="chapter-create-submit" type="submit" disabled={!selectedSeriesId}>＋ Create Chapter</button>
             </form>
           )}
         </div>
@@ -281,7 +310,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
               <div className="feature-form">
                 <div className="form-group">
                   <label>Chapter</label>
-                  <select className="form-control" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)}>
+                  <select className="form-control" data-testid="page-chapter-select" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)}>
                     <option value="">Choose chapter</option>
                     {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</option>)}
                   </select>
@@ -295,12 +324,24 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
                     <label>Image Files</label>
                     <label className="form-control file-button">
                       {uploading ? "Uploading..." : "Choose images"}
-                      <input type="file" accept="image/*" multiple onChange={uploadPages} disabled={!selectedChapterId || uploading} />
+                      <input type="file" accept="image/*" multiple data-testid="page-upload-input" onChange={uploadPages} disabled={!selectedChapterId || uploading} />
                     </label>
                   </div>
                 </div>
               </div>
               <div className="upload-log">{selectedChapterId ? `${pages.length} page(s) currently uploaded for this chapter.` : "Choose a chapter before uploading pages."}</div>
+              {uploadQueue.length > 0 && (
+                <div className="batch-upload-queue" aria-live="polite">
+                  <div className="section-title-row"><strong>Batch upload queue</strong><span>{uploadQueue.filter((item) => item.status === "complete").length}/{uploadQueue.length}</span></div>
+                  {uploadQueue.map((item) => (
+                    <div className={`batch-upload-item upload-${item.status}`} key={item.id}>
+                      <span className="batch-upload-name">Page {item.pageNumber} · {item.name}</span>
+                      <strong>{item.status === "uploading" ? "Uploading…" : item.status}</strong>
+                      {item.error && <small>{item.error}</small>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -350,7 +391,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
                 {pages.map((page) => {
                   const url = pageImage(page);
                   return (
-                    <div key={page.id} className="page-card">
+                    <div key={page.id} className="page-card" data-testid={`page-card-${page.id}`}>
                       <button onClick={() => navigate(`/canvas-workspace?seriesId=${selectedSeriesId}&chapterId=${selectedChapterId}&pageId=${page.id}`)}>
                         {url ? <img src={url} alt={`Page ${pageNumber(page)}`} /> : <span>No image</span>}
                       </button>

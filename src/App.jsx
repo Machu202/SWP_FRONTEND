@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import SeriesPage from "./pages/SeriesPage";
+import SeriesDetailPage from "./pages/SeriesDetailPage";
 import ChaptersPagesPage from "./pages/ChaptersPagesPage";
 import ManuscriptsPage from "./pages/ManuscriptsPage";
 import CanvasWorkspacePage from "./pages/CanvasWorkspacePage";
@@ -28,13 +30,11 @@ export default function App() {
   const role = profile?.roleName || session.role;
 
   if (!isAuthenticated && route.pathname !== "/login") {
-    setTimeout(() => navigate("/login"), 0);
-    return <LoginPage />;
+    return <Redirect to="/login" fallback={<LoginPage />} />;
   }
 
   if (isAuthenticated && (route.pathname === "/" || route.pathname === "/login")) {
-    setTimeout(() => navigate(roleHome(role)), 0);
-    return null;
+    return <Redirect to={roleHome(role)} />;
   }
 
   if (route.pathname === "/login") return <LoginPage />;
@@ -71,8 +71,7 @@ function isAllowed(pathname, role) {
 
 function renderPage(route, role) {
   if (route.pathname === "/review") {
-    setTimeout(() => navigate(reviewRouteForRole(role)), 0);
-    return null;
+    return <Redirect to={reviewRouteForRole(role)} />;
   }
 
   if (!isAllowed(route.pathname, role)) {
@@ -111,12 +110,17 @@ function renderPage(route, role) {
 
   const seriesMatch = matchRoute(route.parts, "/series/:seriesId");
   if (seriesMatch) {
-    setTimeout(() => navigate(seriesRouteForRole(role, seriesMatch.seriesId)), 0);
-    return null;
+    if (hasRole(role, ["mangaka"])) return <SeriesDetailPage seriesId={seriesMatch.seriesId} />;
+    return <Redirect to={seriesRouteForRole(role, seriesMatch.seriesId)} />;
   }
 
   const workspaceMatch = matchRoute(route.parts, "/workspace/:pageId");
   if (workspaceMatch) return <WorkspacePage pageId={workspaceMatch.pageId} query={route.params} />;
 
   return <EmptyState title="Page not found" body={`No React route exists for ${route.pathname}.`} />;
+}
+
+function Redirect({ to, fallback = null }) {
+  useEffect(() => { navigate(to); }, [to]);
+  return fallback;
 }

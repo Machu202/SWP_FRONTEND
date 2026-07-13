@@ -42,38 +42,94 @@ export function hasRole(role, fragments = []) {
   return fragments.some((fragment) => normalized.includes(fragment));
 }
 
+function sessionStore() {
+  return window.sessionStorage;
+}
+
+function clearLegacyPersistentSession() {
+  // Older builds stored authentication in localStorage, which is shared across
+  // every tab and survives browser restarts. Remove only the known session keys
+  // so upgrading users are returned to Login without deleting unrelated prefs.
+  try {
+    SESSION_KEYS.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts.
+  }
+}
+
+function decodeJwtPayload(token) {
+  const parts = String(token || "").split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+export function isTokenExpired(token, now = Date.now()) {
+  const payload = decodeJwtPayload(token);
+  // A malformed token cannot be trusted as an authenticated browser session.
+  if (!payload || typeof payload.exp !== "number") return true;
+  return payload.exp * 1000 <= now;
+}
+
 export function getToken() {
-  return localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
+  clearLegacyPersistentSession();
+  let token = "";
+  try {
+    token = sessionStore().getItem("accessToken") || sessionStore().getItem("token") || "";
+  } catch {
+    return "";
+  }
+  if (token && isTokenExpired(token)) {
+    clearSession();
+    return "";
+  }
+  return token;
 }
 
 export function getSession() {
+  const token = getToken();
+  if (!token) {
+    return { token: "", id: "", username: "", email: "", role: "" };
+  }
+  const store = sessionStore();
   return {
-    token: getToken(),
-    id: localStorage.getItem("userId") || "",
-    username: localStorage.getItem("username") || "",
-    email: localStorage.getItem("email") || "",
-    role: localStorage.getItem("role") || ""
+    token,
+    id: store.getItem("userId") || "",
+    username: store.getItem("username") || "",
+    email: store.getItem("email") || "",
+    role: store.getItem("role") || ""
   };
 }
 
 export function setSession(data = {}) {
+  clearLegacyPersistentSession();
+  const store = sessionStore();
   const token = data.token || data.accessToken || data.jwt || "";
   if (token) {
-    localStorage.setItem("accessToken", token);
-    localStorage.setItem("token", token);
+    store.setItem("accessToken", token);
+    store.setItem("token", token);
   }
 
   const userId = data.id || data.userId || data.user_id;
-  if (userId !== undefined && userId !== null) localStorage.setItem("userId", String(userId));
-  if (data.username) localStorage.setItem("username", data.username);
-  if (data.email) localStorage.setItem("email", data.email);
-  if (data.role || data.roleName) localStorage.setItem("role", data.role || data.roleName);
-  if (data.type) localStorage.setItem("tokenType", data.type);
+  if (userId !== undefined && userId !== null) store.setItem("userId", String(userId));
+  if (data.username) store.setItem("username", data.username);
+  if (data.email) store.setItem("email", data.email);
+  if (data.role || data.roleName) store.setItem("role", data.role || data.roleName);
+  if (data.type) store.setItem("tokenType", data.type);
   return getSession();
 }
 
 export function clearSession() {
-  SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
+  try {
+    SESSION_KEYS.forEach((key) => sessionStore().removeItem(key));
+  } finally {
+    clearLegacyPersistentSession();
+  }
 }
 
 export function objectToQuery(params = {}) {
@@ -98,9 +154,9 @@ export function unwrapList(payload) {
 export function normalizeTaskStatus(status = "") {
   const value = String(status || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
   if (["TODO", "TO_DO", "OPEN", "NEW", "PENDING"].includes(value)) return "TODO";
-  if (["DOING", "IN_PROGRESS", "PROGRESS", "WORKING"].includes(value)) return "DOING";
-  if (["REVIEWING", "REVIEW", "IN_REVIEW", "PENDING_REVIEW", "WAITING_REVIEW", "DONE"].includes(value)) return "REVIEWING";
-  if (["APPROVED", "COMPLETE", "COMPLETED", "ACCEPTED"].includes(value)) return "APPROVED";
+  if (["DOING", "IN_PROGRESS", "PROGRESS", "WORKING", "REVISION", "CHANGES_REQUESTED", "NEEDS_REVISION"].includes(value)) return "DOING";
+  if (["REVIEWING", "REVIEW", "IN_REVIEW", "PENDING_REVIEW", "WAITING_REVIEW", "SUBMITTED", "SUBMITTED_FOR_REVIEW", "AWAITING_REVIEW", "DONE"].includes(value)) return "REVIEWING";
+  if (["APPROVED", "COMPLETE", "COMPLETED", "ACCEPTED", "VERIFIED"].includes(value)) return "APPROVED";
   return value || "TODO";
 }
 
@@ -170,9 +226,14 @@ export function mediaUrlFrom(...values) {
 }
 
 export function resolveMediaUrl(rawUrl) {
-  const raw = String(rawUrl || "").trim();
+  let raw = String(rawUrl || "").trim();
   if (!raw) return "";
+
+  // Some backend/debug outputs include wrapped quotes or escaped slashes.
+  raw = raw.replace(/^["']|["']$/g, "").replace(/\\\//g, "/").trim();
+
   if (/^(data:|blob:|https?:\/\/)/i.test(raw)) return raw;
+
   try {
     const api = new URL(API_BASE_URL, window.location.origin);
     if (raw.startsWith("/")) return `${api.origin}${raw}`;
@@ -283,11 +344,14 @@ export const api = {
     update: (id, payload) => apiFetch(`/manga-series/${id}`, { method: "PUT", body: payload }),
     remove: (id) => apiFetch(`/manga-series/${id}`, { method: "DELETE" }),
     status: (id, newStatus) => apiFetch(`/manga-series/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
+    assignTantou: (id, tantouId) => apiFetch(`/manga-series/${id}/tantou${objectToQuery({ tantouId })}`, { method: "PATCH" }),
+    submitToBoard: (id) => apiFetch(`/manga-series/${id}/submit-to-board`, { method: "PATCH" }),
     adminDecision: (id, isApproved, tantouId) => apiFetch(`/manga-series/${id}/admin-decision${objectToQuery({ isApproved, tantouId })}`, { method: "PATCH" })
   },
 
   chapters: {
     bySeries: (seriesId) => apiFetch(`/chapters/series/${seriesId}`),
+    tantouReview: () => apiFetch("/chapters/tantou-review"),
     get: (id) => apiFetch(`/chapters/${id}`),
     create: (payload) => apiFetch("/chapters", { method: "POST", body: payload }),
     status: (id, newStatus) => apiFetch(`/chapters/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
