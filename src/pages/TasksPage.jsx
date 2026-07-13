@@ -247,7 +247,7 @@ function allowedKanbanTargets(task, role) {
 
 export default function TasksPage() {
   const route = useHashRoute();
-  const activeTab = tabFromRoute(route);
+  const requestedTab = tabFromRoute(route);
   const { profile, session } = useAuth();
   const role = profile?.roleName || session.role;
   const [tasks, setTasks] = useState([]);
@@ -264,15 +264,17 @@ export default function TasksPage() {
 
   const isAssistant = hasRole(role, ["assistant"]);
   const isMangaka = hasRole(role, ["mangaka"]);
+  const isTantou = hasRole(role, ["tantou"]);
   const canAssign = isMangaka;
   const canSubmit = isAssistant;
+  const activeTab = isTantou ? "kanban" : requestedTab;
 
   async function load() {
     setLoading(true);
     setError("");
     try {
       const [taskData, assistantData] = await Promise.all([
-        api.tasks.mine().catch(() => []),
+        api.tasks.mine(),
         canAssign ? api.users.byRole("Assistant").catch(() => []) : Promise.resolve([])
       ]);
       const normalizedTasks = normalizeTaskList(taskData);
@@ -489,13 +491,15 @@ export default function TasksPage() {
         >
           Kanban Board
         </button>
-        <button
-          type="button"
-          className={activeTab === "assignments" ? "r-tab active" : "r-tab"}
-          onClick={() => navigate("/tasks?tab=assignments")}
-        >
-          Assignments
-        </button>
+        {!isTantou && (
+          <button
+            type="button"
+            className={activeTab === "assignments" ? "r-tab active" : "r-tab"}
+            onClick={() => navigate("/tasks?tab=assignments")}
+          >
+            Assignments
+          </button>
+        )}
       </div>
 
       {activeTab === "kanban" ? (
@@ -507,6 +511,7 @@ export default function TasksPage() {
           onMove={updateStatus}
           totalTasks={tasks.length}
           role={role}
+          isTantou={isTantou}
         />
       ) : (
         <AssignmentsPanel
@@ -534,7 +539,7 @@ export default function TasksPage() {
   );
 }
 
-function KanbanBoard({ grouped, counts, selected, onSelect, onMove, totalTasks, role }) {
+function KanbanBoard({ grouped, counts, selected, onSelect, onMove, totalTasks, role, isTantou = false }) {
   const [draggedTask, setDraggedTask] = useState(null);
   const [dropTarget, setDropTarget] = useState("");
 
@@ -549,11 +554,24 @@ function KanbanBoard({ grouped, counts, selected, onSelect, onMove, totalTasks, 
   }
 
   if (!totalTasks) {
-    return <EmptyState icon="▤" title="No tasks assigned" body="Tasks created from page hitboxes will appear here." />;
+    return (
+      <EmptyState
+        icon="▤"
+        title={isTantou ? "No tasks in assigned series" : "No tasks assigned"}
+        body={isTantou
+          ? "Tasks will appear here when a Mangaka assigns this Tantou Editor to a series that contains Assistant work."
+          : "Tasks created from page hitboxes will appear here."}
+      />
+    );
   }
 
   return (
     <div className="task-kanban-panel" data-testid="kanban-board" data-task-count={totalTasks}>
+      {isTantou ? (
+        <div className="tantou-kanban-scope-note" data-testid="tantou-kanban-scope">
+          Read-only view of Assistant tasks from manga series assigned to this Tantou Editor.
+        </div>
+      ) : null}
       <div className="kanban-grid backend-kanban task-kanban-grid">
         {COLUMNS.map((column) => (
           <div
@@ -712,7 +730,7 @@ function TaskCard({ task, selected, onClick, onMove, onDragStart, onDragEnd, rol
           ))}
         </div>
       )}
-      {!targets.length && hasRole(role, ["assistant"]) && <small className="kanban-readonly-note">View only</small>}
+      {!targets.length && hasRole(role, ["assistant", "tantou"]) && <small className="kanban-readonly-note">View only</small>}
     </div>
   );
 }

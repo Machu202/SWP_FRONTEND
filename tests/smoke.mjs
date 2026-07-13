@@ -556,6 +556,20 @@ async function run() {
     }
 
     {
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/tasks?tab=kanban" });
+      await waitText(page, "Kanban Board");
+      await waitText(page, "Read-only view of Assistant tasks from manga series assigned to this Tantou Editor.");
+      assert.equal(await page.locator('[data-testid="kanban-task-card"]').count(), fixtures.tasks.length, "Tantou Kanban must render tasks returned for assigned series");
+      assert.equal(await page.locator('[data-testid="kanban-task-card"][draggable="true"]').count(), 0, "Tantou Kanban must remain read-only");
+      assert.equal(await page.getByRole("button", { name: "Assignments", exact: true }).count(), 0, "Tantou task screen must not expose the unrelated Assignments tab");
+      assert.ok(await page.getByText("View only", { exact: true }).count() >= 1);
+      await page.screenshot({ path: path.resolve("test-results/tantou-kanban-fixed.png"), fullPage: true });
+      assert.deepEqual(pageErrors, []);
+      passed.push("Tantou Kanban renders assigned-series tasks in a read-only board");
+      await context.close();
+    }
+
+    {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/canvas-workspace?seriesId=1&chapterId=10&pageId=100" });
       await waitText(page, "Tantou Review Canvas");
       await page.locator('[data-testid="canvas-draw-surface"]').waitFor({ state: "visible" });

@@ -10017,3 +10017,25 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 @media (max-width: 760px) {
   .feature-screen.tantou-screen .sidebar { width: 100%; }
 }
+
+
+/* Tantou Kanban: assigned-series task visibility, read-only by design. */
+.tantou-kanban-scope-note {
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.tantou-screen .backend-kanban .backend-task-card {
+  cursor: default;
+}
+
+.tantou-screen .backend-kanban .kanban-column {
+  min-height: 360px;
+}
