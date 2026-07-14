@@ -197,4 +197,34 @@ assert.match(seriesRepo, /countByIdLessThanEqual/);
 assert.match(seriesService, /displayNumber\(series\.getId\(\) != null \? mangaSeriesRepository\.countByIdLessThanEqual/);
 assert.match(seriesController, /assigned-to-me/);
 
-console.log(JSON.stringify({ reportedIssues: 34, result: "PASS" }, null, 2));
+// Issues 33-38.
+// Hitbox previews use the page's true coordinate space and the exact rendered image frame.
+assert.match(tasks, /originalWidth=\{taskPageWidth\(selected\)\}/);
+assert.match(tasks, /originalHeight=\{taskPageHeight\(selected\)\}/);
+assert.match(tasks, /className="preview-image-frame"/);
+assert.match(mangakaReview, /originalWidth=\{taskPageWidth\(task\)\}/);
+assert.match(mangakaReview, /originalHeight=\{taskPageHeight\(task\)\}/);
+assert.match(css, /\.preview-image-frame[\s\S]*position: relative/);
+
+// Approving Assistant work promotes it to the live page and creates the next PageVersion.
+assert.match(taskService, /promoteApprovedSubmissionToPage\(task\)/);
+assert.match(taskService, /page\.setImageUrl\(submittedImage\)/);
+assert.match(taskService, /PageVersion\.builder\(\)/);
+assert.match(taskService, /pageVersionRepository\.save\(version\)/);
+
+// Mangaka Tantou Feedback renders the saved feedback rectangle and uses its dedicated comment API.
+assert.match(mangakaReview, /function FeedbackHitboxPreview/);
+assert.match(mangakaReview, /data-testid=\{`feedback-hitbox-/);
+assert.match(mangakaReview, /api\.feedback\.comment\(feedback\.id/);
+assert.match(feedbackController, /\{feedbackId\}\/comments/);
+assert.match(feedbackService, /Only the owning Mangaka can comment on Tantou feedback/);
+
+// Assistant assignment is locked for REVIEWING/APPROVED tasks.
+assert.match(tasks, /const assignmentLocked = selected \? \["REVIEWING", "APPROVED"\]/);
+assert.match(tasks, /data-testid="assign-assistant-select"[\s\S]*disabled=\{assignmentLocked\}/);
+assert.match(taskService, /Assistant assignment is locked once a task is REVIEWING or APPROVED/);
+
+// Tantou Chapter Review no longer contains the redundant Open series action.
+assert.doesNotMatch(tantouReview, />Open series<\/button>/);
+
+console.log(JSON.stringify({ reportedIssues: 40, result: "PASS" }, null, 2));

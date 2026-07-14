@@ -336,7 +336,6 @@ function TantouChapterRow({ chapter, pages, busy, onLoadPages, onApprove, onRevi
               <button className="btn btn-danger" data-testid={`tantou-return-chapter-${chapter.id}`} onClick={onRevision} disabled={busy}>Send back to Mangaka</button>
             </>
           ) : null}
-          <button className="btn" onClick={() => navigate(`/chapters-pages?seriesId=${chapter.seriesId}`)}>Open series</button>
         </div>
       </div>
     </div>

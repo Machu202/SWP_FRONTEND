@@ -484,6 +484,7 @@ export const api = {
   feedback: {
     byPage: (pageId) => apiFetch(`/tantou-feedbacks/pages/${pageId}`),
     create: (pageId, data) => apiFetch(`/tantou-feedbacks/pages/${pageId}${objectToQuery(data)}`, { method: "POST" }),
+    comment: (feedbackId, content) => apiFetch(`/tantou-feedbacks/${feedbackId}/comments${objectToQuery({ content })}`, { method: "POST" }),
     resolve: (feedbackId) => apiFetch(`/tantou-feedbacks/${feedbackId}/resolve`, { method: "PATCH" })
   },
 

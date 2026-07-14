@@ -151,6 +151,14 @@ function taskPageNumber(task) {
   );
 }
 
+function taskPageWidth(task) {
+  return firstValue(task?.pageWidth, task?.page_width, task?.page?.width, task?.hitbox?.pageWidth, task?.hitbox?.page_width, task?.hitboxDto?.pageWidth, task?.hitboxDto?.page_width);
+}
+
+function taskPageHeight(task) {
+  return firstValue(task?.pageHeight, task?.page_height, task?.page?.height, task?.hitbox?.pageHeight, task?.hitbox?.page_height, task?.hitboxDto?.pageHeight, task?.hitboxDto?.page_height);
+}
+
 function taskSeriesTitle(task) {
   return firstValue(
     task?.seriesTitle,
@@ -739,6 +747,7 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
   const referenceUrl = taskReferenceUrl(selected);
   const isAssistant = hasRole(role, ["assistant"]);
   const statusTargets = selected ? allowedKanbanTargets(selected, role) : [];
+  const assignmentLocked = selected ? ["REVIEWING", "APPROVED"].includes(taskWorkflowStatus(selected)) : false;
   return (
     <div className="task-box assignment-detail-box">
       <div className="task-box-title">
@@ -761,12 +770,13 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
           {canAssign && (
             <div className="form-group">
               <label>Assign assistant</label>
-              <select className="form-control" value={taskAssistantId(selected) || ""} onChange={(event) => onAssign(selected.id, event.target.value)}>
+              <select className="form-control" data-testid="assign-assistant-select" value={taskAssistantId(selected) || ""} disabled={assignmentLocked} title={assignmentLocked ? "Assistant assignment is locked while the task is Reviewing or Approved." : ""} onChange={(event) => onAssign(selected.id, event.target.value)}>
                 <option value="">Choose assistant</option>
                 {assistants.map((assistant) => (
                   <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email}</option>
                 ))}
               </select>
+              {assignmentLocked && <small className="assignment-lock-note">Assistant assignment is locked for {taskWorkflowStatus(selected)} tasks.</small>}
             </div>
           )}
 
@@ -782,7 +792,7 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
 
           <div className="reference-panel assignment-reference-panel">
             <div className="assignment-reference-column">
-              <HitboxPreview key={`${selected.id}-${selectedHitbox?.id || "loading"}`} title="Reference image" url={referenceUrl} box={selectedHitbox} loading={hitboxLoading} />
+              <HitboxPreview key={`${selected.id}-${selectedHitbox?.id || "loading"}`} title="Reference image" url={referenceUrl} box={selectedHitbox} originalWidth={taskPageWidth(selected)} originalHeight={taskPageHeight(selected)} loading={hitboxLoading} />
               {isAssistant && (
                 <button className="btn btn-primary full reference-download-btn" type="button" onClick={() => onDownloadReference(selected)} disabled={!referenceUrl}>
                   Download reference image
@@ -942,7 +952,7 @@ function Preview({ title, url }) {
   return <div className="preview-box"><strong>{title}</strong>{resolved ? <img src={resolved} alt={title} /> : <span>No image</span>}</div>;
 }
 
-function HitboxPreview({ title, url, box, loading }) {
+function HitboxPreview({ title, url, box, originalWidth: explicitWidth, originalHeight: explicitHeight, loading }) {
   const resolved = resolveMediaUrl(url);
   const imageRef = useRef(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
@@ -962,8 +972,13 @@ function HitboxPreview({ title, url, box, loading }) {
     return <div className="preview-box"><strong>{title}</strong><span>No image</span></div>;
   }
 
-  const originalWidth = Math.max(toFiniteNumber(imageSize.width, 1), 1);
-  const originalHeight = Math.max(toFiniteNumber(imageSize.height, 1), 1);
+  // Use the exact same coordinate basis as Mangaka Canvas Workspace. The
+  // image-sized frame prevents blank flex-space/object-fit bars from scaling
+  // the overlay larger than the hitbox that was actually drawn.
+  const explicitCoordinateWidth = toFiniteNumber(explicitWidth, 0);
+  const explicitCoordinateHeight = toFiniteNumber(explicitHeight, 0);
+  const originalWidth = Math.max(toFiniteNumber(explicitCoordinateWidth, imageSize.width, 1), 1);
+  const originalHeight = Math.max(toFiniteNumber(explicitCoordinateHeight, imageSize.height, 1), 1);
   const x = boxValue(box, "xCoord", "x_coord", "x");
   const y = boxValue(box, "yCoord", "y_coord", "y");
   const width = boxValue(box, "width", "w");
@@ -975,27 +990,30 @@ function HitboxPreview({ title, url, box, loading }) {
   const top = hasBox ? (unitBox ? y * 100 : (y / originalHeight) * 100) : 0;
   const boxWidth = hasBox ? (unitBox ? width * 100 : (width / originalWidth) * 100) : 0;
   const boxHeight = hasBox ? (unitBox ? height * 100 : (height / originalHeight) * 100) : 0;
+  const canRenderOverlay = hasBox && ((explicitCoordinateWidth > 0 && explicitCoordinateHeight > 0) || (imageSize.width > 0 && imageSize.height > 0));
 
   return (
     <div className="preview-box preview-box-hitbox">
       <strong>{title}</strong>
       <div className="preview-image-stage">
-        <img
-          ref={imageRef}
-          src={resolved}
-          alt={title}
-          onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })}
-        />
-        {hasBox && imageSize.width > 0 && imageSize.height > 0 && (
-          <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
-            <span className="task-hitbox-label">Task Area</span>
-          </div>
-        )}
+        <div className="preview-image-frame">
+          <img
+            ref={imageRef}
+            src={resolved}
+            alt={title}
+            onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })}
+          />
+          {canRenderOverlay && (
+            <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
+              <span className="task-hitbox-label">Task Area</span>
+            </div>
+          )}
+        </div>
       </div>
       {loading ? (
         <small className="preview-hitbox-note">Loading hitbox area…</small>
       ) : hasBox ? (
-        <small className="preview-hitbox-note">Mangaka hitbox is highlighted on the reference page.</small>
+        <small className="preview-hitbox-note">Task area matches the Mangaka Canvas coordinates.</small>
       ) : (
         <small className="preview-hitbox-note">No saved hitbox was returned for this task yet.</small>
       )}

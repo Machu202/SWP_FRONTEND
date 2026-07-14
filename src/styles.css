@@ -10039,3 +10039,17 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 .tantou-screen .backend-kanban .kanban-column {
   min-height: 360px;
 }
+
+
+/* =========================================================
+   SWP Issues 33-38: exact overlay geometry and workflow locks
+   ========================================================= */
+.preview-image-stage { min-height: 0; padding: 0; display: block; }
+.preview-image-frame, .feedback-preview-frame { position: relative; width: 100%; line-height: 0; overflow: hidden; background: #fff; }
+.preview-image-frame img, .feedback-preview-frame img { display: block; width: 100%; height: auto; object-fit: contain; }
+.task-hitbox-overlay { box-sizing: border-box; min-width: 0; min-height: 0; box-shadow: none; }
+.assignment-lock-note { display: block; margin-top: 6px; color: #92400e; font-size: 11px; font-weight: 700; }
+.feedback-page-preview { min-height: 0; display: block; background: #fff; }
+.feedback-page-preview img { width: 100%; height: auto; object-fit: contain; }
+.tantou-feedback-preview-overlay { position: absolute; box-sizing: border-box; border: 2px solid #e11d48; background: rgba(225, 29, 72, .18); pointer-events: none; z-index: 3; }
+.tantou-feedback-preview-overlay span { position: absolute; top: 2px; left: 2px; width: max-content; max-width: calc(100% - 4px); padding: 2px 5px; border-radius: 4px; background: #be123c; color: #fff; font-size: 9px; font-weight: 800; line-height: 1.2; white-space: nowrap; }

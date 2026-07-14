@@ -166,6 +166,14 @@ function taskDisplayNumber(task) {
   );
 }
 
+function taskPageWidth(task) {
+  return firstValue(task?.pageWidth, task?.page_width, task?.page?.width, task?.hitbox?.pageWidth, task?.hitbox?.page_width, task?.hitboxDto?.pageWidth, task?.hitboxDto?.page_width);
+}
+
+function taskPageHeight(task) {
+  return firstValue(task?.pageHeight, task?.page_height, task?.page?.height, task?.hitbox?.pageHeight, task?.hitbox?.page_height, task?.hitboxDto?.pageHeight, task?.hitboxDto?.page_height);
+}
+
 function taskSeriesTitle(task) {
   return firstValue(
     task?.seriesTitle,
@@ -196,6 +204,8 @@ function normalizeTaskForReview(task) {
     chapterDisplay: taskChapterLabel(task),
     pageId: taskPageId(task) || task.pageId,
     pageNumber: taskPageNumber(task) || task.pageNumber,
+    pageWidth: taskPageWidth(task) || task.pageWidth,
+    pageHeight: taskPageHeight(task) || task.pageHeight,
     assistantName: taskAssistantName(task) || task.assistantName,
     hitbox: directTaskHitbox(task) || task.hitbox
   };
@@ -443,13 +453,7 @@ export default function MangakaAssistantReviewPage() {
     setError("");
     setMessage("");
     try {
-      const saved = await api.feedback.create(feedback.pageId, {
-        x: feedbackX(feedback),
-        y: feedbackY(feedback),
-        width: feedbackWidth(feedback),
-        height: feedbackHeight(feedback),
-        content: `${COMMENT_PREFIX}${feedback.id}] ${comment.trim()}`
-      });
+      const saved = await api.feedback.comment(feedback.id, comment.trim());
       const enriched = {
         ...saved,
         pageId: feedback.pageId,
@@ -630,6 +634,8 @@ async function loadTantouFeedbackQueue(ownedSeries) {
             pageId: feedback.pageId || feedback.page_id || page.id,
             pageNumber: feedback.pageNumber || feedback.page_number || page.pageNumber || page.page_number,
             pageImageUrl: feedback.pageImageUrl || feedback.imageUrl || feedback.image_url || page.imageUrl || page.image_url,
+            pageWidth: feedback.pageWidth || feedback.page_width || page.width || page.imageWidth || page.originalWidth,
+            pageHeight: feedback.pageHeight || feedback.page_height || page.height || page.imageHeight || page.originalHeight,
             chapterId: feedback.chapterId || feedback.chapter_id || chapter.id,
             chapterNumber: feedback.chapterNumber || feedback.chapter_number || chapter.chapterNumber || chapter.chapter_number,
             chapterTitle: feedback.chapterTitle || chapter.title,
@@ -832,7 +838,7 @@ function AssistantSubmissionRow({
           <span>Assistant: {task.assistantName || task.assistantUsername || task.assistantEmail || "Unassigned"}</span>
         </div>
         <div className="submission-preview-grid">
-          <HitboxPreview title="Reference" url={reference} box={task.hitbox || directTaskHitbox(task)} />
+          <HitboxPreview title="Reference" url={reference} box={task.hitbox || directTaskHitbox(task)} originalWidth={taskPageWidth(task)} originalHeight={taskPageHeight(task)} />
           <Preview title="Submitted work" url={submitted} />
         </div>
       </div>
@@ -970,7 +976,7 @@ function TantouFeedbackRow({ feedback, comments, onAddComment, onResolve }) {
 
         <div className="feedback-card-body">
           <div className="feedback-page-preview">
-            {pageUrl ? <img src={pageUrl} alt={`Page ${feedback.pageNumber}`} /> : <span>No page image</span>}
+            <FeedbackHitboxPreview feedback={feedback} url={pageUrl} />
           </div>
           <div className="stack compact-stack">
             <div className="feedback-content-box">
@@ -1016,51 +1022,76 @@ function TantouFeedbackRow({ feedback, comments, onAddComment, onResolve }) {
   );
 }
 
-function HitboxPreview({ title, url, box }) {
+function HitboxPreview({ title, url, box, originalWidth: explicitWidth, originalHeight: explicitHeight }) {
   const resolved = resolveMediaUrl(url);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
-  useEffect(() => {
-    setImageSize({ width: 0, height: 0 });
-  }, [resolved]);
+  useEffect(() => { setImageSize({ width: 0, height: 0 }); }, [resolved]);
+  if (!resolved) return <div className="preview-box submission-preview"><strong>{title}</strong><span>No image</span></div>;
 
-  if (!resolved) {
-    return <div className="preview-box submission-preview"><strong>{title}</strong><span>No image</span></div>;
-  }
-
-  const originalWidth = Math.max(toFiniteNumber(imageSize.width, 1), 1);
-  const originalHeight = Math.max(toFiniteNumber(imageSize.height, 1), 1);
+  const explicitCoordinateWidth = toFiniteNumber(explicitWidth, 0);
+  const explicitCoordinateHeight = toFiniteNumber(explicitHeight, 0);
+  const originalWidth = Math.max(toFiniteNumber(explicitCoordinateWidth, imageSize.width, 1), 1);
+  const originalHeight = Math.max(toFiniteNumber(explicitCoordinateHeight, imageSize.height, 1), 1);
   const x = boxValue(box, "xCoord", "x_coord", "x");
   const y = boxValue(box, "yCoord", "y_coord", "y");
   const width = boxValue(box, "width", "w");
   const height = boxValue(box, "height", "h");
   const hasBox = Boolean(box) && width > 0 && height > 0;
   const unitBox = hasBox && x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
-
   const left = hasBox ? (unitBox ? x * 100 : (x / originalWidth) * 100) : 0;
   const top = hasBox ? (unitBox ? y * 100 : (y / originalHeight) * 100) : 0;
   const boxWidth = hasBox ? (unitBox ? width * 100 : (width / originalWidth) * 100) : 0;
   const boxHeight = hasBox ? (unitBox ? height * 100 : (height / originalHeight) * 100) : 0;
+  const canRenderOverlay = hasBox && ((explicitCoordinateWidth > 0 && explicitCoordinateHeight > 0) || (imageSize.width > 0 && imageSize.height > 0));
 
   return (
     <div className="preview-box submission-preview preview-box-hitbox">
       <strong>{title}</strong>
       <div className="preview-image-stage">
-        <img
-          src={resolved}
-          alt={title}
-          onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })}
-        />
-        {hasBox && imageSize.width > 0 && imageSize.height > 0 && (
-          <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
-            <span className="task-hitbox-label">Task Area</span>
-          </div>
-        )}
+        <div className="preview-image-frame">
+          <img src={resolved} alt={title} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
+          {canRenderOverlay && (
+            <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
+              <span className="task-hitbox-label">Task Area</span>
+            </div>
+          )}
+        </div>
       </div>
-      {hasBox ? (
-        <small className="preview-hitbox-note">Mangaka hitbox is highlighted on the reference page.</small>
-      ) : (
-        <small className="preview-hitbox-note">No saved hitbox was returned for this task.</small>
+      <small className="preview-hitbox-note">{hasBox ? "Task area matches the Mangaka Canvas coordinates." : "No saved hitbox was returned for this task."}</small>
+    </div>
+  );
+}
+
+function FeedbackHitboxPreview({ feedback, url }) {
+  const resolved = resolveMediaUrl(url);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  useEffect(() => { setImageSize({ width: 0, height: 0 }); }, [resolved]);
+  if (!resolved) return <span>No page image</span>;
+
+  const explicitCoordinateWidth = toFiniteNumber(feedback.pageWidth, feedback.page_width, 0);
+  const explicitCoordinateHeight = toFiniteNumber(feedback.pageHeight, feedback.page_height, 0);
+  const originalWidth = Math.max(toFiniteNumber(explicitCoordinateWidth, imageSize.width, 1), 1);
+  const originalHeight = Math.max(toFiniteNumber(explicitCoordinateHeight, imageSize.height, 1), 1);
+  const x = feedbackX(feedback);
+  const y = feedbackY(feedback);
+  const width = feedbackWidth(feedback);
+  const height = feedbackHeight(feedback);
+  const hasBox = width > 0 && height > 0;
+  const unitBox = hasBox && x >= 0 && y >= 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
+  const left = unitBox ? x * 100 : (x / originalWidth) * 100;
+  const top = unitBox ? y * 100 : (y / originalHeight) * 100;
+  const boxWidth = unitBox ? width * 100 : (width / originalWidth) * 100;
+  const boxHeight = unitBox ? height * 100 : (height / originalHeight) * 100;
+  const canRenderOverlay = hasBox && ((explicitCoordinateWidth > 0 && explicitCoordinateHeight > 0) || (imageSize.width > 0 && imageSize.height > 0));
+
+  return (
+    <div className="feedback-preview-frame">
+      <img src={resolved} alt={`Page ${feedback.pageNumber || ""}`} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
+      {canRenderOverlay && (
+        <div className="tantou-feedback-preview-overlay" data-testid={`feedback-hitbox-${feedback.id}`} style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
+          <span>Feedback area</span>
+        </div>
       )}
     </div>
   );

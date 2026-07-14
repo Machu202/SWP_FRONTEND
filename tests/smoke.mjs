@@ -29,15 +29,15 @@ const fixtures = {
   pages: [{ id: 100, pageNumber: 1, imageUrl: imageCurrent, width: 800, height: 1200, chapterId: 10 }],
   hitboxes: [{ id: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, pageId: 100 }],
   versions: [{ id: 901, versionNumber: 1, imageUrl: imageOld, createdAt: tomorrow }],
-  tasks: [{ id: 501, taskNumber: 1, status: "TODO", description: "Ink the background", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld }],
-  reviewTasks: [{ id: 502, taskNumber: 1, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld }],
+  tasks: [{ id: 501, taskNumber: 1, status: "TODO", description: "Ink the background", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld, pageWidth: 800, pageHeight: 1200 }],
+  reviewTasks: [{ id: 502, taskNumber: 1, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld, pageWidth: 800, pageHeight: 1200 }],
   users: [
     { id: 1, username: "mika", fullName: "Mika Mangaka", email: "mika@example.test", phoneNumber: "0901", roleName: "Mangaka", isActive: true },
     { id: 2, username: "aya", fullName: "Aya Assistant", email: "aya@example.test", phoneNumber: "0902", roleName: "Assistant", isActive: true },
     { id: 3, username: "admin", fullName: "System Admin", email: "admin@example.test", roleName: "Admin", isActive: true },
     { id: 4, username: "taro", fullName: "Taro Editor", email: "taro@example.test", roleName: "Tantou Editor", isActive: true }
   ],
-  feedbacks: [{ id: 1001, content: "Strengthen the panel border.", isResolved: false, pageId: 100 }],
+  feedbacks: [{ id: 1001, content: "Strengthen the panel border.", isResolved: false, pageId: 100, xCoord: 100, yCoord: 140, width: 220, height: 180 }],
   comments: [{ id: 1101, content: "Use a darker tone here.", userName: "Mika" }],
   resources: [{ id: 801, fileName: "studio-brush.png", resourceType: "BRUSH", fileUrl: imageCurrent }]
 };
@@ -88,7 +88,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
 
     window.__DISABLE_NOTIFICATION_STREAM__ = true;
     window.__smokeCapture = {
-      lockStates: [], uploads: 0, hitboxesCreated: 0, comments: 0, restores: 0,
+      lockStates: [], uploads: 0, hitboxesCreated: 0, comments: 0, feedbackComments: 0, restores: 0,
       taskStatuses: [], taskStarts: 0, feedbackCreated: 0, feedbackResolved: 0, votes: [],
       adminDecisions: 0, parameterUpdates: 0, tantouAssignments: [],
       tantouChapterStatus: initialChapterStatus || fixtureData.chapters[0].publishStatus,
@@ -230,6 +230,10 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
           width: Number(url.searchParams.get("width")),
           height: Number(url.searchParams.get("height"))
         });
+      }
+      if (/^\/tantou-feedbacks\/\d+\/comments$/.test(path) && method === "POST") {
+        capture.feedbackComments += 1;
+        return response({ id: 1300 + capture.feedbackComments, pageId: 100, xCoord: 100, yCoord: 140, width: 220, height: 180, content: `[Mangaka Comment] ${url.searchParams.get("content")}`, isResolved: false });
       }
       if (/^\/tantou-feedbacks\/\d+\/resolve$/.test(path)) { capture.feedbackResolved += 1; return response({ id: Number(path.split("/")[2]), content: "Resolved feedback", isResolved: true }); }
 
@@ -464,6 +468,19 @@ async function run() {
       assert.equal(await page.locator('[data-testid="task-chapter-meta"]').textContent(), "Chapter 1: Opening", "Task Detail must not show Chapter: Chapter ...");
 
       await navigate(page, "/assistant-review");
+      await waitText(page, "Tantou feedback #1001");
+      const feedbackBox = page.locator('[data-testid="feedback-hitbox-1001"]');
+      await feedbackBox.waitFor({ state: "visible" });
+      const feedbackStyle = await feedbackBox.evaluate((element) => ({ left: element.style.left, top: element.style.top, width: element.style.width, height: element.style.height }));
+      assert.equal(feedbackStyle.left, "12.5%");
+      assert.ok(Math.abs(parseFloat(feedbackStyle.top) - (140 / 1200 * 100)) < 0.02);
+      assert.ok(Math.abs(parseFloat(feedbackStyle.width) - (220 / 800 * 100)) < 0.02);
+      assert.equal(feedbackStyle.height, "15%");
+      await page.getByPlaceholder("Write your response or implementation note for the Tantou feedback.").fill("Mangaka response");
+      await page.getByRole("button", { name: "Add comment", exact: true }).click();
+      await waitText(page, "Comment added to Tantou feedback #1001");
+      assert.equal((await capture(page)).feedbackComments, 1, "Mangaka feedback comment must use the dedicated authorized endpoint");
+
       await page.getByRole("button", { name: /Assistant Submissions/ }).click();
       await waitText(page, "Send approved chapters to Tantou");
       assert.equal(await page.locator('[data-testid="assistant-work-approved-502"]').count(), 1);
@@ -472,6 +489,13 @@ async function run() {
       assert.equal(await page.locator('[data-testid="approve-assistant-work"]').count(), 0, "Approved tasks must not keep an approval button");
       assert.equal(await page.locator('[data-testid="inline-chapter-handoff-10"]').count(), 1, "Approved task card must show its chapter handoff action");
       const reviewRow = page.locator('[data-testid="assistant-review-task-502"]');
+      const reviewHitbox = reviewRow.locator(".task-hitbox-overlay");
+      await reviewHitbox.waitFor({ state: "visible" });
+      const reviewHitboxStyle = await reviewHitbox.evaluate((element) => ({ left: element.style.left, top: element.style.top, width: element.style.width, height: element.style.height }));
+      assert.equal(reviewHitboxStyle.left, "12.5%", "Review hitbox X must match Mangaka Canvas coordinates");
+      assert.ok(Math.abs(parseFloat(reviewHitboxStyle.top) - (140 / 1200 * 100)) < 0.02, "Review hitbox Y must match Mangaka Canvas coordinates");
+      assert.ok(Math.abs(parseFloat(reviewHitboxStyle.width) - (220 / 800 * 100)) < 0.02, "Review hitbox width must match Mangaka Canvas coordinates");
+      assert.equal(reviewHitboxStyle.height, "15%", "Review hitbox height must match Mangaka Canvas coordinates");
       assert.equal(await reviewRow.locator('img[alt="Reference"]').getAttribute("src"), fixtures.imageCurrent, "Mangaka Review reference must remain the original page image");
       assert.equal(await reviewRow.locator('img[alt="Submitted work"]').getAttribute("src"), fixtures.imageOld, "Mangaka Review submitted work must remain separate");
       await page.screenshot({ path: path.resolve("test-results/issue16-approved-task-handoff.png"), fullPage: true });
@@ -575,9 +599,9 @@ async function run() {
       await page.locator('[data-testid="canvas-draw-surface"]').waitFor({ state: "visible" });
       const surface = await page.locator('[data-testid="canvas-draw-surface"]').boundingBox();
       assert.ok(surface, "Tantou feedback canvas must be visible");
-      await page.mouse.move(surface.x + 120, surface.y + 150);
+      await page.mouse.move(surface.x + surface.width * 0.62, surface.y + surface.height * 0.62);
       await page.mouse.down();
-      await page.mouse.move(surface.x + 330, surface.y + 350, { steps: 5 });
+      await page.mouse.move(surface.x + surface.width * 0.82, surface.y + surface.height * 0.82, { steps: 5 });
       await page.mouse.up();
       await page.locator('[data-testid="draft-hitbox"]').waitFor({ state: "visible" });
       await page.getByPlaceholder("Describe the revision needed in this area...").fill("Correct the border weight");
