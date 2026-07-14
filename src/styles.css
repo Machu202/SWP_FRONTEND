@@ -10053,3 +10053,62 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 .feedback-page-preview img { width: 100%; height: auto; object-fit: contain; }
 .tantou-feedback-preview-overlay { position: absolute; box-sizing: border-box; border: 2px solid #e11d48; background: rgba(225, 29, 72, .18); pointer-events: none; z-index: 3; }
 .tantou-feedback-preview-overlay span { position: absolute; top: 2px; left: 2px; width: max-content; max-width: calc(100% - 4px); padding: 2px 5px; border-radius: 4px; background: #be123c; color: #fff; font-size: 9px; font-weight: 800; line-height: 1.2; white-space: nowrap; }
+
+
+/* Issues 39-40: reliable task/feedback overlays and rejected-series recovery. */
+.preview-image-frame,
+.feedback-preview-frame {
+  isolation: isolate;
+}
+.task-hitbox-overlay,
+.tantou-feedback-preview-overlay {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  overflow: visible;
+}
+.task-hitbox-label,
+.tantou-feedback-preview-overlay > span {
+  z-index: 2;
+  pointer-events: none;
+}
+.dashboard-series-card-with-actions {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+.dashboard-series-card-main {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dashboard-series-rejected-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px 14px;
+  margin-top: -4px;
+}
+.dashboard-revert-draft-btn {
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid #d97706;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.dashboard-revert-draft-btn:hover:not(:disabled) {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #fff;
+}

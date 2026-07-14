@@ -24,13 +24,16 @@ const fixtures = {
   imageOld,
   tomorrow,
   nextWeek,
-  series: [{ id: 1, title: "Ink Horizon", status: "REVIEWING", genre: "Action", summary: "A test manga series.", description: "Smoke-test production data.", mangakaName: "Mika", tantouId: null, tantouName: "Unassigned", coverImageUrl: imageCurrent }],
+  series: [
+    { id: 1, title: "Ink Horizon", status: "REVIEWING", genre: "Action", summary: "A test manga series.", description: "Smoke-test production data.", mangakaName: "Mika", tantouId: null, tantouName: "Unassigned", coverImageUrl: imageCurrent },
+    { id: 2, title: "Rejected Revision", status: "REJECTED", genre: "Drama", summary: "Needs another Board review cycle.", description: "Rejected smoke-test series.", mangakaName: "Mika", tantouId: 4, tantouName: "Taro Editor", coverImageUrl: imageOld }
+  ],
   chapters: [{ id: 10, chapterNumber: 1, title: "Opening", publishStatus: "DRAFT", seriesId: 1, tantouId: null, tantouName: "Unassigned" }],
-  pages: [{ id: 100, pageNumber: 1, imageUrl: imageCurrent, width: 800, height: 1200, chapterId: 10 }],
+  pages: [{ id: 100, pageNumber: 1, imageUrl: imageCurrent, width: null, height: null, chapterId: 10 }],
   hitboxes: [{ id: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, pageId: 100 }],
   versions: [{ id: 901, versionNumber: 1, imageUrl: imageOld, createdAt: tomorrow }],
-  tasks: [{ id: 501, taskNumber: 1, status: "TODO", description: "Ink the background", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld, pageWidth: 800, pageHeight: 1200 }],
-  reviewTasks: [{ id: 502, taskNumber: 1, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld, pageWidth: 800, pageHeight: 1200 }],
+  tasks: [{ id: 501, taskNumber: 1, status: "TODO", description: "Ink the background", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld, pageWidth: null, pageHeight: null }],
+  reviewTasks: [{ id: 502, taskNumber: 1, status: "APPROVED", description: "Approved assistant page", assistantId: 2, assistantName: "Aya Assistant", seriesId: 1, seriesTitle: "Ink Horizon", chapterId: 10, chapterNumber: 1, chapterTitle: "Opening", pageId: 100, pageNumber: 1, hitboxId: 701, xCoord: 100, yCoord: 140, width: 220, height: 180, referenceImageUrl: imageCurrent, submittedImageUrl: imageOld, pageWidth: null, pageHeight: null }],
   users: [
     { id: 1, username: "mika", fullName: "Mika Mangaka", email: "mika@example.test", phoneNumber: "0901", roleName: "Mangaka", isActive: true },
     { id: 2, username: "aya", fullName: "Aya Assistant", email: "aya@example.test", phoneNumber: "0902", roleName: "Assistant", isActive: true },
@@ -92,7 +95,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       taskStatuses: [], taskStarts: 0, feedbackCreated: 0, feedbackResolved: 0, votes: [],
       adminDecisions: 0, parameterUpdates: 0, tantouAssignments: [],
       tantouChapterStatus: initialChapterStatus || fixtureData.chapters[0].publishStatus,
-      boardSubmissions: 0
+      boardSubmissions: 0, seriesStatusChanges: []
     };
 
     const f = fixtureData;
@@ -150,7 +153,14 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         capture.adminDecisions += 1;
         return response({ ...f.series[0], status: url.searchParams.get("isApproved") === "true" ? "APPROVED" : "REJECTED" });
       }
-      if (path === "/manga-series/1/status") return response({ ...f.series[0], status: url.searchParams.get("newStatus") });
+      if (/^\/manga-series\/\d+\/status$/.test(path)) {
+        const id = Number(path.split("/")[2]);
+        const status = url.searchParams.get("newStatus");
+        const item = f.series.find((series) => Number(series.id) === id) || f.series[0];
+        item.status = status;
+        capture.seriesStatusChanges.push({ id, status });
+        return response({ ...item, status });
+      }
       if (path === "/manga-series/1/tantou") {
         capture.tantouAssignments.push(url.searchParams.get("tantouId"));
         return response({ ...f.series[0], tantouId: Number(url.searchParams.get("tantouId")), tantouName: "Taro Editor" });
@@ -368,6 +378,11 @@ async function run() {
       await page.getByTitle("Notifications").click();
       await page.getByRole("button", { name: "Series", exact: true }).last().click();
       assert.equal(await page.locator('.kpi-chart[aria-label="series bar chart"]').count(), 1);
+      const revertButton = page.locator('[data-testid="revert-series-2-to-draft"]');
+      await revertButton.waitFor({ state: "visible" });
+      await revertButton.click();
+      await waitText(page, "reverted to Draft");
+      assert.deepEqual((await capture(page)).seriesStatusChanges.at(-1), { id: 2, status: "DRAFT" });
 
       await navigate(page, "/series");
       await waitText(page, "Create new series");
@@ -471,6 +486,7 @@ async function run() {
       await waitText(page, "Tantou feedback #1001");
       const feedbackBox = page.locator('[data-testid="feedback-hitbox-1001"]');
       await feedbackBox.waitFor({ state: "visible" });
+      assert.equal(await feedbackBox.getByText("Task Area", { exact: true }).count(), 1, "Tantou feedback must display the Task Area label");
       const feedbackStyle = await feedbackBox.evaluate((element) => ({ left: element.style.left, top: element.style.top, width: element.style.width, height: element.style.height }));
       assert.equal(feedbackStyle.left, "12.5%");
       assert.ok(Math.abs(parseFloat(feedbackStyle.top) - (140 / 1200 * 100)) < 0.02);

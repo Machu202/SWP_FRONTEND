@@ -107,13 +107,21 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
+  function updateSeriesInDashboard(updatedSeries) {
+    if (!updatedSeries?.id) return;
+    setData((current) => ({
+      ...current,
+      series: current.series.map((item) => String(item.id) === String(updatedSeries.id) ? { ...item, ...updatedSeries } : item)
+    }));
+  }
+
   if (loading) return <LoadingBlock label="Loading dashboard..." />;
 
   return (
     <>
       <Alert type="danger">{error}</Alert>
       {hasRole(role, ["assistant"]) ? <AssistantDashboard data={data} profile={profile} session={session} /> : null}
-      {hasRole(role, ["mangaka"]) ? <MangakaDashboard data={data} profile={profile} session={session} /> : null}
+      {hasRole(role, ["mangaka"]) ? <MangakaDashboard data={data} profile={profile} session={session} onSeriesUpdated={updateSeriesInDashboard} /> : null}
       {hasRole(role, ["tantou"]) ? <EditorialDashboard data={data} role="Tantou Editor" /> : null}
       {hasRole(role, ["editorial", "board"]) ? <EditorialDashboard data={data} role="Editorial Board" /> : null}
       {hasRole(role, ["admin"]) ? <AdminDashboard data={data} /> : null}
@@ -123,15 +131,44 @@ export default function DashboardPage() {
   );
 }
 
-function MangakaDashboard({ data }) {
+function MangakaDashboard({ data, onSeriesUpdated }) {
   const activeSeries = data.series.filter((item) => String(item.status || "").toUpperCase() !== "ARCHIVED");
+  const [seriesActionId, setSeriesActionId] = useState("");
+  const [seriesMessage, setSeriesMessage] = useState("");
+  const [seriesError, setSeriesError] = useState("");
+
+  async function revertToDraft(series) {
+    if (!series?.id || String(series.status || "").toUpperCase() !== "REJECTED") return;
+    setSeriesActionId(String(series.id));
+    setSeriesMessage("");
+    setSeriesError("");
+    try {
+      const updated = await api.series.status(series.id, "DRAFT");
+      onSeriesUpdated?.({ ...series, ...updated, status: "DRAFT" });
+      setSeriesMessage(`${series.title || "Series"} reverted to Draft. You can edit it and submit a new Board review cycle.`);
+    } catch (err) {
+      setSeriesError(err.message || "Could not revert this series to Draft.");
+    } finally {
+      setSeriesActionId("");
+    }
+  }
+
   return (
     <section className="stack mangaka-dashboard-exact">
+      <Alert type="success">{seriesMessage}</Alert>
+      <Alert type="danger">{seriesError}</Alert>
       <div className="grid-layout">
         <div>
           <h3 style={{ marginBottom: 15, fontSize: 16, fontWeight: 700 }}>Active Series</h3>
           <div className="series-grid" id="active-series-container">
-            {activeSeries.length ? activeSeries.slice(0, 4).map((series) => <DashboardSeriesCard key={series.id} series={series} />) : (
+            {activeSeries.length ? activeSeries.slice(0, 4).map((series) => (
+              <DashboardSeriesCard
+                key={series.id}
+                series={series}
+                busy={String(seriesActionId) === String(series.id)}
+                onRevertToDraft={revertToDraft}
+              />
+            )) : (
               <EmptyState icon="◇" title="No active series" body="Create a series to begin the Mangaka workflow." />
             )}
           </div>
@@ -305,17 +342,33 @@ function GenericDashboard({ data, role }) {
   );
 }
 
-function DashboardSeriesCard({ series }) {
+function DashboardSeriesCard({ series, busy = false, onRevertToDraft }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
+  const rejected = String(series.status || "").trim().toUpperCase() === "REJECTED";
   return (
-    <button className="dashboard-series-card series-card" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
-      <div className="series-cover">{cover ? <img src={cover} alt={series.title || "Series cover"} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}</div>
-      <div className="series-body">
-        <div className="row-between"><strong>{series.title}</strong><StatusBadge value={series.status} /></div>
-        <p>{series.summary || series.description || "No summary provided."}</p>
-        <small>{series.genre || "Unknown genre"}</small>
-      </div>
-    </button>
+    <article className="dashboard-series-card series-card dashboard-series-card-with-actions">
+      <button className="dashboard-series-card-main" type="button" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
+        <div className="series-cover">{cover ? <img src={cover} alt={series.title || "Series cover"} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}</div>
+        <div className="series-body">
+          <div className="row-between"><strong>{series.title}</strong><StatusBadge value={series.status} /></div>
+          <p>{series.summary || series.description || "No summary provided."}</p>
+          <small>{series.genre || "Unknown genre"}</small>
+        </div>
+      </button>
+      {rejected && (
+        <div className="dashboard-series-rejected-actions">
+          <button
+            type="button"
+            className="btn btn-small dashboard-revert-draft-btn"
+            data-testid={`revert-series-${series.id}-to-draft`}
+            disabled={busy}
+            onClick={() => onRevertToDraft?.(series)}
+          >
+            {busy ? "Reverting…" : "Revert to Draft"}
+          </button>
+        </div>
+      )}
+    </article>
   );
 }
 

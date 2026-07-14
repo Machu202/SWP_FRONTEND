@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, mediaUrlFrom, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -30,12 +30,45 @@ function toFiniteNumber(...values) {
   return 0;
 }
 
+function positiveFiniteNumber(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null || value === "") continue;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  }
+  return 0;
+}
+
 function boxValue(source, ...keys) {
   for (const key of keys) {
-    const numeric = Number(source?.[key]);
+    const value = source?.[key];
+    if (value === undefined || value === null || value === "") continue;
+    const numeric = Number(value);
     if (Number.isFinite(numeric)) return numeric;
   }
   return 0;
+}
+
+function overlayPercentBox(box, coordinateWidth, coordinateHeight) {
+  const x = boxValue(box, "xCoord", "x_coord", "x");
+  const y = boxValue(box, "yCoord", "y_coord", "y");
+  const width = boxValue(box, "width", "w");
+  const height = boxValue(box, "height", "h");
+  if (!box || width <= 0 || height <= 0 || coordinateWidth <= 0 || coordinateHeight <= 0) return null;
+
+  const unitBox = x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
+  const rawLeft = unitBox ? x * 100 : (x / coordinateWidth) * 100;
+  const rawTop = unitBox ? y * 100 : (y / coordinateHeight) * 100;
+  const rawWidth = unitBox ? width * 100 : (width / coordinateWidth) * 100;
+  const rawHeight = unitBox ? height * 100 : (height / coordinateHeight) * 100;
+  const left = Math.max(0, Math.min(100, rawLeft));
+  const top = Math.max(0, Math.min(100, rawTop));
+  return {
+    left,
+    top,
+    width: Math.max(0.5, Math.min(100 - left, rawWidth)),
+    height: Math.max(0.5, Math.min(100 - top, rawHeight))
+  };
 }
 
 function normalizeHitbox(raw) {
@@ -1024,35 +1057,47 @@ function TantouFeedbackRow({ feedback, comments, onAddComment, onResolve }) {
 
 function HitboxPreview({ title, url, box, originalWidth: explicitWidth, originalHeight: explicitHeight }) {
   const resolved = resolveMediaUrl(url);
+  const imageRef = useRef(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
-  useEffect(() => { setImageSize({ width: 0, height: 0 }); }, [resolved]);
+  useEffect(() => {
+    setImageSize({ width: 0, height: 0 });
+    const frame = window.requestAnimationFrame(() => {
+      const image = imageRef.current;
+      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
+      }
+    });
+    const timer = window.setTimeout(() => {
+      const image = imageRef.current;
+      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
+      }
+    }, 50);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [resolved]);
   if (!resolved) return <div className="preview-box submission-preview"><strong>{title}</strong><span>No image</span></div>;
 
-  const explicitCoordinateWidth = toFiniteNumber(explicitWidth, 0);
-  const explicitCoordinateHeight = toFiniteNumber(explicitHeight, 0);
-  const originalWidth = Math.max(toFiniteNumber(explicitCoordinateWidth, imageSize.width, 1), 1);
-  const originalHeight = Math.max(toFiniteNumber(explicitCoordinateHeight, imageSize.height, 1), 1);
-  const x = boxValue(box, "xCoord", "x_coord", "x");
-  const y = boxValue(box, "yCoord", "y_coord", "y");
-  const width = boxValue(box, "width", "w");
-  const height = boxValue(box, "height", "h");
-  const hasBox = Boolean(box) && width > 0 && height > 0;
-  const unitBox = hasBox && x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
-  const left = hasBox ? (unitBox ? x * 100 : (x / originalWidth) * 100) : 0;
-  const top = hasBox ? (unitBox ? y * 100 : (y / originalHeight) * 100) : 0;
-  const boxWidth = hasBox ? (unitBox ? width * 100 : (width / originalWidth) * 100) : 0;
-  const boxHeight = hasBox ? (unitBox ? height * 100 : (height / originalHeight) * 100) : 0;
-  const canRenderOverlay = hasBox && ((explicitCoordinateWidth > 0 && explicitCoordinateHeight > 0) || (imageSize.width > 0 && imageSize.height > 0));
+  const coordinateWidth = positiveFiniteNumber(explicitWidth, imageSize.width);
+  const coordinateHeight = positiveFiniteNumber(explicitHeight, imageSize.height);
+  const overlay = overlayPercentBox(box, coordinateWidth, coordinateHeight);
+  const hasBox = Boolean(box) && boxValue(box, "width", "w") > 0 && boxValue(box, "height", "h") > 0;
 
   return (
     <div className="preview-box submission-preview preview-box-hitbox">
       <strong>{title}</strong>
       <div className="preview-image-stage">
         <div className="preview-image-frame">
-          <img src={resolved} alt={title} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
-          {canRenderOverlay && (
-            <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
+          <img ref={imageRef} src={resolved} alt={title} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
+          {overlay && (
+            <div
+              className="task-hitbox-overlay"
+              data-testid="review-task-area-overlay"
+              style={{ left: `${overlay.left}%`, top: `${overlay.top}%`, width: `${overlay.width}%`, height: `${overlay.height}%` }}
+            >
               <span className="task-hitbox-label">Task Area</span>
             </div>
           )}
@@ -1065,32 +1110,44 @@ function HitboxPreview({ title, url, box, originalWidth: explicitWidth, original
 
 function FeedbackHitboxPreview({ feedback, url }) {
   const resolved = resolveMediaUrl(url);
+  const imageRef = useRef(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  useEffect(() => { setImageSize({ width: 0, height: 0 }); }, [resolved]);
+  useEffect(() => {
+    setImageSize({ width: 0, height: 0 });
+    const updateCachedImageSize = () => {
+      const image = imageRef.current;
+      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
+      }
+    };
+    const frame = window.requestAnimationFrame(updateCachedImageSize);
+    const timer = window.setTimeout(updateCachedImageSize, 50);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [resolved]);
   if (!resolved) return <span>No page image</span>;
 
-  const explicitCoordinateWidth = toFiniteNumber(feedback.pageWidth, feedback.page_width, 0);
-  const explicitCoordinateHeight = toFiniteNumber(feedback.pageHeight, feedback.page_height, 0);
-  const originalWidth = Math.max(toFiniteNumber(explicitCoordinateWidth, imageSize.width, 1), 1);
-  const originalHeight = Math.max(toFiniteNumber(explicitCoordinateHeight, imageSize.height, 1), 1);
-  const x = feedbackX(feedback);
-  const y = feedbackY(feedback);
-  const width = feedbackWidth(feedback);
-  const height = feedbackHeight(feedback);
-  const hasBox = width > 0 && height > 0;
-  const unitBox = hasBox && x >= 0 && y >= 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
-  const left = unitBox ? x * 100 : (x / originalWidth) * 100;
-  const top = unitBox ? y * 100 : (y / originalHeight) * 100;
-  const boxWidth = unitBox ? width * 100 : (width / originalWidth) * 100;
-  const boxHeight = unitBox ? height * 100 : (height / originalHeight) * 100;
-  const canRenderOverlay = hasBox && ((explicitCoordinateWidth > 0 && explicitCoordinateHeight > 0) || (imageSize.width > 0 && imageSize.height > 0));
+  const coordinateWidth = positiveFiniteNumber(feedback.pageWidth, feedback.page_width, imageSize.width);
+  const coordinateHeight = positiveFiniteNumber(feedback.pageHeight, feedback.page_height, imageSize.height);
+  const overlay = overlayPercentBox({
+    xCoord: feedbackX(feedback),
+    yCoord: feedbackY(feedback),
+    width: feedbackWidth(feedback),
+    height: feedbackHeight(feedback)
+  }, coordinateWidth, coordinateHeight);
 
   return (
     <div className="feedback-preview-frame">
-      <img src={resolved} alt={`Page ${feedback.pageNumber || ""}`} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
-      {canRenderOverlay && (
-        <div className="tantou-feedback-preview-overlay" data-testid={`feedback-hitbox-${feedback.id}`} style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
-          <span>Feedback area</span>
+      <img ref={imageRef} src={resolved} alt={`Page ${feedback.pageNumber || ""}`} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
+      {overlay && (
+        <div
+          className="tantou-feedback-preview-overlay"
+          data-testid={`feedback-hitbox-${feedback.id}`}
+          style={{ left: `${overlay.left}%`, top: `${overlay.top}%`, width: `${overlay.width}%`, height: `${overlay.height}%` }}
+        >
+          <span>Task Area</span>
         </div>
       )}
     </div>

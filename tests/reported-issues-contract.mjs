@@ -227,4 +227,18 @@ assert.match(taskService, /Assistant assignment is locked once a task is REVIEWI
 // Tantou Chapter Review no longer contains the redundant Open series action.
 assert.doesNotMatch(tantouReview, />Open series<\/button>/);
 
-console.log(JSON.stringify({ reportedIssues: 40, result: "PASS" }, null, 2));
+
+// Issues 39-40: hitbox overlays recover from missing page dimensions and rejected series can restart cleanly.
+assert.match(tasks, /function positiveFiniteNumber/);
+assert.match(tasks, /function overlayPercentBox/);
+assert.match(tasks, /data-testid="task-area-overlay"/);
+assert.match(mangakaReview, /data-testid="review-task-area-overlay"/);
+assert.match(mangakaReview, /feedback-hitbox-/);
+assert.match(mangakaReview, /<span>Task Area<\/span>/);
+assert.match(dashboard, /Revert to Draft/);
+assert.match(dashboard, /api\.series\.status\(series\.id, "DRAFT"\)/);
+assert.match(seriesService, /case "REJECTED":[\s\S]*newStatus\.equals\("DRAFT"\)/);
+assert.match(seriesService, /resetBoardVotesForNewReviewCycle\(seriesId\)/);
+assert.match(seriesService, /boardVoteRepository\.deleteByMangaSeriesId\(seriesId\)/);
+
+console.log(JSON.stringify({ reportedIssues: 42, result: "PASS" }, null, 2));

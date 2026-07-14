@@ -18,18 +18,53 @@ function tabFromRoute(route) {
 
 function toFiniteNumber(...values) {
   for (const value of values) {
+    if (value === undefined || value === null || value === "") continue;
     const numeric = Number(value);
     if (Number.isFinite(numeric)) return numeric;
   }
   return 0;
 }
 
+function positiveFiniteNumber(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null || value === "") continue;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  }
+  return 0;
+}
+
 function boxValue(source, ...keys) {
   for (const key of keys) {
-    const numeric = Number(source?.[key]);
+    const value = source?.[key];
+    if (value === undefined || value === null || value === "") continue;
+    const numeric = Number(value);
     if (Number.isFinite(numeric)) return numeric;
   }
   return 0;
+}
+
+function overlayPercentBox(box, coordinateWidth, coordinateHeight) {
+  const x = boxValue(box, "xCoord", "x_coord", "x");
+  const y = boxValue(box, "yCoord", "y_coord", "y");
+  const width = boxValue(box, "width", "w");
+  const height = boxValue(box, "height", "h");
+  const hasBox = Boolean(box) && width > 0 && height > 0;
+  if (!hasBox || coordinateWidth <= 0 || coordinateHeight <= 0) return null;
+
+  const unitBox = x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
+  const rawLeft = unitBox ? x * 100 : (x / coordinateWidth) * 100;
+  const rawTop = unitBox ? y * 100 : (y / coordinateHeight) * 100;
+  const rawWidth = unitBox ? width * 100 : (width / coordinateWidth) * 100;
+  const rawHeight = unitBox ? height * 100 : (height / coordinateHeight) * 100;
+  const left = Math.max(0, Math.min(100, rawLeft));
+  const top = Math.max(0, Math.min(100, rawTop));
+  return {
+    left,
+    top,
+    width: Math.max(0.5, Math.min(100 - left, rawWidth)),
+    height: Math.max(0.5, Math.min(100 - top, rawHeight))
+  };
 }
 
 function normalizeHitbox(raw) {
@@ -975,22 +1010,10 @@ function HitboxPreview({ title, url, box, originalWidth: explicitWidth, original
   // Use the exact same coordinate basis as Mangaka Canvas Workspace. The
   // image-sized frame prevents blank flex-space/object-fit bars from scaling
   // the overlay larger than the hitbox that was actually drawn.
-  const explicitCoordinateWidth = toFiniteNumber(explicitWidth, 0);
-  const explicitCoordinateHeight = toFiniteNumber(explicitHeight, 0);
-  const originalWidth = Math.max(toFiniteNumber(explicitCoordinateWidth, imageSize.width, 1), 1);
-  const originalHeight = Math.max(toFiniteNumber(explicitCoordinateHeight, imageSize.height, 1), 1);
-  const x = boxValue(box, "xCoord", "x_coord", "x");
-  const y = boxValue(box, "yCoord", "y_coord", "y");
-  const width = boxValue(box, "width", "w");
-  const height = boxValue(box, "height", "h");
-  const hasBox = Boolean(box) && width > 0 && height > 0;
-  const unitBox = hasBox && x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1 && y <= 1 && width <= 1 && height <= 1;
-
-  const left = hasBox ? (unitBox ? x * 100 : (x / originalWidth) * 100) : 0;
-  const top = hasBox ? (unitBox ? y * 100 : (y / originalHeight) * 100) : 0;
-  const boxWidth = hasBox ? (unitBox ? width * 100 : (width / originalWidth) * 100) : 0;
-  const boxHeight = hasBox ? (unitBox ? height * 100 : (height / originalHeight) * 100) : 0;
-  const canRenderOverlay = hasBox && ((explicitCoordinateWidth > 0 && explicitCoordinateHeight > 0) || (imageSize.width > 0 && imageSize.height > 0));
+  const coordinateWidth = positiveFiniteNumber(explicitWidth, imageSize.width);
+  const coordinateHeight = positiveFiniteNumber(explicitHeight, imageSize.height);
+  const overlay = overlayPercentBox(box, coordinateWidth, coordinateHeight);
+  const hasBox = Boolean(box) && boxValue(box, "width", "w") > 0 && boxValue(box, "height", "h") > 0;
 
   return (
     <div className="preview-box preview-box-hitbox">
@@ -1003,8 +1026,12 @@ function HitboxPreview({ title, url, box, originalWidth: explicitWidth, original
             alt={title}
             onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })}
           />
-          {canRenderOverlay && (
-            <div className="task-hitbox-overlay" style={{ left: `${left}%`, top: `${top}%`, width: `${boxWidth}%`, height: `${boxHeight}%` }}>
+          {overlay && (
+            <div
+              className="task-hitbox-overlay"
+              data-testid="task-area-overlay"
+              style={{ left: `${overlay.left}%`, top: `${overlay.top}%`, width: `${overlay.width}%`, height: `${overlay.height}%` }}
+            >
               <span className="task-hitbox-label">Task Area</span>
             </div>
           )}
