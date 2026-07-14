@@ -5,7 +5,7 @@ import { Alert } from "../components/Status";
 import { roleHome } from "../api/client";
 import { clearRememberedCredentials, isRememberPasswordEnabled, loadRememberedCredentials, saveRememberedCredentials } from "../utils/rememberedCredentials";
 
-const ROLES = ["Mangaka", "Assistant", "Tantou Editor", "Editorial Board", "Admin"];
+const PUBLIC_REGISTRATION_ROLES = ["Mangaka", "Assistant", "Tantou Editor", "Editorial Board"];
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 function loadGoogleScript() {
@@ -126,6 +126,9 @@ export default function LoginPage() {
     setError("");
     setMessage("");
     try {
+      if (!PUBLIC_REGISTRATION_ROLES.includes(registration.role)) {
+        throw new Error("Admin accounts cannot be created through public registration.");
+      }
       await register(registration);
       setMessage("Registration successful. You can now log in.");
       setMode("login");
@@ -416,7 +419,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="input-group"><label>Phone number</label><input type="text" placeholder="0983894738" value={registration.phoneNumber} onChange={(event) => setRegistration({ ...registration, phoneNumber: event.target.value })} /></div>
-              <div className="input-group"><label>Role</label><select className="role-select" value={registration.role} onChange={(event) => setRegistration({ ...registration, role: event.target.value })}>{ROLES.map((role) => <option key={role} value={role}>{role}</option>)}</select></div>
+              <div className="input-group"><label>Role</label><select className="role-select" value={registration.role} onChange={(event) => setRegistration({ ...registration, role: event.target.value })}>{PUBLIC_REGISTRATION_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}</select></div>
 
               <button className="btn-primary btn-registrate" disabled={busy || !registration.username || !registration.password || !registration.role}>{busy ? "Registering..." : "Registrate"}</button>
               <p className="new-account back-login"><button type="button" onClick={() => setMode("login")}>Back to Login</button></p>
