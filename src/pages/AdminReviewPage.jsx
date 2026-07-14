@@ -45,10 +45,16 @@ export default function AdminReviewPage() {
     setError("");
     setMessage("");
     try {
-      await api.series.adminDecision(seriesId, approved, selectedTantou[seriesId] || undefined);
+      const selectedId = selectedTantou[seriesId] || undefined;
+      const assignedTantouName = selectedId
+        ? resolveTantouLabel(tantous, selectedId, pendingDecision?.item)
+        : "";
+      await api.series.adminDecision(seriesId, approved, selectedId);
       setPendingDecision(null);
       await load();
-      setMessage(approved ? "Series approved by admin." : "Series rejected by admin.");
+      setMessage(approved
+        ? `Series approved by admin.${assignedTantouName ? ` Tantou Editor: ${assignedTantouName}.` : ""}`
+        : "Series rejected by admin.");
     } catch (err) {
       setError(err.message || "Admin decision failed.");
     } finally {
@@ -95,7 +101,11 @@ export default function AdminReviewPage() {
       {pendingDecision && (
         <AdminDecisionModal
           decision={pendingDecision}
-          tantouId={selectedTantou[pendingDecision.item.id] || ""}
+          tantouLabel={resolveTantouLabel(
+            tantous,
+            selectedTantou[pendingDecision.item.id],
+            pendingDecision.item
+          )}
           busy={deciding}
           onCancel={() => !deciding && setPendingDecision(null)}
           onConfirm={() => decide(pendingDecision.item.id, pendingDecision.approved)}
@@ -105,7 +115,19 @@ export default function AdminReviewPage() {
   );
 }
 
-function AdminDecisionModal({ decision, tantouId, busy, onCancel, onConfirm }) {
+function displayUserName(user) {
+  return user?.fullName || user?.full_name || user?.displayName || user?.username || user?.email || (user?.id ? `User #${user.id}` : "");
+}
+
+function resolveTantouLabel(tantous, selectedId, item) {
+  if (selectedId) {
+    const selected = (tantous || []).find((user) => String(user.id) === String(selectedId));
+    return displayUserName(selected) || `Tantou Editor #${selectedId}`;
+  }
+  return item?.tantouName || item?.tantouUsername || "Keep current / unassigned";
+}
+
+function AdminDecisionModal({ decision, tantouLabel, busy, onCancel, onConfirm }) {
   const { item, approved, summary } = decision;
   return (
     <div className="feature-modal-backdrop" role="presentation" onMouseDown={onCancel}>
@@ -119,7 +141,7 @@ function AdminDecisionModal({ decision, tantouId, busy, onCancel, onConfirm }) {
           <span>No <strong>{summary?.rejectedVotes ?? "-"}</strong></span>
           <span>Pending <strong>{summary?.pendingVotes ?? "-"}</strong></span>
         </div>
-        <div className="admin-decision-summary"><span>Decision</span><strong>{approved ? "APPROVE" : "REJECT"}</strong><span>Tantou assignment</span><strong>{tantouId || "Keep current / unassigned"}</strong></div>
+        <div className="admin-decision-summary"><span>Decision</span><strong>{approved ? "APPROVE" : "REJECT"}</strong><span>Tantou assignment</span><strong data-testid="admin-selected-tantou-name">{tantouLabel}</strong></div>
         <div className="button-row modal-actions"><button className="btn" disabled={busy} onClick={onCancel}>Cancel</button><button data-testid="admin-confirm-decision" className={approved ? "btn btn-primary" : "btn btn-danger"} disabled={busy} onClick={onConfirm}>{busy ? "Submitting..." : "Confirm final decision"}</button></div>
       </div>
     </div>
@@ -153,7 +175,7 @@ function AdminDecisionRow({ item, summary, tantous, selectedTantou, onTantouChan
         </div>
         <select data-testid="admin-tantou-select" value={selectedTantou} onChange={(event) => onTantouChange(event.target.value)}>
           <option value="">Keep / assign Tantou optionally</option>
-          {tantous.map((user) => <option key={user.id} value={user.id}>{user.fullName || user.username || user.email}</option>)}
+          {tantous.map((user) => <option key={user.id} value={user.id}>{displayUserName(user)}</option>)}
         </select>
         <div className="button-row vertical-buttons">
           <button className="btn btn-primary" data-testid="admin-approve" onClick={onApprove}>Admin approve</button>

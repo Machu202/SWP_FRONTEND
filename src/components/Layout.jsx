@@ -279,6 +279,14 @@ function topbarBrand(group) {
   return workspaceTitle(group);
 }
 
+function dashboardTitle(role) {
+  if (hasRole(role, ["admin"])) return "Admin Dashboard";
+  if (hasRole(role, ["editorial", "board"])) return "Editorial Board Dashboard";
+  if (hasRole(role, ["tantou"])) return "Tantou Editor Dashboard";
+  if (hasRole(role, ["assistant"])) return "Assistant Dashboard";
+  return "Mangaka Dashboard";
+}
+
 function pageTitle(pathname, role) {
   if (pathname.startsWith("/series/")) return "Chapter Manager & Page Upload";
   if (pathname.startsWith("/chapters-pages")) return "Chapter Manager & Page Upload";
@@ -296,7 +304,7 @@ function pageTitle(pathname, role) {
   if (pathname.startsWith("/resources")) return "Resource Library";
   if (pathname.startsWith("/schedule")) return "Schedule";
   if (pathname.startsWith("/profile")) return "Profile";
-  return "Studio Dashboard";
+  return dashboardTitle(role);
 }
 
 function pageSubtitle(pathname, role, username = "") {

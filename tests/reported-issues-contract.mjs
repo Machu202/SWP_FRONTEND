@@ -241,4 +241,17 @@ assert.match(seriesService, /case "REJECTED":[\s\S]*newStatus\.equals\("DRAFT"\)
 assert.match(seriesService, /resetBoardVotesForNewReviewCycle\(seriesId\)/);
 assert.match(seriesService, /boardVoteRepository\.deleteByMangaSeriesId\(seriesId\)/);
 
-console.log(JSON.stringify({ reportedIssues: 42, result: "PASS" }, null, 2));
+// Issues 41-42: role-specific dashboard titles and human-readable Tantou assignment.
+assert.doesNotMatch(layout, /Studio Dashboard/);
+assert.match(layout, /Admin Dashboard/);
+assert.match(layout, /Editorial Board Dashboard/);
+assert.match(layout, /Tantou Editor Dashboard/);
+assert.match(layout, /Assistant Dashboard/);
+assert.match(layout, /Mangaka Dashboard/);
+const adminReview = read("src/pages/AdminReviewPage.jsx");
+assert.match(adminReview, /function resolveTantouLabel/);
+assert.match(adminReview, /admin-selected-tantou-name/);
+assert.match(adminReview, /user\?\.fullName[\s\S]*user\?\.username[\s\S]*user\?\.email/);
+assert.doesNotMatch(adminReview, /<strong>\{tantouId \|\| "Keep current \/ unassigned"\}<\/strong>/);
+
+console.log(JSON.stringify({ reportedIssues: 44, result: "PASS" }, null, 2));

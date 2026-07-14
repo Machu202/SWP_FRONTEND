@@ -335,7 +335,25 @@ async function run() {
     }
 
     {
+      const dashboardTitles = [
+        ["Mangaka", "Mangaka Dashboard"],
+        ["Assistant", "Assistant Dashboard"],
+        ["Tantou Editor", "Tantou Editor Dashboard"],
+        ["Editorial Board", "Editorial Board Dashboard"],
+        ["Admin", "Admin Dashboard"]
+      ];
+      for (const [role, title] of dashboardTitles) {
+        const { context, page, pageErrors } = await bootstrapApp(browser, { role, hash: "/dashboard" });
+        await waitText(page, title);
+        assert.deepEqual(pageErrors, []);
+        await context.close();
+      }
+      passed.push("Every role dashboard uses the role-specific page title");
+    }
+
+    {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Admin", hash: "/dashboard" });
+      await waitText(page, "Admin Dashboard");
       await waitText(page, "System and Publishing Control");
       await waitText(page, "Pending final");
       assert.equal(await page.getByText("Control", { exact: true }).count(), 0);
@@ -359,10 +377,14 @@ async function run() {
 
       await navigate(page, "/admin-review");
       await waitText(page, "Final series decisions");
+      await page.locator('[data-testid="admin-tantou-select"]').selectOption("4");
       await page.getByRole("button", { name: "Admin approve" }).click();
       await waitText(page, "Approve Ink Horizon?");
+      const selectedTantouName = page.locator('[data-testid="admin-selected-tantou-name"]');
+      await selectedTantouName.waitFor({ state: "visible" });
+      assert.equal(await selectedTantouName.textContent(), "Taro Editor");
       await page.getByRole("button", { name: "Confirm final decision" }).click();
-      await waitText(page, "Series approved by admin");
+      await waitText(page, "Tantou Editor: Taro Editor");
       assert.equal((await capture(page)).adminDecisions, 1);
       assert.deepEqual(pageErrors, []);
       passed.push("FE-04 user filters + lock fix, FE-08 parameter CRUD, FE-18 final approval modal");
@@ -371,6 +393,7 @@ async function run() {
 
     {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", hash: "/dashboard" });
+      await waitText(page, "Mangaka Dashboard");
       await waitText(page, "Workflow KPI charts");
       await page.getByTitle("Notifications").click();
       await waitText(page, "Task updated");
@@ -532,6 +555,7 @@ async function run() {
 
     {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Assistant", hash: "/dashboard" });
+      await waitText(page, "Assistant Dashboard");
       await waitText(page, "Upcoming Deadlines");
       await waitText(page, "Chapter delivery");
       assert.equal(await page.getByText("NOW", { exact: true }).count(), 0);
@@ -659,6 +683,7 @@ async function run() {
 
     {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Editorial Board", hash: "/dashboard" });
+      await waitText(page, "Editorial Board Dashboard");
       await waitText(page, "Voting Dashboard");
       assert.equal(await page.getByRole("button", { name: "Assets", exact: true }).count(), 0);
       assert.equal(await page.getByRole("button", { name: "Workflow", exact: true }).count(), 0);
