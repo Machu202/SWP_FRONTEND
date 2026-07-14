@@ -750,7 +750,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
         <div className="card-box hitbox-task-card">
           <div className="script-sync-panel">
-            <div className="section-title-row compact-title-row"><h3>Chapter Script</h3><span className="muted-note">Synchronized with the selected chapter</span></div>
+            <div className="section-title-row compact-title-row"><h3>Chapter Script</h3><span className="muted-note">Selected chapter script</span></div>
             <ScriptEditor value={chapterScript} onChange={setChapterScript} rows={7} disabled={!canEdit} />
             {canEdit && <button className="btn btn-small" type="button" onClick={saveChapterScript} disabled={scriptSaving || !selectedChapterId || !chapterScript.trim()}>{scriptSaving ? "Saving..." : "Save script"}</button>}
           </div>

@@ -137,7 +137,7 @@ function ResourceCard({ resource, canManage, onRemove }) {
       </div>
       <div className="rs-info">
         <div className="rs-title"><span>{resource.fileName || resource.filename || resource.name || `Resource #${resource.id}`}</span>{canManage && <button className="btn-icon-only" onClick={onRemove} title="Delete resource">×</button>}</div>
-        <div className="rs-desc">{url || "No URL was returned from backend."}</div>
+        <div className="rs-desc">{url || "No download link is available."}</div>
         <div className="rs-meta">
           <span className="rs-author"><span className="topbar-avatar" style={{ width: 16, height: 16, fontSize: 9 }}>SF</span> Studio</span>
           {url && <div className="button-row"><a className="btn btn-small" href={url} target="_blank" rel="noreferrer">Open</a><a className="btn btn-small btn-primary" href={url} download={resource.fileName || resource.filename || `resource-${resource.id}`}>Download</a></div>}

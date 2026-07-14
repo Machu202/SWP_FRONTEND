@@ -142,7 +142,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
     const cleanedScript = String(script || "").trim();
     if (!cleanedScript) {
       setSaving(false);
-      setError("Write chapter script / notes before saving. The backend rejects empty request bodies.");
+      setError("Write chapter script or notes before saving.");
       return;
     }
     try {
@@ -166,7 +166,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
       <div className="feature-header static-feature-header">
         <div>
           <h1>Manuscripts</h1>
-          <p>Browse chapters, page files, and chapter scripts from backend data.</p>
+          <p>Browse chapters, page files, and chapter scripts.</p>
         </div>
         <button className="btn-outline" onClick={() => navigate("/chapters-pages")}>Manage Chapters</button>
       </div>

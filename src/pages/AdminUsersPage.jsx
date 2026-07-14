@@ -105,7 +105,7 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
           </div>
-        ) : <EmptyState title="No users match the filters" body="Clear the filters or check admin permission and backend data." />}
+        ) : <EmptyState title="No users match the filters" body="Clear the filters or try again." />}
       </div>
     </section>
   );

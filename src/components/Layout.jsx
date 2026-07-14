@@ -254,7 +254,7 @@ function NotificationBell() {
       {open && (
         <div className="notification-menu">
           <div className="notification-menu-head">
-            <div><strong>Notifications</strong><small className={`notification-connection ${connectionState}`}>{connectionState}</small></div>
+            <div><strong>Notifications</strong></div>
             <button type="button" onClick={loadNotifications}>Refresh</button>
           </div>
           {items.length ? (
@@ -312,9 +312,9 @@ function pageSubtitle(pathname, role, username = "") {
   if (pathname.startsWith("/canvas-workspace")) return hasRole(role, ["tantou"])
     ? "Draw independent Tantou feedback areas without changing Mangaka task hitboxes."
     : "Open a manga page, draw hitboxes, and create assistant tasks.";
-  if (pathname.startsWith("/chapters-pages")) return "Create chapters and upload manga pages through the backend page API.";
+  if (pathname.startsWith("/chapters-pages")) return "Create chapters and upload manga pages.";
   if (pathname.startsWith("/manuscripts")) return "Browse chapter scripts, page files, and manuscript structure.";
-  if (pathname.startsWith("/series/")) return "Create chapters and upload manga pages through the backend page API.";
+  if (pathname.startsWith("/series/")) return "Create chapters and upload manga pages.";
   if (pathname.startsWith("/series")) return hasRole(role, ["mangaka"]) ? `Logged in as ${username || "user"}.` : "View manga series available to your role.";
   if (pathname.startsWith("/tasks")) return "Track Todo, Doing, Reviewing, and Approved work.";
   if (pathname.startsWith("/assistant-review")) return "Review Tantou feedback, add comments, and check assistant submissions.";

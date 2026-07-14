@@ -119,7 +119,7 @@ export default function SeriesDetailPage({ seriesId }) {
 
     const cleanedScript = String(script || "").trim();
     if (!cleanedScript) {
-      setError("Write chapter script / notes before saving. The backend rejects empty request bodies.");
+      setError("Write chapter script or notes before saving.");
       return;
     }
 
@@ -128,7 +128,7 @@ export default function SeriesDetailPage({ seriesId }) {
       setScript(saved?.content || cleanedScript);
       setMessage("Chapter script saved.");
     } catch (err) {
-      setError(err.message || "Could not save script. Check backend ChapterScript endpoint.");
+      setError(err.message || "Could not save the script. Please try again.");
     }
   }
 
@@ -144,7 +144,7 @@ export default function SeriesDetailPage({ seriesId }) {
   }
 
   if (loading) return <LoadingBlock label="Loading series detail..." />;
-  if (!series) return <EmptyState icon="◇" title="Series not found" body="The backend did not return this series." />;
+  if (!series) return <EmptyState icon="◇" title="Series not found" body="This series could not be found." />;
 
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
 

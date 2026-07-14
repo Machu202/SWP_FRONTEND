@@ -397,7 +397,7 @@ async function run() {
       await waitText(page, "Workflow KPI charts");
       await page.getByTitle("Notifications").click();
       await waitText(page, "Task updated");
-      await waitText(page, "polling");
+      assert.equal(await page.getByText("polling", { exact: true }).count(), 0, "Technical connection state must not be shown");
       await page.getByTitle("Notifications").click();
       await page.getByRole("button", { name: "Series", exact: true }).last().click();
       assert.equal(await page.locator('.kpi-chart[aria-label="series bar chart"]').count(), 1);

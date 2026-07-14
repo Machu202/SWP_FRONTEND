@@ -258,7 +258,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
       <div className="feature-header static-feature-header">
         <div>
           <h1>{canEdit ? "Chapter Manager & Page Upload" : "Chapter & Page Review Browser"}</h1>
-          <p>{canEdit ? "Create chapters and upload manga pages through the backend page API." : "View assigned/reviewable chapters and open the Tantou review workflow without Mangaka upload controls."}</p>
+          <p>{canEdit ? "Create chapters and upload manga pages." : "View assigned chapters and open pages for review."}</p>
         </div>
         <button className="btn-publish" onClick={refreshAll}>↻ Refresh</button>
       </div>

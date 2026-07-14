@@ -418,7 +418,7 @@ function SeriesListCard({ title, series, role = "" }) {
             </button>
           ))}
         </div>
-      ) : <EmptyState icon="◇" title="No series found" body="Backend data for this role will appear here." />}
+      ) : <EmptyState icon="◇" title="No series found" body="Your series will appear here." />}
     </div>
   );
 }
@@ -466,7 +466,7 @@ function KpiCharts({ data }) {
           </button>
         ))}
       </div>
-      {activeChart === "telemetry" && !telemetry.length && <p className="muted-note">The telemetry endpoint returned no numeric KPI fields; task KPIs are shown as a safe fallback.</p>}
+      {activeChart === "telemetry" && !telemetry.length && <p className="muted-note">No KPI data is available yet; task metrics are shown instead.</p>}
     </section>
   );
 }

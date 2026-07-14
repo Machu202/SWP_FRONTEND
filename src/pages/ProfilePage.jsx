@@ -41,8 +41,8 @@ export default function ProfilePage() {
         profileData: form.profileData
       });
       const updated = await refreshProfile();
-      if (!updated) throw new Error("Profile was saved, but the updated Supabase data could not be reloaded.");
-      setMessage("Profile synchronized with Supabase.");
+      if (!updated) throw new Error("Profile was saved, but the latest information could not be displayed.");
+      setMessage("Profile saved successfully.");
     } catch (err) {
       setError(err.message || "Could not update profile");
     } finally {
@@ -50,13 +50,13 @@ export default function ProfilePage() {
     }
   }
 
-  if (!profile && profileLoading) return <LoadingBlock label="Loading profile from Supabase..." />;
+  if (!profile && profileLoading) return <LoadingBlock label="Loading profile..." />;
 
   if (!profile) {
     return (
       <section className="card stack">
-        <Alert type="danger">The profile could not be loaded from the backend.</Alert>
-        <button className="btn btn-primary" type="button" onClick={refreshProfile}>Retry profile sync</button>
+        <Alert type="danger">The profile could not be loaded.</Alert>
+        <button className="btn btn-primary" type="button" onClick={refreshProfile}>Try again</button>
       </section>
     );
   }
@@ -88,7 +88,7 @@ export default function ProfilePage() {
         <div className="card-header">
           <div>
             <h3>Edit profile</h3>
-            <small>Values are loaded from and saved directly to Supabase.</small>
+            <small>Update the information shown on your profile.</small>
           </div>
         </div>
         <Alert type="success">{message}</Alert>
@@ -110,8 +110,8 @@ export default function ProfilePage() {
           <input data-testid="profile-phone-number" type="tel" value={form.phoneNumber} onChange={(event) => setForm({ ...form, phoneNumber: event.target.value })} placeholder="Optional phone number" />
         </label>
         <label>
-          Profile data JSON/text
-          <textarea data-testid="profile-data" rows="8" value={form.profileData} onChange={(event) => setForm({ ...form, profileData: event.target.value })} placeholder='{"bio":"...","avatar":"..."}' />
+          About me / notes
+          <textarea data-testid="profile-data" rows="8" value={form.profileData} onChange={(event) => setForm({ ...form, profileData: event.target.value })} placeholder="Add profile notes" />
         </label>
         <button className="btn btn-primary" data-testid="save-profile" disabled={loading}>{loading ? "Saving..." : "Save profile"}</button>
       </form>

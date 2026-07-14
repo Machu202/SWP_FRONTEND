@@ -314,7 +314,7 @@ export default function WorkspacePage({ pageId, query }) {
         <div className="page-info-footer">
           <div className="info-row"><span className="info-label">Hitboxes</span><span className="info-val">{hitboxes.length}</span></div>
           <div className="info-row"><span className="info-label">Mode</span><span className="info-val">Task Marking</span></div>
-          <div className="info-row"><span className="info-label">Backend</span><span className="info-val"><StatusBadge value="Connected" /></span></div>
+          <div className="info-row"><span className="info-label">Status</span><span className="info-val"><StatusBadge value="Ready" /></span></div>
         </div>
       </aside>
 

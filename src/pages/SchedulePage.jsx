@@ -270,7 +270,7 @@ function DataList({ title, items, empty, canManage, onDelete }) {
       <div className="card-header"><h3>{title}</h3><span>{items.length}</span></div>
       {items.length ? <div className="list">{items.map((item, index) => (
         <div className="list-row" key={item.id || item.eventId || index}><div><strong>{item.eventName || item.frequency || item.title || `Item ${index + 1}`}</strong><small>{itemDate(item) || item.createdAt || "No date"}</small></div>{canManage && <button className="btn btn-small btn-danger" onClick={() => onDelete(item)}>Delete</button>}</div>
-      ))}</div> : <EmptyState title={empty} body="No backend records were returned." />}
+      ))}</div> : <EmptyState title={empty} body="No schedule entries are available." />}
     </div>
   );
 }

@@ -295,6 +295,22 @@ async function parseResponse(response) {
   return text;
 }
 
+const TECHNICAL_MESSAGE_PATTERN = /\b(?:api|backend|endpoint|supabase|database|postgres(?:ql)?|sql|jdbc|hibernate|spring|tomcat|hikari|cloudinary|websocket|sockjs|stomp|jwt|bearer|token|repository|controller|stack trace|exception|request body|payload|foreign key|constraint|relation|column|http\s*\d{3}|status code)\b/i;
+
+function friendlyRequestMessage(payload, status) {
+  const raw = typeof payload === "string"
+    ? payload.trim()
+    : String(payload?.message || payload?.error || payload?.detail || "").trim();
+
+  if (status === 401) return "Your session has ended. Please log in again.";
+  if (status === 403) return "You do not have permission to perform this action.";
+  if (status === 404) return "The requested item could not be found.";
+  if (status === 409) return "This action conflicts with existing information.";
+  if (status >= 500) return "Something went wrong. Please try again.";
+  if (!raw || TECHNICAL_MESSAGE_PATTERN.test(raw)) return "The action could not be completed. Please review the information and try again.";
+  return raw;
+}
+
 export async function apiFetch(path, options = {}) {
   const token = getToken();
   const normalized = { ...options };
@@ -321,22 +337,26 @@ export async function apiFetch(path, options = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   delete normalized.contentType;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...normalized,
-    headers
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...normalized,
+      headers
+    });
+  } catch {
+    throw new Error("Unable to complete the request. Check your connection and try again.");
+  }
+
   const payload = await parseResponse(response);
 
   if (!response.ok) {
+    const message = friendlyRequestMessage(payload, response.status);
     if (response.status === 401) {
       clearSession();
       window.dispatchEvent(new CustomEvent("swp-auth-invalidated", {
-        detail: { message: payload?.message || "Your session is no longer active." }
+        detail: { message }
       }));
     }
-    const message = typeof payload === "string"
-      ? payload
-      : payload?.message || payload?.error || payload?.detail || `API error ${response.status}`;
     throw new Error(message);
   }
 

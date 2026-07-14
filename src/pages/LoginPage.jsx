@@ -147,7 +147,7 @@ export default function LoginPage() {
     setMessage("");
     try {
       if (!otpEmail.includes("@")) {
-        throw new Error("OTP login needs the account email because the backend verifies OTP by email.");
+        throw new Error("Enter the email address linked to your account.");
       }
       await requestOtp({ username: otpEmail.trim(), password: otpPassword });
       setOtpSent(true);
@@ -184,7 +184,7 @@ export default function LoginPage() {
   async function handleGoogleCredential(response) {
     const credential = response?.credential;
     if (!credential) {
-      setError("Google did not return an ID token.");
+      setError("Google sign-in could not be completed.");
       return;
     }
 
@@ -314,7 +314,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     className="btn-social"
-                    onClick={() => setError("Google login needs VITE_GOOGLE_CLIENT_ID in frontend .env and the same client ID in backend manga.app.googleClientId.")}
+                    onClick={() => setError("Google sign-in is not available right now.")}
                   >
                     <strong>Google</strong>
                   </button>

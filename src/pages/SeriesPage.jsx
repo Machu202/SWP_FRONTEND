@@ -176,7 +176,7 @@ export default function SeriesPage() {
         setMessage("Uploading cover image...");
         const uploaded = await api.resources.upload(coverFile, "SERIES_COVER");
         const uploadedUrl = extractMediaUrl(uploaded);
-        if (!uploadedUrl) throw new Error("Cover uploaded, but the backend did not return an image URL.");
+        if (!uploadedUrl) throw new Error("The cover could not be prepared. Please choose the image again.");
         payload = {
           ...payload,
           coverImageUrl: uploadedUrl,
@@ -219,7 +219,7 @@ export default function SeriesPage() {
       setPendingDelete(null);
       await load();
     } catch (err) {
-      setError(err.message || "Could not delete series. Remove dependent chapters/pages first, or check backend cascade rules.");
+      setError(err.message || "Could not delete the series. Remove its chapters and pages first, then try again.");
     } finally {
       setDeleting(false);
     }
@@ -339,7 +339,7 @@ export default function SeriesPage() {
       )}
 
       {!displaySeries.length ? (
-        <EmptyState icon="◇" title="No series loaded" body="Check that the backend is running, the Tantou account is assigned in manga_series.tantou_id, and the series is not archived/cancelled." />
+        <EmptyState icon="◇" title="No series loaded" body="No series are available for this account." />
       ) : (
         <div className="series-groups">
           {Object.entries(grouped).map(([group, items]) => (

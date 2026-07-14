@@ -137,7 +137,7 @@ export default function SystemPage() {
               ))}</tbody>
             </table>
           </div>
-        ) : <EmptyState title="No parameters" body="No backend system parameters matched the current filter." />}
+        ) : <EmptyState title="No parameters" body="No settings match the current filter." />}
       </div>
     </section>
   );
