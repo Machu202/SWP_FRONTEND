@@ -10474,3 +10474,338 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   overflow-wrap: anywhere;
   line-height: 1.35;
 }
+
+/* =========================================================
+   Role navigation artwork + unified manga navigation styling
+   ========================================================= */
+.feature-screen.mangaka-screen {
+  --role-navigation-art: url("https://res.cloudinary.com/dt1stlhqc/image/upload/v1784219047/Red_Space_wrjdlw.png");
+}
+.feature-screen.assistant-screen {
+  --role-navigation-art: url("https://res.cloudinary.com/dt1stlhqc/image/upload/v1784218480/Green_Space_p4rbuh.jpg");
+}
+.feature-screen.tantou-screen {
+  --role-navigation-art: url("https://res.cloudinary.com/dt1stlhqc/image/upload/v1784219060/Purple_Space_sxkcvt.jpg");
+}
+.feature-screen.board-screen {
+  --role-navigation-art: url("https://res.cloudinary.com/dt1stlhqc/image/upload/v1784219054/Orange_Space_gf3tx5.jpg");
+  --role-paper: #ffd58a;
+  --role-soft: #fff2d8;
+  --role-border: #f5a623;
+  --role-shadow: rgba(194, 91, 0, .20);
+}
+.feature-screen.admin-screen {
+  --role-navigation-art: url("https://res.cloudinary.com/dt1stlhqc/image/upload/v1784219050/Black_Space_zw82an.jpg");
+  --role-accent: #2563eb;
+  --role-accent-dark: #123a8c;
+  --role-soft: #dbeafe;
+  --role-paper: #eaf4ff;
+  --role-border: #93c5fd;
+  --role-shadow: rgba(37, 99, 235, .18);
+}
+
+/* Give every role the same polished sidebar structure. */
+.feature-screen .sidebar {
+  width: 260px;
+  color: rgba(255, 255, 255, .84);
+  background-color: var(--role-sidebar-a);
+  background-image:
+    linear-gradient(180deg, rgba(5, 8, 18, .27) 0%, rgba(5, 8, 18, .73) 100%),
+    var(--role-navigation-art),
+    linear-gradient(165deg, var(--role-sidebar-a), var(--role-sidebar-b));
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: center, center, center;
+  background-size: cover, cover, cover;
+  border-right: 1px solid rgba(255, 255, 255, .18);
+  box-shadow: 8px 0 30px var(--role-shadow);
+}
+.feature-screen .sidebar::before {
+  opacity: .18;
+  background-image:
+    radial-gradient(circle at 16% 8%, rgba(255,255,255,.72) 0 1px, transparent 1.5px),
+    repeating-linear-gradient(125deg, transparent 0 24px, rgba(255,255,255,.12) 25px, transparent 26px 45px);
+  background-size: 11px 11px, auto;
+}
+.feature-screen .workspace-title {
+  padding: 22px 18px 14px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.20);
+  backdrop-filter: blur(1.5px);
+}
+.feature-screen .brand-card.brand-title-only {
+  min-height: 34px;
+  padding: 3px 5px;
+}
+.feature-screen .workspace-title .ws-name {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: .015em;
+  text-shadow: 0 2px 5px rgba(0,0,0,.70);
+}
+
+/* CTA below the Workspace title now matches the Mangaka/Assistant treatment. */
+.feature-screen .btn-sidebar-action,
+.feature-screen .sidebar-cta {
+  min-height: 42px;
+  margin: 14px 0 4px;
+  padding: 10px 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255,255,255,.64);
+  border-radius: 11px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--role-accent) 84%, white),
+    var(--role-accent-dark));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+  box-shadow: 0 8px 18px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.25);
+  transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+}
+.feature-screen .btn-sidebar-action:hover,
+.feature-screen .sidebar-cta:hover {
+  border-color: #fff;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--role-accent) 72%, white),
+    var(--role-accent-dark));
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.feature-screen .btn-sidebar-action:focus-visible,
+.feature-screen .sidebar-cta:focus-visible {
+  outline: 3px solid rgba(255,255,255,.70);
+  outline-offset: 2px;
+}
+
+/* Unified navigation buttons for Mangaka, Assistant, Tantou, Board, and Admin. */
+.feature-screen .nav-group {
+  gap: 5px;
+  padding: 0 10px 5px;
+}
+.feature-screen .nav-item {
+  width: 100%;
+  min-height: 43px;
+  margin: 0;
+  padding: 10px 12px;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 11px;
+  color: rgba(255,255,255,.82);
+  background: rgba(5, 8, 18, .28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  backdrop-filter: blur(2px);
+  overflow: visible;
+}
+.feature-screen .nav-item i {
+  width: 27px;
+  min-width: 27px;
+  height: 27px;
+  margin-right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(255,255,255,.13);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.feature-screen .nav-item span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+.feature-screen .nav-item:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,.34);
+  background: rgba(255,255,255,.15);
+  transform: translateX(2px);
+}
+.feature-screen .nav-item.active {
+  color: #fff;
+  border-color: rgba(255,255,255,.62);
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--role-accent) 88%, white),
+    var(--role-accent-dark));
+  box-shadow: 0 8px 20px rgba(0,0,0,.27), inset 4px 0 0 #fff;
+}
+.feature-screen .nav-item.active i {
+  background: rgba(255,255,255,.22);
+}
+.feature-screen .sidebar-divider {
+  background: rgba(255,255,255,.22);
+  margin: 14px 18px;
+}
+
+/* Make the horizontal navigation consistent for the three management roles too. */
+.feature-screen .topbar {
+  min-height: 62px;
+  background: color-mix(in srgb, var(--role-paper) 90%, white);
+  border-bottom: 3px solid var(--role-accent);
+}
+.feature-screen .topbar-left {
+  gap: 10px;
+  min-width: 0;
+}
+.feature-screen .topbar-left strong {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.feature-screen .topbar-left button {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--role-accent-dark) 82%, #334155);
+  background: transparent;
+  font-weight: 750;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+.feature-screen .topbar-left button:hover {
+  color: var(--role-accent-dark);
+  border-color: var(--role-border);
+  background: var(--role-soft);
+  transform: translateY(-1px);
+}
+
+/* Editorial Voting uses a brighter orange manga-paper field. */
+.feature-screen.board-screen .main-wrapper {
+  background-color: #ffd58a;
+  background-image:
+    radial-gradient(circle at 16px 16px, rgba(255,255,255,.43) 0 2px, transparent 2.5px),
+    repeating-linear-gradient(135deg, rgba(180,83,9,.08) 0 2px, transparent 2px 18px),
+    linear-gradient(145deg, #ffe8b4 0%, #ffc761 52%, #ffad32 100%);
+  background-size: 28px 28px, auto, auto;
+}
+
+/* Admin content gets a blue visual identity while keeping the requested black sidebar art. */
+.feature-screen.admin-screen .main-wrapper {
+  background-color: #eaf4ff;
+  background-image:
+    radial-gradient(circle at 18px 18px, rgba(37,99,235,.13) 0 1.3px, transparent 1.7px),
+    repeating-linear-gradient(45deg, rgba(30,64,175,.045) 0 1px, transparent 1px 16px),
+    linear-gradient(145deg, #f4f9ff 0%, #dbeafe 58%, #bfdbfe 100%);
+  background-size: 26px 26px, auto, auto;
+}
+
+/* Board title stays on one line and receives enough room. */
+.feature-screen.board-screen .sidebar {
+  width: 310px;
+}
+.feature-screen.board-screen .workspace-title .ws-name,
+.feature-screen.board-screen .brand-card.brand-title-only .ws-name {
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  .feature-screen .sidebar {
+    width: 245px;
+  }
+  .feature-screen.tantou-screen .sidebar {
+    width: 260px;
+  }
+  .feature-screen.board-screen .sidebar {
+    width: 285px;
+  }
+  .feature-screen .nav-item {
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .feature-screen .sidebar,
+  .feature-screen.tantou-screen .sidebar,
+  .feature-screen.board-screen .sidebar,
+  .feature-screen.admin-screen .sidebar {
+    width: 100%;
+    background-position: center 38%;
+  }
+  .feature-screen.board-screen .workspace-title .ws-name {
+    white-space: normal;
+  }
+  .feature-screen .topbar-left {
+    flex-wrap: wrap;
+  }
+}
+
+/* Specificity guard: replace the older management-role sidebar overrides. */
+.feature-screen.mangaka-screen .sidebar,
+.feature-screen.assistant-screen .sidebar,
+.feature-screen.tantou-screen .sidebar,
+.feature-screen.board-screen .sidebar,
+.feature-screen.admin-screen .sidebar {
+  color: rgba(255, 255, 255, .84);
+  background-color: var(--role-sidebar-a);
+  background-image:
+    linear-gradient(180deg, rgba(5, 8, 18, .27) 0%, rgba(5, 8, 18, .73) 100%),
+    var(--role-navigation-art),
+    linear-gradient(165deg, var(--role-sidebar-a), var(--role-sidebar-b));
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: center, center, center;
+  background-size: cover, cover, cover;
+  border-right: 1px solid rgba(255, 255, 255, .18);
+}
+.feature-screen.mangaka-screen .sidebar,
+.feature-screen.assistant-screen .sidebar,
+.feature-screen.admin-screen .sidebar {
+  width: 260px;
+}
+.feature-screen.tantou-screen .sidebar {
+  width: 280px;
+}
+.feature-screen.tantou-screen .workspace-title,
+.feature-screen.board-screen .workspace-title,
+.feature-screen.admin-screen .workspace-title {
+  padding: 22px 18px 14px;
+}
+.feature-screen.tantou-screen .btn-sidebar-action,
+.feature-screen.board-screen .btn-sidebar-action,
+.feature-screen.admin-screen .btn-sidebar-action {
+  border: 1px solid rgba(255,255,255,.64);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--role-accent) 84%, white),
+    var(--role-accent-dark));
+  box-shadow: 0 8px 18px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.feature-screen.tantou-screen .nav-item.active,
+.feature-screen.board-screen .nav-item.active,
+.feature-screen.admin-screen .nav-item.active {
+  color: #fff;
+  border-color: rgba(255,255,255,.62);
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--role-accent) 88%, white),
+    var(--role-accent-dark));
+  box-shadow: 0 8px 20px rgba(0,0,0,.27), inset 4px 0 0 #fff;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  .feature-screen.mangaka-screen .sidebar,
+  .feature-screen.assistant-screen .sidebar,
+  .feature-screen.admin-screen .sidebar {
+    width: 245px;
+  }
+  .feature-screen.tantou-screen .sidebar {
+    width: 260px;
+  }
+  .feature-screen.board-screen .sidebar {
+    width: 285px;
+  }
+}
+@media (max-width: 760px) {
+  .feature-screen.mangaka-screen .sidebar,
+  .feature-screen.assistant-screen .sidebar,
+  .feature-screen.tantou-screen .sidebar,
+  .feature-screen.board-screen .sidebar,
+  .feature-screen.admin-screen .sidebar {
+    width: 100%;
+  }
+}
