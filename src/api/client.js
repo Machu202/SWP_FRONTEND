@@ -456,6 +456,7 @@ export const api = {
 
   pageVersions: {
     byPage: (pageId) => apiFetch(`/page-versions/pages/${pageId}`),
+    hitboxes: (versionId) => apiFetch(`/page-versions/${versionId}/hitboxes`),
     restore: (versionId) => apiFetch(`/page-versions/${versionId}/restore`, { method: "PATCH" })
   },
 

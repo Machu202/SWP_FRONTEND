@@ -42,7 +42,7 @@ assert.match(css, /canvas-workspace-tab[\s\S]*page-version-row/);
 // 3 and 9. Kanban is view-only for Assistant; Mangaka has only forward workflow moves.
 assert.match(tasks, /if \(!hasRole\(role, \["mangaka"\]\)\) return \[\]/);
 assert.match(tasks, /status === "TODO"\) return \["DOING"\]/);
-assert.match(tasks, /status === "DOING"\) return \["REVIEWING"\]/);
+assert.match(tasks, /status === "DOING" && taskSubmittedUrl\(task\)\) return \["REVIEWING"\]/);
 assert.match(taskService, /TODO -> DOING -> REVIEWING/);
 assert.match(taskService, /Kanban status changes are restricted to the owning Mangaka/);
 const taskDetail = tasks.slice(tasks.indexOf("function TaskDetail"), tasks.indexOf("function TaskLockedBox"));
@@ -210,7 +210,7 @@ assert.match(css, /\.preview-image-frame[\s\S]*position: relative/);
 assert.match(taskService, /promoteApprovedSubmissionToPage\(task\)/);
 assert.match(taskService, /page\.setImageUrl\(submittedImage\)/);
 assert.match(taskService, /PageVersion\.builder\(\)/);
-assert.match(taskService, /pageVersionRepository\.save\(version\)/);
+assert.match(taskService, /pageVersionRepository\.save\(PageVersion\.builder\(\)/);
 
 // Mangaka Tantou Feedback renders the saved feedback rectangle and uses its dedicated comment API.
 assert.match(mangakaReview, /function FeedbackHitboxPreview/);
@@ -254,4 +254,41 @@ assert.match(adminReview, /admin-selected-tantou-name/);
 assert.match(adminReview, /user\?\.fullName[\s\S]*user\?\.username[\s\S]*user\?\.email/);
 assert.doesNotMatch(adminReview, /<strong>\{tantouId \|\| "Keep current \/ unassigned"\}<\/strong>/);
 
-console.log(JSON.stringify({ reportedIssues: 44, result: "PASS" }, null, 2));
+
+// Issues 43-46: required submission image, workflow notifications, and version-safe Canvas promotion.
+const notificationService = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/service/impl/NotificationServiceImpl.java");
+const notificationEntity = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/entity/Notification.java");
+const hitboxEntity = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/entity/Hitbox.java");
+const workspaceService = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/service/impl/WorkspaceServiceImpl.java");
+const pageVersionRepository = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/repository/PageVersionRepository.java");
+
+// Assistant cannot submit an empty/non-image file, and Mangaka cannot advance DOING -> REVIEWING without submitted work.
+assert.match(tasks, /Choose a finished image first/);
+assert.match(tasks, /file\.size <= 0[\s\S]*startsWith\("image\/"\)/);
+assert.match(taskService, /A submitted image is required before this task can move to REVIEWING/);
+assert.match(taskService, /Submitted image URL is required/);
+
+// Assignment and submission create actionable role-specific notifications with received time in the UI.
+assert.match(taskService, /You got a new task from/);
+assert.match(taskService, /mangaka!/);
+assert.match(taskService, /Assistant [\s\S]*has sent you his work\. Go check it out!/);
+assert.match(taskService, /\"\/tasks\?tab=assignments\"/);
+assert.match(taskService, /\"\/assistant-review\"/);
+assert.match(notificationEntity, /actionUrl/);
+assert.match(notificationService, /setActionUrl|\.actionUrl\(/);
+assert.match(layout, /formatNotificationTime/);
+assert.match(layout, /notificationAction\(item\)/);
+assert.match(layout, /if \(target\) navigate\(target\)/);
+
+// Approved work becomes the live page, creates history, and archives old hitboxes with the previous version.
+assert.match(hitboxEntity, /PageVersion pageVersion/);
+assert.match(workspaceService, /findByPageIdAndPageVersionIsNull/);
+assert.match(taskService, /liveHitboxes[\s\S]*hitbox\.setPageVersion\(previousVersion\)/);
+assert.match(taskService, /page\.setImageUrl\(submittedImage\)/);
+assert.match(taskService, /versionNumber\(nextVersionNumber\)/);
+assert.match(pageVersionRepository, /findTopByPageIdAndImageUrlOrderByVersionNumberDesc/);
+assert.match(pageVersionController, /\{versionId\}\/hitboxes/);
+assert.match(canvas, /api\.pageVersions\.hitboxes/);
+assert.match(canvas, /compareVersionHitboxes/);
+
+console.log(JSON.stringify({ reportedIssues: 48, result: "PASS" }, null, 2));

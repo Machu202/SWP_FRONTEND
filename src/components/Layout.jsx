@@ -176,7 +176,7 @@ export function Layout({ children, route }) {
             ))}
           </div>
           <div className="topbar-right">
-            <NotificationBell />
+            <NotificationBell userId={profile?.id || session.id} />
             <button className="topbar-avatar plain-user-avatar" onClick={() => navigate("/profile")} title={profile?.email || session.email || roleLabel(role)}>{initials}</button>
           </div>
         </header>
@@ -198,7 +198,26 @@ export function Layout({ children, route }) {
 }
 
 
-function NotificationBell() {
+function formatNotificationTime(value) {
+  if (!value) return "Just now";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleString();
+}
+
+function notificationAction(item) {
+  return item?.actionUrl || item?.action_url || item?.targetUrl || item?.target_url || "";
+}
+
+function NotificationBell({ userId }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [connectionState, setConnectionState] = useState("connecting");
@@ -214,12 +233,15 @@ function NotificationBell() {
 
   async function markRead(item) {
     if (!item?.id) return;
+    const target = notificationAction(item);
     try {
       await api.notifications.markRead(item.id);
       setItems((old) => old.filter((entry) => String(entry.id) !== String(item.id)));
     } catch {
-      // Keep the item visible if the backend rejects the update.
+      // Navigation remains available even if the read state could not be saved.
     }
+    setOpen(false);
+    if (target) navigate(target);
   }
 
   useEffect(() => {
@@ -227,6 +249,7 @@ function NotificationBell() {
     const disconnect = window.__DISABLE_NOTIFICATION_STREAM__
       ? (() => { setConnectionState("polling"); return () => {}; })()
       : connectNotificationStream({
+        userId,
         onNotification: (item) => {
           setItems((old) => {
             const itemId = item?.id ?? `${item?.message || item?.content || "notification"}-${item?.createdAt || Date.now()}`;
@@ -243,7 +266,7 @@ function NotificationBell() {
       window.clearInterval(interval);
       disconnect();
     };
-  }, []);
+  }, [userId]);
 
   return (
     <div className="notification-bell-wrap">
@@ -262,7 +285,7 @@ function NotificationBell() {
               {items.map((item) => (
                 <button key={item.id} type="button" className="notification-item" onClick={() => markRead(item)}>
                   <span>{item.message || item.content || `Notification #${item.id}`}</span>
-                  <small>{item.createdAt || item.created_at || "Unread"}</small>
+                  <small title={item.createdAt || item.created_at || ""}>{formatNotificationTime(item.createdAt || item.created_at)}</small>
                 </button>
               ))}
             </div>

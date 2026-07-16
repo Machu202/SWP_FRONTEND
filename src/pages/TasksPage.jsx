@@ -284,7 +284,7 @@ function allowedKanbanTargets(task, role) {
   if (!hasRole(role, ["mangaka"])) return [];
   const status = taskWorkflowStatus(task);
   if (status === "TODO") return ["DOING"];
-  if (status === "DOING") return ["REVIEWING"];
+  if (status === "DOING" && taskSubmittedUrl(task)) return ["REVIEWING"];
   return [];
 }
 
@@ -418,6 +418,11 @@ export default function TasksPage() {
   }, [grouped]);
 
   async function updateStatus(task, newStatus) {
+    if (normalizeTaskStatus(newStatus) === "REVIEWING" && !taskSubmittedUrl(task)) {
+      setMessage("");
+      setError("Assistant must submit a finished image before this task can move to Reviewing.");
+      return;
+    }
     setError("");
     setMessage("");
     try {
@@ -491,6 +496,10 @@ export default function TasksPage() {
       setError("Choose a finished image first.");
       return;
     }
+    if (file.size <= 0 || !String(file.type || "").startsWith("image/")) {
+      setError("Choose a valid PNG, JPG, or WEBP image before submitting.");
+      return;
+    }
     if (!confirmReady) {
       setError("Confirm the work is ready for Mangaka review first.");
       return;
@@ -500,7 +509,7 @@ export default function TasksPage() {
     try {
       const resource = await api.resources.upload(file, "TASK_SUBMISSION");
       const imageUrl = extractMediaUrl(resource);
-      if (!imageUrl) throw new Error("Upload succeeded but no image URL was returned.");
+      if (!imageUrl) throw new Error("The selected image could not be prepared. Please try again.");
       const updated = await api.tasks.submit(task.id, imageUrl);
       const normalized = normalizeTaskRecord(updated);
       setTasks((old) => old.map((item) => String(item.id) === String(task.id) ? normalized : item));
@@ -814,6 +823,12 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
               {assignmentLocked && <small className="assignment-lock-note">Assistant assignment is locked for {taskWorkflowStatus(selected)} tasks.</small>}
             </div>
           )}
+
+          {hasRole(role, ["mangaka"]) && taskWorkflowStatus(selected) === "DOING" && !taskSubmittedUrl(selected) ? (
+            <div className="assignment-lock-note" data-testid="reviewing-requires-submission">
+              Waiting for the assigned Assistant to submit a finished image before Reviewing becomes available.
+            </div>
+          ) : null}
 
           {statusTargets.length > 0 ? (
             <div className="button-row">

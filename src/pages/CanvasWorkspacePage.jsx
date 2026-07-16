@@ -119,6 +119,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [versions, setVersions] = useState([]);
   const [versionBusy, setVersionBusy] = useState(false);
   const [compareVersionId, setCompareVersionId] = useState("");
+  const [compareVersionHitboxes, setCompareVersionHitboxes] = useState([]);
   const [comparePosition, setComparePosition] = useState(50);
   const [selectedBox, setSelectedBox] = useState(null);
   const [draftBox, setDraftBox] = useState(null);
@@ -261,6 +262,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         : mergeHitboxLists(overlayData, canvasData?.hitboxes));
       setVersions(Array.isArray(versionData) ? versionData : versionData?.content || versionData?.data || []);
       setCompareVersionId("");
+      setCompareVersionHitboxes([]);
       setComparePosition(50);
       setSelectedBox(null);
       setDraftBox(null);
@@ -362,6 +364,20 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     selectedPage?.width,
     selectedPage?.height
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHistoricalHitboxes() {
+      if (!compareVersionId) {
+        setCompareVersionHitboxes([]);
+        return;
+      }
+      const data = await api.pageVersions.hitboxes(compareVersionId).catch(() => []);
+      if (!cancelled) setCompareVersionHitboxes(mergeHitboxLists(data));
+    }
+    loadHistoricalHitboxes();
+    return () => { cancelled = true; };
+  }, [compareVersionId]);
 
   useEffect(() => {
     if (!imageUrl) return;
@@ -861,7 +877,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               <p className="muted-note version-empty-note">No page versions found yet.</p>
             )}
             {compareImageUrl && imageUrl && (
-              <VersionComparison currentUrl={imageUrl} versionUrl={compareImageUrl} position={comparePosition} onPositionChange={setComparePosition} />
+              <VersionComparison currentUrl={imageUrl} versionUrl={compareImageUrl} hitboxes={compareVersionHitboxes} position={comparePosition} onPositionChange={setComparePosition} />
             )}
           </div>
         </div>
@@ -953,12 +969,34 @@ function ChapterWorkspaceSidebar({ chapters, pages, selectedChapterId, selectedP
   );
 }
 
-function VersionComparison({ currentUrl, versionUrl, position, onPositionChange }) {
+function VersionComparison({ currentUrl, versionUrl, hitboxes = [], position, onPositionChange }) {
+  const historicalImageRef = useRef(null);
+  const [historicalSize, setHistoricalSize] = useState({ width: 1, height: 1 });
+
+  useEffect(() => {
+    const image = historicalImageRef.current;
+    if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+      setHistoricalSize({ width: image.naturalWidth, height: image.naturalHeight });
+    }
+  }, [versionUrl]);
+
   return (
     <div className="version-comparison">
       <div className="version-comparison-stage">
         <img src={currentUrl} alt="Current page version" />
-        <div className="version-comparison-overlay" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}><img src={versionUrl} alt="Historical page version" /></div>
+        <div className="version-comparison-overlay" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
+          <img
+            ref={historicalImageRef}
+            src={versionUrl}
+            alt="Historical page version"
+            onLoad={(event) => setHistoricalSize({ width: event.currentTarget.naturalWidth || 1, height: event.currentTarget.naturalHeight || 1 })}
+          />
+          <div className="historical-hitbox-layer" aria-label="Historical version hitboxes">
+            {hitboxes.map((box, index) => (
+              <CanvasBox key={`history-${box.id || index}`} box={box} originalSize={historicalSize} label={index + 1} />
+            ))}
+          </div>
+        </div>
         <span className="version-divider" style={{ left: `${position}%` }} />
         <span className="version-label current">Current</span><span className="version-label historical">Historical</span>
       </div>

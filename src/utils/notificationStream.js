@@ -13,10 +13,11 @@ function parseMessage(message) {
   }
 }
 
-export function connectNotificationStream({ onNotification, onState } = {}) {
+export function connectNotificationStream({ userId, onNotification, onState } = {}) {
   const endpoint = import.meta.env.VITE_WS_BASE_URL || api.WS_BASE_URL;
-  const userTopic = import.meta.env.VITE_NOTIFICATION_TOPIC || "/user/queue/notifications";
-  const broadcastTopic = import.meta.env.VITE_NOTIFICATION_BROADCAST_TOPIC || "/topic/notifications";
+  const configuredUserTopic = import.meta.env.VITE_NOTIFICATION_TOPIC || "";
+  const userTopic = configuredUserTopic || (userId ? `/topic/notifications/${userId}` : "/user/queue/notifications");
+  const broadcastTopic = import.meta.env.VITE_NOTIFICATION_BROADCAST_TOPIC || "";
   const token = getToken();
   let stopped = false;
 

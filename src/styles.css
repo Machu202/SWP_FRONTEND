@@ -10112,3 +10112,9 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   border-color: #ea580c;
   color: #fff;
 }
+
+/* Approved Assistant work: historical versions retain their archived hitboxes. */
+.version-comparison-overlay { position: absolute; inset: 0; }
+.version-comparison-overlay > img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.historical-hitbox-layer { position: absolute; inset: 0; pointer-events: none; }
+.historical-hitbox-layer .saved-hitbox { pointer-events: none; border-color: #f59e0b; background: rgba(245, 158, 11, 0.16); }
