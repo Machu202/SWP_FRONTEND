@@ -218,7 +218,7 @@ function MonthCalendar({ items, cursor, onChange }) {
     map[key].push(item);
     return map;
   }, {});
-  const title = cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const title = cursor.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   return (
     <div className="card month-calendar-card">

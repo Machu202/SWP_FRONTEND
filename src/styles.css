@@ -10495,7 +10495,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   --role-shadow: rgba(194, 91, 0, .20);
 }
 .feature-screen.admin-screen {
-  --role-navigation-art: url("https://res.cloudinary.com/dt1stlhqc/image/upload/v1784219050/Black_Space_zw82an.jpg");
+  --role-navigation-art: url("https://res.cloudinary.com/dt1stlhqc/image/upload/v1784221324/Blue_Space_z76u0i.jpg");
   --role-accent: #2563eb;
   --role-accent-dark: #123a8c;
   --role-soft: #dbeafe;
@@ -10520,11 +10520,9 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   box-shadow: 8px 0 30px var(--role-shadow);
 }
 .feature-screen .sidebar::before {
-  opacity: .18;
-  background-image:
-    radial-gradient(circle at 16% 8%, rgba(255,255,255,.72) 0 1px, transparent 1.5px),
-    repeating-linear-gradient(125deg, transparent 0 24px, rgba(255,255,255,.12) 25px, transparent 26px 45px);
-  background-size: 11px 11px, auto;
+  opacity: .13;
+  background-image: repeating-linear-gradient(125deg, transparent 0 28px, rgba(255,255,255,.10) 29px, transparent 30px 52px);
+  background-size: auto;
 }
 .feature-screen .workspace-title {
   padding: 22px 18px 14px;
@@ -10807,5 +10805,72 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   .feature-screen.board-screen .sidebar,
   .feature-screen.admin-screen .sidebar {
     width: 100%;
+  }
+}
+
+
+/* =========================================================
+   Restore/version, series hero, English calendar, nav cleanup
+   ========================================================= */
+/* Navigation artwork should stay clean: remove the translucent dot overlay. */
+.feature-screen .sidebar::before {
+  opacity: .13;
+  background-image: repeating-linear-gradient(125deg, transparent 0 28px, rgba(255,255,255,.10) 29px, transparent 30px 52px);
+  background-size: auto;
+}
+
+/* Let the Chapters & Pages series cover keep its full portrait proportions. */
+.chapter-manager-screen .chapter-series-hero {
+  min-height: 230px;
+  padding: 18px 22px;
+  align-items: stretch;
+  gap: 24px;
+}
+.chapter-manager-screen .chapter-series-hero .detail-cover {
+  width: 150px;
+  min-width: 150px;
+  height: 210px;
+  border-radius: 12px;
+  align-self: center;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .16);
+}
+.chapter-manager-screen .chapter-series-hero .detail-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
+}
+.chapter-manager-screen .chapter-series-hero > div:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: visible;
+}
+.chapter-manager-screen .chapter-series-hero h2 {
+  margin: 2px 0 10px;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+/* The compact Current selector no longer carries a redundant description. */
+.page-version-list > button:first-child,
+.page-version-row > button:first-child {
+  min-height: 38px;
+}
+
+@media (max-width: 700px) {
+  .chapter-manager-screen .chapter-series-hero {
+    min-height: 0;
+    align-items: center;
+  }
+  .chapter-manager-screen .chapter-series-hero .detail-cover {
+    width: 120px;
+    min-width: 120px;
+    height: 168px;
   }
 }

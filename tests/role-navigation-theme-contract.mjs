@@ -9,7 +9,7 @@ const required = [
   "Red_Space_wrjdlw.png",
   "Purple_Space_sxkcvt.jpg",
   "Orange_Space_gf3tx5.jpg",
-  "Black_Space_zw82an.jpg",
+  "Blue_Space_z76u0i.jpg",
   ".feature-screen.board-screen .sidebar",
   "width: 310px",
   ".feature-screen.board-screen .main-wrapper",

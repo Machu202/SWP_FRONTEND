@@ -709,7 +709,9 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       setCanvas((old) => ({ ...(old || {}), imageUrl: restored?.imageUrl || restored?.image_url || version.imageUrl || version.image_url }));
       setViewedVersionId("");
       setViewedVersionHitboxes([]);
-      await loadVersions(selectedPageId);
+      // Reload the current canvas after restore so the active hitboxes cloned
+      // from this historical version appear immediately on the main canvas.
+      await loadCanvas(selectedPageId);
       setMessage(`Restored page to version ${version.versionNumber || version.version_number || version.id}.`);
     } catch (err) {
       setError(err.message || "Could not restore this version.");
@@ -895,8 +897,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               <div className="page-version-list">
                 <div className="page-version-row current-version-row">
                   <button type="button" className={!viewedVersionId ? "active" : ""} onClick={() => { setViewedVersionId(""); setViewedVersionHitboxes([]); setSelectedBox(null); }}>
-                    <strong>Current page</strong>
-                    <small>Live image and active hitboxes</small>
+                    <strong>Current</strong>
                   </button>
                 </div>
                 {versions.map((version) => {
