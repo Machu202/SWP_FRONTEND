@@ -205,6 +205,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (/^\/workspace\/hitboxes\/\d+\/task$/.test(path)) return response({ id: 601, description: "Task" });
 
       if (path === "/page-versions/pages/100") return response(f.versions);
+      if (path === "/page-versions/901/hitboxes") return response([{ id: 790, xCoord: 20, yCoord: 30, width: 160, height: 120, pageId: 100, pageVersionId: 901 }]);
       if (path === "/page-versions/901/restore") { capture.restores += 1; return response({ ...f.pages[0], imageUrl: f.imageOld }); }
 
       if (path === "/hitbox-comments/701" && method === "GET") return response(f.comments);
@@ -469,6 +470,11 @@ async function run() {
       assert.ok((await capture(page)).hitboxesCreated >= 1);
       await page.getByText("Version 1", { exact: false }).click();
       assert.equal(await page.locator('.version-comparison input[type="range"]').count(), 1);
+      const viewedVersionBoxes = page.locator('.canvas-hitbox-stage .saved-hitbox');
+      await viewedVersionBoxes.first().waitFor({ state: "visible" });
+      assert.equal(await viewedVersionBoxes.count(), 1, "Viewing a historical version must hide current-page hitboxes");
+      assert.match(await viewedVersionBoxes.first().getAttribute("title"), /X 20, Y 30/, "Historical version must show only its archived hitbox");
+      await page.screenshot({ path: path.resolve("test-results/page-version-hitbox-scope.png"), fullPage: true });
       await page.getByRole("button", { name: "Restore", exact: true }).click();
       await waitText(page, "Restored page to version");
       assert.equal((await capture(page)).restores, 1);
@@ -538,6 +544,7 @@ async function run() {
       assert.equal(await reviewRow.locator('img[alt="Reference"]').getAttribute("src"), fixtures.imageCurrent, "Mangaka Review reference must remain the original page image");
       assert.equal(await reviewRow.locator('img[alt="Submitted work"]').getAttribute("src"), fixtures.imageOld, "Mangaka Review submitted work must remain separate");
       await page.screenshot({ path: path.resolve("test-results/issue16-approved-task-handoff.png"), fullPage: true });
+      assert.equal(await page.locator('[data-testid="series-tantou-select-1"]').count(), 1, "A series must show exactly one visible Tantou selector");
       await page.locator('[data-testid="inline-chapter-tantou-select-1"]').selectOption("4");
       await page.locator('[data-testid="inline-assign-and-send-chapter-10"]').click();
       await waitText(page, "sent to Taro Editor for review");

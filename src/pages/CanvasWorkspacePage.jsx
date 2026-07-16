@@ -118,6 +118,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [hitboxes, setHitboxes] = useState([]);
   const [versions, setVersions] = useState([]);
   const [versionBusy, setVersionBusy] = useState(false);
+  const [viewedVersionId, setViewedVersionId] = useState("");
+  const [viewedVersionHitboxes, setViewedVersionHitboxes] = useState([]);
   const [compareVersionId, setCompareVersionId] = useState("");
   const [compareVersionHitboxes, setCompareVersionHitboxes] = useState([]);
   const [comparePosition, setComparePosition] = useState(50);
@@ -147,6 +149,11 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const selectedPage = useMemo(() => pages.find((page) => String(page.id) === String(selectedPageId)), [pages, selectedPageId]);
 
   const imageUrl = mediaUrlFrom(canvas, canvas?.imageUrl, canvas?.image_url, pageImage(selectedPage));
+  const viewedVersion = versions.find((version) => String(version.id) === String(viewedVersionId));
+  const viewedVersionImageUrl = mediaUrlFrom(viewedVersion, viewedVersion?.imageUrl, viewedVersion?.image_url);
+  const isViewingHistoricalVersion = Boolean(viewedVersionId && viewedVersionImageUrl);
+  const displayedImageUrl = isViewingHistoricalVersion ? viewedVersionImageUrl : imageUrl;
+  const displayedHitboxes = isViewingHistoricalVersion ? viewedVersionHitboxes : hitboxes;
   const compareVersion = versions.find((version) => String(version.id) === String(compareVersionId));
   const compareImageUrl = mediaUrlFrom(compareVersion, compareVersion?.imageUrl, compareVersion?.image_url);
 
@@ -261,6 +268,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         ? mergeHitboxLists(overlayData)
         : mergeHitboxLists(overlayData, canvasData?.hitboxes));
       setVersions(Array.isArray(versionData) ? versionData : versionData?.content || versionData?.data || []);
+      setViewedVersionId("");
+      setViewedVersionHitboxes([]);
       setCompareVersionId("");
       setCompareVersionHitboxes([]);
       setComparePosition(50);
@@ -367,6 +376,24 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   useEffect(() => {
     let cancelled = false;
+    async function loadViewedVersionHitboxes() {
+      if (!viewedVersionId) {
+        setViewedVersionHitboxes([]);
+        return;
+      }
+      const data = await api.pageVersions.hitboxes(viewedVersionId).catch(() => []);
+      if (!cancelled) {
+        setViewedVersionHitboxes(mergeHitboxLists(data));
+        setSelectedBox(null);
+        setDraftBox(null);
+      }
+    }
+    loadViewedVersionHitboxes();
+    return () => { cancelled = true; };
+  }, [viewedVersionId]);
+
+  useEffect(() => {
+    let cancelled = false;
     async function loadHistoricalHitboxes() {
       if (!compareVersionId) {
         setCompareVersionHitboxes([]);
@@ -380,7 +407,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   }, [compareVersionId]);
 
   useEffect(() => {
-    if (!imageUrl) return;
+    if (!displayedImageUrl) return;
     setIsImageReady(false);
     setImageSize({ width: 0, height: 0 });
 
@@ -401,7 +428,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    imageUrl,
+    displayedImageUrl,
+    viewedVersionId,
     selectedPageId,
     canvas?.imageUrl,
     canvas?.image_url,
@@ -426,7 +454,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   }
 
   function handlePointerDown(event) {
-    if (!canDraw || event.target.closest?.("[data-box=\"true\"]")) return;
+    if (!canDraw || isViewingHistoricalVersion || event.target.closest?.("[data-box=\"true\"]")) return;
     const coords = getImageCoords(event);
     if (!coords) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -659,6 +687,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       const updated = await api.pages.replaceImage(selectedPageId, file);
       setPages((old) => old.map((page) => String(page.id) === String(selectedPageId) ? { ...page, ...updated } : page));
       setCanvas((old) => ({ ...(old || {}), imageUrl: updated?.imageUrl || updated?.image_url || pageImage(updated) }));
+      setViewedVersionId("");
+      setViewedVersionHitboxes([]);
       await loadVersions(selectedPageId);
       setMessage("Page image replaced and archived as a new version.");
     } catch (err) {
@@ -677,6 +707,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       const restored = await api.pageVersions.restore(version.id);
       setPages((old) => old.map((page) => String(page.id) === String(selectedPageId) ? { ...page, ...restored } : page));
       setCanvas((old) => ({ ...(old || {}), imageUrl: restored?.imageUrl || restored?.image_url || version.imageUrl || version.image_url }));
+      setViewedVersionId("");
+      setViewedVersionHitboxes([]);
       await loadVersions(selectedPageId);
       setMessage(`Restored page to version ${version.versionNumber || version.version_number || version.id}.`);
     } catch (err) {
@@ -688,7 +720,9 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   if (loading) return <LoadingBlock label="Loading canvas workspace..." />;
 
-  const originalSize = canvasOriginalSize(canvas, selectedPage, imageSize);
+  const originalSize = isViewingHistoricalVersion
+    ? { width: Math.max(imageSize.width || 1, 1), height: Math.max(imageSize.height || 1, 1) }
+    : canvasOriginalSize(canvas, selectedPage, imageSize);
 
   return (
     <section className="core-feature-page canvas-workspace-tab static-tab-screen stack">
@@ -731,12 +765,12 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
           onPageChange={setSelectedPageId}
         />
         <div className="card-box">
-          <div className="section-title-row"><h3>{isTantou ? "Feedback Canvas" : "Canvas"}</h3><span className="muted-note">{selectedPageId ? (isTantou ? "Drag on the image to draw an independent feedback area" : "Drag on image to draw a hitbox") : "Select a page to start"}</span></div>
+          <div className="section-title-row"><h3>{isTantou ? "Feedback Canvas" : "Canvas"}</h3><span className="muted-note">{isViewingHistoricalVersion ? `Viewing Version ${viewedVersion?.versionNumber || viewedVersion?.version_number || viewedVersion?.id} · read only` : selectedPageId ? (isTantou ? "Drag on the image to draw an independent feedback area" : "Drag on image to draw a hitbox") : "Select a page to start"}</span></div>
           <div className="hitbox-stage canvas-hitbox-stage">
-            {selectedPageId && imageUrl ? (
+            {selectedPageId && displayedImageUrl ? (
               <div
                 ref={wrapRef}
-                key={`canvas-wrap-${selectedPageId}-${imageUrl}`}
+                key={`canvas-wrap-${selectedPageId}-${viewedVersionId || "current"}-${displayedImageUrl}`}
                 data-testid="canvas-draw-surface"
                 className={`hitbox-image-wrap ${isImageReady ? "ready" : "loading"}`}
                 onPointerDown={handlePointerDown}
@@ -747,7 +781,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               >
                 <img
                   ref={imageRef}
-                  src={imageUrl}
+                  src={displayedImageUrl}
                   alt={`Page ${pageNumber(selectedPage) || selectedPageId}`}
                   draggable="false"
                   onLoad={handleImageLoad}
@@ -755,8 +789,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 />
                 {isImageReady && (
                   <div className="hitbox-layer-react">
-                    {hitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} kind={isTantou ? "feedback" : "hitbox"} onClick={(event) => { event.stopPropagation(); setSelectedBox(box); }} onContextMenu={canEdit ? (event) => openHitboxContext(event, box) : undefined} />)}
-                    {draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" kind={isTantou ? "feedback" : "hitbox"} />}
+                    {displayedHitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={!isViewingHistoricalVersion && selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} kind={isTantou ? "feedback" : "hitbox"} onClick={isViewingHistoricalVersion ? undefined : (event) => { event.stopPropagation(); setSelectedBox(box); }} onContextMenu={!isViewingHistoricalVersion && canEdit ? (event) => openHitboxContext(event, box) : undefined} />)}
+                    {!isViewingHistoricalVersion && draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" kind={isTantou ? "feedback" : "hitbox"} />}
                   </div>
                 )}
               </div>
@@ -799,13 +833,13 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 <div className="form-group"><label>W</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "width", "width").toFixed(2) : ""} readOnly /></div>
                 <div className="form-group"><label>H</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "height", "height").toFixed(2) : ""} readOnly /></div>
               </div>
-              <button className="btn-publish full" data-testid="open-task-modal" type="button" disabled={!selectedBox?.id || !canEdit || String(selectedBox?.id || "").startsWith("local-")} onClick={() => setTaskModalOpen(true)}>Open Task Assignment Modal</button>
+              <button className="btn-publish full" data-testid="open-task-modal" type="button" disabled={isViewingHistoricalVersion || !selectedBox?.id || !canEdit || String(selectedBox?.id || "").startsWith("local-")} onClick={() => setTaskModalOpen(true)}>Open Task Assignment Modal</button>
               <button
                 className="btn btn-danger full"
                 data-testid="delete-selected-hitbox"
                 type="button"
                 onClick={deleteSelectedHitbox}
-                disabled={!selectedBox?.id || Boolean(deletingHitboxId)}
+                disabled={isViewingHistoricalVersion || !selectedBox?.id || Boolean(deletingHitboxId)}
               >
                 {deletingHitboxId && String(deletingHitboxId) === String(selectedBox?.id) ? "Deleting hitbox..." : "Delete selected hitbox"}
               </button>
@@ -815,12 +849,12 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             {selectedSeries && <div><strong>Series:</strong> {selectedSeries.title}</div>}
             {selectedChapter && <div><strong>Chapter:</strong> {chapterTitle(selectedChapter)}</div>}
             {selectedPage && <div><strong>Page:</strong> {pageNumber(selectedPage)}</div>}
-            <div><strong>{isTantou ? "Tantou feedback areas" : "Hitboxes"}:</strong> {hitboxes.length}</div>
+            <div><strong>{isViewingHistoricalVersion ? "Version hitboxes" : (isTantou ? "Tantou feedback areas" : "Hitboxes")}:</strong> {displayedHitboxes.length}</div>
           </div>
-          {hitboxes.length > 0 && (
+          {displayedHitboxes.length > 0 && (
             <div className="saved-hitbox-list">
-              <div className="mini-section-label">{isTantou ? "Saved Tantou feedback on this page" : "Saved hitboxes on this page"}</div>
-              {hitboxes.map((box, index) => (
+              <div className="mini-section-label">{isViewingHistoricalVersion ? `Hitboxes archived in Version ${viewedVersion?.versionNumber || viewedVersion?.version_number || viewedVersion?.id}` : (isTantou ? "Saved Tantou feedback on this page" : "Saved hitboxes on this page")}</div>
+              {displayedHitboxes.map((box, index) => (
                 <div
                   key={hitboxId(box)}
                   className={`saved-hitbox-row ${selectedBox && String(selectedBox.id) === String(box.id) ? "active" : ""}`}
@@ -829,7 +863,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                     <span>#{index + 1}{isTantou && box.isResolved ? " · Resolved" : ""}</span>
                     <small>{isTantou && box.content ? box.content : `X ${boxValue(box, "xCoord", "x_coord").toFixed(0)} · Y ${boxValue(box, "yCoord", "y_coord").toFixed(0)}`}</small>
                   </button>
-                  {canEdit && (
+                  {canEdit && !isViewingHistoricalVersion && (
                     <button
                       type="button"
                       className="btn btn-small btn-danger hitbox-inline-delete"
@@ -859,16 +893,25 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             )}
             {versions.length ? (
               <div className="page-version-list">
+                <div className="page-version-row current-version-row">
+                  <button type="button" className={!viewedVersionId ? "active" : ""} onClick={() => { setViewedVersionId(""); setViewedVersionHitboxes([]); setSelectedBox(null); }}>
+                    <strong>Current page</strong>
+                    <small>Live image and active hitboxes</small>
+                  </button>
+                </div>
                 {versions.map((version) => {
                   const versionNumber = version.versionNumber || version.version_number || version.id;
                   const versionUrl = mediaUrlFrom(version, version.imageUrl, version.image_url);
                   return (
                     <div className="page-version-row" key={version.id}>
-                      <button type="button" className={String(compareVersionId) === String(version.id) ? "active" : ""} onClick={() => versionUrl && setCompareVersionId(String(version.id))}>
+                      <button type="button" className={String(viewedVersionId) === String(version.id) ? "active" : ""} onClick={() => { if (versionUrl) { setViewedVersionId(String(version.id)); setCompareVersionId(String(version.id)); } }}>
                         <strong>Version {versionNumber}</strong>
-                        <small>{formatDateTime(version.createdAt || version.created_at)}</small>
+                        <small>{formatDateTime(version.createdAt || version.created_at)} · {version.hitboxCount ?? version.hitbox_count ?? 0} hitbox(es)</small>
                       </button>
-                      {canEdit && <button className="btn btn-tiny" type="button" disabled={versionBusy} onClick={() => restoreVersion(version)}>Restore</button>}
+                      <div className="version-row-actions">
+                        <button className="btn btn-tiny" type="button" onClick={() => versionUrl && setCompareVersionId(String(version.id))}>Compare</button>
+                        {canEdit && <button className="btn btn-tiny" type="button" disabled={versionBusy} onClick={() => restoreVersion(version)}>Restore</button>}
+                      </div>
                     </div>
                   );
                 })}
