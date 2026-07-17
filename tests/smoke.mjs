@@ -663,19 +663,21 @@ async function run() {
     }
 
     {
-      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", hash: "/chapters-pages", workspaceSeriesId: "2" });
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", hash: "/chapters-pages" });
       await page.locator('[data-testid="chapter-series-select"]').waitFor();
+      await page.locator('[data-testid="chapter-series-select"]').selectOption("2");
       assert.equal(await page.locator('[data-testid="chapter-series-select"]').inputValue(), "2");
-      await navigate(page, "/manuscripts");
+      assert.equal(await page.evaluate(() => sessionStorage.getItem("activeSeriesId")), "2", "Series selection must be saved immediately");
+      await page.locator(".sidebar").getByRole("button", { name: "Manuscripts", exact: true }).click();
       await page.locator('[data-testid="manuscript-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="manuscript-series-select"]').inputValue(), "2", "Manuscripts must retain the active series");
-      await navigate(page, "/canvas-workspace");
+      await page.locator(".sidebar").getByRole("button", { name: "Canvas Workspace", exact: true }).click();
       await page.locator('[data-testid="canvas-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="canvas-series-select"]').inputValue(), "2", "Canvas must retain the active series");
-      await navigate(page, "/schedule");
+      await page.locator(".sidebar").getByRole("button", { name: "Schedule", exact: true }).click();
       await page.locator('[data-testid="schedule-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Schedule must retain the active series");
-      await navigate(page, "/chapters-pages");
+      await page.locator(".sidebar").getByRole("button", { name: "Chapters & Pages", exact: true }).click();
       await page.locator('[data-testid="chapter-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="chapter-series-select"]').inputValue(), "2", "Chapters & Pages must restore the active series after navigation");
       assert.deepEqual(pageErrors, []);
@@ -684,16 +686,31 @@ async function run() {
     }
 
     {
-      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Admin", hash: "/schedule", workspaceSeriesId: "2" });
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Admin", hash: "/schedule" });
       await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      await page.locator('[data-testid="schedule-series-select"]').selectOption("2");
       assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2");
-      await navigate(page, "/dashboard");
+      await page.locator(".sidebar").getByRole("button", { name: "Dashboard", exact: true }).click();
       await waitText(page, "Admin Dashboard");
-      await navigate(page, "/schedule");
+      await page.locator(".sidebar").getByRole("button", { name: "Deadlines", exact: true }).click();
       await page.locator('[data-testid="schedule-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Admin Deadlines must retain the selected series");
       assert.deepEqual(pageErrors, []);
       passed.push("Admin Deadlines retains the selected series after leaving and returning");
+      await context.close();
+    }
+
+    {
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/schedule" });
+      await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      await page.locator('[data-testid="schedule-series-select"]').selectOption("2");
+      await page.locator(".sidebar").getByRole("button", { name: "Dashboard", exact: true }).click();
+      await waitText(page, "Tantou Editor Dashboard");
+      await page.locator(".sidebar").getByRole("button", { name: "Schedule", exact: true }).click();
+      await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Tantou Schedule must retain the selected series");
+      assert.deepEqual(pageErrors, []);
+      passed.push("Tantou Schedule retains the selected series after navigation");
       await context.close();
     }
 

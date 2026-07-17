@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api, hasRole, roleLabel } from "../api/client";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
 import { navigate } from "../utils/router";
 import { connectNotificationStream } from "../utils/notificationStream";
+import { withWorkspaceSelection } from "../utils/workspaceRoute";
 
 function roleGroup(role = "") {
   if (hasRole(role, ["admin"])) return "admin";
@@ -118,6 +120,7 @@ function hasInlinePageHeader(pathname = "") {
 
 export function Layout({ children, route }) {
   const { session, profile, logout } = useAuth();
+  const { selection: workspaceSelection } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const group = roleGroup(role);
   const brand = brandForRole(role);
@@ -127,6 +130,7 @@ export function Layout({ children, route }) {
   const initials = (displayUsername || brand.avatar).slice(0, 2).toUpperCase();
   const isEditor = active.startsWith("/workspace/");
   const showRouteHeader = !isEditor && !hasInlinePageHeader(route.pathname);
+  const openRoute = (path) => navigate(withWorkspaceSelection(path, workspaceSelection));
 
   return (
     <div className={`app-shell ${group}-screen feature-screen`}>
@@ -149,7 +153,7 @@ export function Layout({ children, route }) {
             return (
               <button
                 key={`${item.path}-${item.label}-${index}`}
-                onClick={() => navigate(item.path)}
+                onClick={() => openRoute(item.path)}
                 className={isActive ? "nav-item active" : "nav-item"}
               >
                 <i>{item.icon}</i>
@@ -172,7 +176,7 @@ export function Layout({ children, route }) {
           <div className="topbar-left">
             <strong>{topbarBrand(group)}</strong>
             {topbarLinks(group).map((item) => (
-              <button key={item.path} onClick={() => navigate(item.path)}>{item.label}</button>
+              <button key={item.path} onClick={() => openRoute(item.path)}>{item.label}</button>
             ))}
           </div>
           <div className="topbar-right">

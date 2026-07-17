@@ -108,7 +108,7 @@ function renderPage(route, role) {
   if (route.pathname === "/board-review") return <EditorialBoardReviewPage />;
   if (route.pathname === "/admin-review") return <AdminReviewPage />;
   if (route.pathname === "/review-legacy") return <ReviewPage />;
-  if (route.pathname === "/schedule") return <SchedulePage />;
+  if (route.pathname === "/schedule") return <SchedulePage initialSeriesId={route.params.get("seriesId") || ""} />;
 
   const seriesMatch = matchRoute(route.parts, "/series/:seriesId");
   if (seriesMatch) {

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, hasRole, mediaUrlFrom, roleLabel } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
 import { navigate } from "../utils/router";
+import { withWorkspaceSelection } from "../utils/workspaceRoute";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
 function safeDashboardCall(promise, fallback = [], timeoutMs = 7000) {
@@ -132,6 +134,8 @@ export default function DashboardPage() {
 }
 
 function MangakaDashboard({ data, onSeriesUpdated }) {
+  const { selection: workspaceSelection } = useWorkspaceSelection();
+  const openWorkspace = (path) => navigate(withWorkspaceSelection(path, workspaceSelection));
   const activeSeries = data.series.filter((item) => String(item.status || "").toUpperCase() !== "ARCHIVED");
   const [seriesActionId, setSeriesActionId] = useState("");
   const [seriesMessage, setSeriesMessage] = useState("");
@@ -181,10 +185,10 @@ function MangakaDashboard({ data, onSeriesUpdated }) {
             </div>
             <div className="quick-actions-grid">
               <button className="action-btn" onClick={() => navigate("/series")}><i>＋</i><span>+ New Series</span></button>
-              <button className="action-btn" onClick={() => navigate("/chapters-pages")}><i>▧</i><span>Chapters</span></button>
-              <button className="action-btn" onClick={() => navigate("/canvas-workspace")}><i>□</i><span>Canvas</span></button>
+              <button className="action-btn" onClick={() => openWorkspace("/chapters-pages")}><i>▧</i><span>Chapters</span></button>
+              <button className="action-btn" onClick={() => openWorkspace("/canvas-workspace")}><i>□</i><span>Canvas</span></button>
               <button className="action-btn" onClick={() => navigate("/tasks?tab=kanban")}><i>▤</i><span>Kanban</span></button>
-              <button className="action-btn" onClick={() => navigate("/schedule")}><i>◷</i><span>Schedule</span></button>
+              <button className="action-btn" onClick={() => openWorkspace("/schedule")}><i>◷</i><span>Schedule</span></button>
               <button className="action-btn" onClick={() => navigate("/assistant-review")}><i>☰</i><span>Review</span></button>
             </div>
           </div>
@@ -209,6 +213,8 @@ function MangakaDashboard({ data, onSeriesUpdated }) {
 }
 
 function AssistantDashboard({ data, profile, session }) {
+  const { selection: workspaceSelection } = useWorkspaceSelection();
+  const openWorkspace = (path) => navigate(withWorkspaceSelection(path, workspaceSelection));
   const doing = data.tasks.filter((task) => /doing|progress/i.test(String(task.status || "")));
   const review = data.tasks.filter((task) => /review/i.test(String(task.status || "")));
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
@@ -246,7 +252,7 @@ function AssistantDashboard({ data, profile, session }) {
 
         <aside>
           <div className="ast-side-card">
-            <div className="activity-header"><h3>Upcoming Deadlines</h3><button className="btn btn-small" onClick={() => navigate("/schedule")}>Calendar</button></div>
+            <div className="activity-header"><h3>Upcoming Deadlines</h3><button className="btn btn-small" onClick={() => openWorkspace("/schedule")}>Calendar</button></div>
             <AssistantDeadlineList deadlines={data.deadlines || []} />
           </div>
           <div className="ast-side-card">
@@ -254,7 +260,7 @@ function AssistantDashboard({ data, profile, session }) {
             <div className="ast-quick-grid">
               <button className="ast-quick-btn" onClick={() => navigate("/resources")}><i>□</i>Resources</button>
               <button className="ast-quick-btn" onClick={() => navigate("/tasks?tab=assignments")}><i>☁</i>Submit Work</button>
-              <button className="ast-quick-btn" onClick={() => navigate("/schedule")}><i>◷</i>Schedule</button>
+              <button className="ast-quick-btn" onClick={() => openWorkspace("/schedule")}><i>◷</i>Schedule</button>
               <button className="ast-quick-btn" onClick={() => navigate("/profile")}><i>◎</i>Profile</button>
             </div>
           </div>

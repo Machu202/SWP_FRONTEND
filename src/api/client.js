@@ -206,7 +206,9 @@ export function setWorkspaceSelection(next = {}) {
 export function preferredWorkspaceSeriesId(seriesList = [], { explicitSeriesId = "", currentSeriesId = "" } = {}) {
   const list = Array.isArray(seriesList) ? seriesList : unwrapList(seriesList);
   const remembered = getWorkspaceSelection().seriesId;
-  const candidates = [explicitSeriesId, currentSeriesId, remembered]
+  // A route parameter represents an intentional navigation. Otherwise the
+  // shared tab selection must win over a page's stale/default local state.
+  const candidates = [explicitSeriesId, remembered, currentSeriesId]
     .map((value) => String(value || ""))
     .filter(Boolean);
   for (const candidate of candidates) {

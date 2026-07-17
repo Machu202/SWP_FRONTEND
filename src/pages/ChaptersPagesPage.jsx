@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, seriesDisplayNumber, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, resolveMediaUrl, setWorkspaceSelection } from "../api/client";
+import { api, seriesDisplayNumber, extractMediaUrl, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, resolveMediaUrl } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { navigate } from "../utils/router";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
+import { navigate, replaceRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
 function pageNumber(page) {
@@ -31,11 +32,11 @@ function isReviewableSeries(series) {
 
 export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const { profile, session } = useAuth();
+  const { selection: rememberedSelection, selectSeries, updateSelection } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const canEdit = hasRole(role, ["mangaka"]);
   const isTantou = hasRole(role, ["tantou"]);
 
-  const rememberedSelection = getWorkspaceSelection();
   const [seriesList, setSeriesList] = useState([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || rememberedSelection.seriesId || ""));
   const [selectedChapterId, setSelectedChapterId] = useState(String(rememberedSelection.chapterId || ""));
@@ -55,6 +56,13 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
     () => chapters.find((chapter) => String(chapter.id) === String(selectedChapterId)),
     [chapters, selectedChapterId]
   );
+
+  function handleSeriesChange(value) {
+    const nextSeriesId = String(value || "");
+    selectSeries(nextSeriesId);
+    setSelectedSeriesId(nextSeriesId);
+    replaceRoute(nextSeriesId ? `/chapters-pages?seriesId=${nextSeriesId}` : "/chapters-pages");
+  }
 
   async function loadSeriesList() {
     setLoading(true);
@@ -123,13 +131,13 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
 
   useEffect(() => {
     loadSelectedSeries(selectedSeriesId);
-    if (selectedSeriesId) setWorkspaceSelection({ seriesId: selectedSeriesId, chapterId: "", pageId: "" });
+    if (selectedSeriesId) updateSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadPages(selectedChapterId);
-    if (selectedChapterId) setWorkspaceSelection({ chapterId: selectedChapterId, pageId: "" });
+    if (selectedChapterId) updateSelection({ chapterId: selectedChapterId, pageId: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 
@@ -285,7 +293,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
           <h3>Select Series</h3>
           <div className="form-group">
             <label>Manga Series</label>
-            <select className="form-control" data-testid="chapter-series-select" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
+            <select className="form-control" data-testid="chapter-series-select" value={selectedSeriesId} onChange={(event) => handleSeriesChange(event.target.value)}>
               <option value="">Choose series</option>
               {seriesList.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
             </select>
