@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, resolveMediaUrl, setWorkspaceSelection, unwrapList } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, resolveMediaUrl, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { navigate } from "../utils/router";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
+import { navigate, replaceRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 import ScriptEditor from "../components/ScriptEditor";
 
@@ -97,15 +98,15 @@ function canvasOriginalSize(canvas, selectedPage, imageSize) {
   };
 }
 
-export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapterId = "", initialPageId = "" }) {
+export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapterId = "", initialPageId = "", initialFeedbackId = "" }) {
   const { profile, session } = useAuth();
+  const { selection: rememberedSelection, selectSeries, updateSelection } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const canEdit = hasRole(role, ["mangaka"]);
   const isTantou = hasRole(role, ["tantou"]);
   const canDraw = canEdit || isTantou;
   const imageRef = useRef(null);
   const wrapRef = useRef(null);
-  const rememberedSelection = getWorkspaceSelection();
 
   const [seriesList, setSeriesList] = useState([]);
   const [chapters, setChapters] = useState([]);
@@ -156,6 +157,28 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const displayedHitboxes = isViewingHistoricalVersion ? viewedVersionHitboxes : hitboxes;
   const compareVersion = versions.find((version) => String(version.id) === String(compareVersionId));
   const compareImageUrl = mediaUrlFrom(compareVersion, compareVersion?.imageUrl, compareVersion?.image_url);
+
+  function handleSeriesChange(value) {
+    const nextSeriesId = String(value || "");
+    selectSeries(nextSeriesId);
+    setSelectedSeriesId(nextSeriesId);
+    setSelectedChapterId("");
+    setSelectedPageId("");
+    replaceRoute(nextSeriesId ? `/canvas-workspace?seriesId=${nextSeriesId}` : "/canvas-workspace");
+  }
+
+  function handleChapterChange(value) {
+    const nextChapterId = String(value || "");
+    updateSelection({ chapterId: nextChapterId, pageId: "" });
+    setSelectedChapterId(nextChapterId);
+    setSelectedPageId("");
+  }
+
+  function handlePageChange(value) {
+    const nextPageId = String(value || "");
+    updateSelection({ pageId: nextPageId });
+    setSelectedPageId(nextPageId);
+  }
 
   async function loadSeriesList() {
     setLoading(true);
@@ -278,16 +301,20 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         originalWidth: canvasData?.originalWidth || canvasData?.original_width || fallbackWidth,
         originalHeight: canvasData?.originalHeight || canvasData?.original_height || fallbackHeight
       });
-      setHitboxes(isTantou
+      const loadedHitboxes = isTantou
         ? mergeHitboxLists(overlayData)
-        : mergeHitboxLists(overlayData, canvasData?.hitboxes));
+        : mergeHitboxLists(overlayData, canvasData?.hitboxes);
+      setHitboxes(loadedHitboxes);
       setVersions(Array.isArray(versionData) ? versionData : versionData?.content || versionData?.data || []);
       setViewedVersionId("");
       setViewedVersionHitboxes([]);
       setCompareVersionId("");
       setCompareVersionHitboxes([]);
       setComparePosition(50);
-      setSelectedBox(null);
+      const requestedFeedback = isTantou && initialFeedbackId
+        ? loadedHitboxes.find((item) => String(item.id) === String(initialFeedbackId))
+        : null;
+      setSelectedBox(requestedFeedback || null);
       setDraftBox(null);
       setFeedbackContent("");
       setDragStart(null);
@@ -308,13 +335,13 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   useEffect(() => {
     loadChapters(selectedSeriesId);
-    if (selectedSeriesId) setWorkspaceSelection({ seriesId: selectedSeriesId });
+    if (selectedSeriesId) updateSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadPages(selectedChapterId);
-    if (selectedChapterId) setWorkspaceSelection({ chapterId: selectedChapterId });
+    if (selectedChapterId) updateSelection({ chapterId: selectedChapterId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 
@@ -350,7 +377,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   useEffect(() => {
     loadCanvas(selectedPageId);
-    if (selectedPageId) setWorkspaceSelection({ pageId: selectedPageId });
+    if (selectedPageId) updateSelection({ pageId: selectedPageId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPageId]);
 
@@ -364,6 +391,12 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     if (nextPageId && nextPageId !== selectedPageId) setSelectedPageId(nextPageId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSeriesId, initialChapterId, initialPageId]);
+
+  useEffect(() => {
+    if (!isTantou || !initialFeedbackId) return;
+    const requestedFeedback = hitboxes.find((item) => String(item.id) === String(initialFeedbackId));
+    if (requestedFeedback) setSelectedBox(requestedFeedback);
+  }, [initialFeedbackId, hitboxes, isTantou]);
 
   useEffect(() => {
     if (!selectedPageId || !selectedPage) return;
@@ -752,19 +785,19 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
             ? "Draw independent feedback areas for the assigned chapter. These annotations do not create Mangaka task hitboxes."
             : "Open a manga page, draw hitboxes, and create tasks for Assistants."}</p>
         </div>
-        <button className="btn-outline" onClick={() => navigate(isTantou ? "/tantou-review" : "/chapters-pages")}>{isTantou ? "Back to Chapter Review" : "Manage Chapters"}</button>
+        <button className="btn-outline" onClick={() => navigate(isTantou ? `/tantou-review?seriesId=${selectedSeriesId}` : `/chapters-pages?seriesId=${selectedSeriesId}`)}>{isTantou ? "Back to Chapter Review" : "Manage Chapters"}</button>
       </div>
 
       <div className={`toolbar-row canvas-toolbar-row ${isTantou && seriesList.length === 0 ? "workspace-unavailable" : ""}`}>
-        <select className="form-control" data-testid="canvas-series-select" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
+        <select className="form-control" data-testid="canvas-series-select" value={selectedSeriesId} onChange={(event) => handleSeriesChange(event.target.value)}>
           <option value="">Choose series</option>
           {seriesList.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
-        <select className="form-control" data-testid="canvas-chapter-select" value={selectedChapterId} onChange={(event) => setSelectedChapterId(event.target.value)} disabled={!selectedSeriesId}>
+        <select className="form-control" data-testid="canvas-chapter-select" value={selectedChapterId} onChange={(event) => handleChapterChange(event.target.value)} disabled={!selectedSeriesId}>
           <option value="">Choose chapter</option>
           {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</option>)}
         </select>
-        <select className="form-control" data-testid="canvas-page-select" value={selectedPageId} onChange={(event) => setSelectedPageId(event.target.value)} disabled={!selectedChapterId}>
+        <select className="form-control" data-testid="canvas-page-select" value={selectedPageId} onChange={(event) => handlePageChange(event.target.value)} disabled={!selectedChapterId}>
           <option value="">Choose page</option>
           {pages.map((page) => <option key={page.id} value={page.id}>Page {pageNumber(page)}</option>)}
         </select>
@@ -785,8 +818,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
           pages={pages}
           selectedChapterId={selectedChapterId}
           selectedPageId={selectedPageId}
-          onChapterChange={setSelectedChapterId}
-          onPageChange={setSelectedPageId}
+          onChapterChange={handleChapterChange}
+          onPageChange={handlePageChange}
         />
         <div className="card-box">
           <div className="section-title-row"><h3>{isTantou ? "Feedback Canvas" : "Canvas"}</h3><span className="muted-note">{isViewingHistoricalVersion ? `Viewing Version ${viewedVersion?.versionNumber || viewedVersion?.version_number || viewedVersion?.id} · read only` : selectedPageId ? (isTantou ? "Drag on the image to draw an independent feedback area" : "Drag on image to draw a hitbox") : "Select a page to start"}</span></div>

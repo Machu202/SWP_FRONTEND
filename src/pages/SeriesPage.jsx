@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
@@ -31,6 +32,7 @@ function seriesOpenPath(role, series) {
 
 export default function SeriesPage() {
   const { profile, session } = useAuth();
+  const { selectSeries } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const [series, setSeries] = useState([]);
   const [status, setStatus] = useState("");
@@ -206,6 +208,11 @@ export default function SeriesPage() {
     setPendingDelete({ item, name: item.title || `Series #${item.id}` });
   }
 
+  function openSeries(item) {
+    selectSeries(item?.id);
+    navigate(seriesOpenPath(role, item));
+  }
+
   async function confirmDeleteSeries() {
     if (!pendingDelete?.item?.id || deleting) return;
 
@@ -346,7 +353,7 @@ export default function SeriesPage() {
             <div className="stack" key={group}>
               <h3 className="group-title">{group}</h3>
               <div className="series-grid">
-                {items.map((item) => <SeriesCard key={item.id} series={item} role={role} canDelete={canDelete} onDelete={requestDeleteSeries} />)}
+                {items.map((item) => <SeriesCard key={item.id} series={item} canDelete={canDelete} onDelete={requestDeleteSeries} onOpen={openSeries} />)}
               </div>
             </div>
           ))}
@@ -364,11 +371,11 @@ export default function SeriesPage() {
   );
 }
 
-function SeriesCard({ series, role, canDelete, onDelete }) {
+function SeriesCard({ series, canDelete, onDelete, onOpen }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   return (
     <div className="list-card series-card series-card-with-actions" data-testid={`series-card-${series.id}`}>
-      <button className="series-card-main" onClick={() => navigate(seriesOpenPath(role, series))}>
+      <button className="series-card-main" onClick={() => onOpen(series)}>
         <div className="list-card-img series-cover">
           {cover ? <img src={cover} alt={series.title} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}
         </div>
@@ -380,7 +387,7 @@ function SeriesCard({ series, role, canDelete, onDelete }) {
       </button>
       {canDelete && (
         <div className="list-card-actions series-card-actions">
-          <button className="btn btn-small" onClick={() => navigate(seriesOpenPath(role, series))}>Open</button>
+          <button className="btn btn-small" onClick={() => onOpen(series)}>Open</button>
           <button className="btn btn-small btn-danger" onClick={() => onDelete(series)}>Delete</button>
         </div>
       )}

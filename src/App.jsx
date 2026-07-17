@@ -92,6 +92,7 @@ function renderPage(route, role) {
         initialSeriesId={route.params.get("seriesId") || ""}
         initialChapterId={route.params.get("chapterId") || ""}
         initialPageId={route.params.get("pageId") || ""}
+        initialFeedbackId={route.params.get("feedbackId") || ""}
       />
     );
   }
@@ -103,12 +104,18 @@ function renderPage(route, role) {
   if (route.pathname === "/profile") return <ProfilePage />;
   if (route.pathname === "/admin/users") return <AdminUsersPage />;
   if (route.pathname === "/admin/system") return <SystemPage />;
-  if (route.pathname === "/assistant-review") return <MangakaAssistantReviewPage />;
+  if (route.pathname === "/assistant-review") return (
+    <MangakaAssistantReviewPage
+      initialTab={route.params.get("tab") || "tantou"}
+      initialSeriesId={route.params.get("seriesId") || ""}
+      initialFeedbackId={route.params.get("feedbackId") || ""}
+    />
+  );
   if (route.pathname === "/tantou-review") return <TantouReviewPage />;
   if (route.pathname === "/board-review") return <EditorialBoardReviewPage />;
   if (route.pathname === "/admin-review") return <AdminReviewPage />;
   if (route.pathname === "/review-legacy") return <ReviewPage />;
-  if (route.pathname === "/schedule") return <SchedulePage />;
+  if (route.pathname === "/schedule") return <SchedulePage initialSeriesId={route.params.get("seriesId") || ""} />;
 
   const seriesMatch = matchRoute(route.parts, "/series/:seriesId");
   if (seriesMatch) {

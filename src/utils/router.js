@@ -9,6 +9,12 @@ export function navigate(path) {
   window.location.hash = path.startsWith("/") ? path : `/${path}`;
 }
 
+export function replaceRoute(path) {
+  const target = path.startsWith("/") ? path : `/${path}`;
+  const nextHash = `#${target}`;
+  if (window.location.hash !== nextHash) window.location.replace(nextHash);
+}
+
 export function useHashRoute() {
   const [hash, setHash] = useState(currentHash);
 

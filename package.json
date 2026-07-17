@@ -13,7 +13,7 @@
     "start": "npm run dev",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "test": "npm run build && node tests/session-storage-contract.mjs && node tests/public-registration-security-contract.mjs && node tests/user-facing-message-contract.mjs && node tests/role-navigation-theme-contract.mjs && node tests/latest-restore-notification-layout-contract.mjs && node tests/feature-contract.mjs && node tests/reported-issues-contract.mjs && node tests/smoke.mjs",
+    "test": "npm run build && node tests/session-storage-contract.mjs && node tests/public-registration-security-contract.mjs && node tests/user-facing-message-contract.mjs && node tests/role-navigation-theme-contract.mjs && node tests/latest-restore-notification-layout-contract.mjs && node tests/workspace-selection-persistence.mjs && node tests/feedback-notification-branding-contract.mjs && node tests/feature-contract.mjs && node tests/reported-issues-contract.mjs && node tests/smoke.mjs",
     "e2e:real": "node tests/real-data-e2e.mjs --final=approve",
     "e2e:real:cleanup": "node tests/real-data-e2e.mjs --final=reject",
     "e2e:real:headed": "node tests/real-data-e2e.mjs --final=approve --headed",

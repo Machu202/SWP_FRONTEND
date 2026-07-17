@@ -16,6 +16,7 @@ const imageCurrent = svg("CURRENT", "dbeafe");
 const imageOld = svg("VERSION 1", "fef3c7");
 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 const nextWeek = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+const notificationReceivedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 const smokeToken = `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.${Buffer.from(JSON.stringify({ sub: "smoke-user", exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url")}.signature`;
 const expiredSmokeToken = `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.${Buffer.from(JSON.stringify({ sub: "expired-user", exp: Math.floor(Date.now() / 1000) - 60 })).toString("base64url")}.signature`;
 
@@ -24,6 +25,7 @@ const fixtures = {
   imageOld,
   tomorrow,
   nextWeek,
+  notificationReceivedAt,
   series: [
     { id: 1, title: "Ink Horizon", status: "REVIEWING", genre: "Action", summary: "A test manga series.", description: "Smoke-test production data.", mangakaName: "Mika", tantouId: null, tantouName: "Unassigned", coverImageUrl: imageCurrent },
     { id: 2, title: "Rejected Revision", status: "REJECTED", genre: "Drama", summary: "Needs another Board review cycle.", description: "Rejected smoke-test series.", mangakaName: "Mika", tantouId: 4, tantouName: "Taro Editor", coverImageUrl: imageOld }
@@ -259,7 +261,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (path === "/deadlines/series/1" && method === "POST") return response({ id: 52, eventName: url.searchParams.get("eventName"), deadlineDateStr: url.searchParams.get("deadlineDateStr") });
       if (/^\/deadlines\/\d+$/.test(path) && method === "DELETE") return response(null, 204);
 
-      if (path === "/notifications/unread") return response([{ id: 61, message: "Task updated", createdAt: f.tomorrow }]);
+      if (path === "/notifications/unread") return response([{ id: 61, message: "Task updated", createdAt: f.notificationReceivedAt }]);
       if (path === "/notifications/61/read") return response({ id: 61, read: true });
       if (path === "/telemetry/series/1") return response({ pageViews: 120, activeReaders: 18, completionRate: 74 });
 
@@ -297,7 +299,7 @@ async function run() {
   try {
     {
       const { context, page, pageErrors } = await bootstrapApp(browser, { hash: "/login" });
-      await waitText(page, "MangaSystem");
+      await waitText(page, "Manga Creation Workflow and Publishing Management System");
       assert.equal(await page.locator("#login-password").getAttribute("type"), "password");
       await page.getByRole("button", { name: "Show password" }).click();
       assert.equal(await page.locator("#login-password").getAttribute("type"), "text");
@@ -316,7 +318,7 @@ async function run() {
 
     {
       const { context, page, pageErrors } = await bootstrapApp(browser, { legacyRole: "Mangaka", hash: "/dashboard" });
-      await waitText(page, "MangaSystem");
+      await waitText(page, "Manga Creation Workflow and Publishing Management System");
       const storageState = await page.evaluate(() => ({
         legacyToken: localStorage.getItem("accessToken"),
         tabToken: sessionStorage.getItem("accessToken")
@@ -329,7 +331,7 @@ async function run() {
 
     {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", token: expiredSmokeToken, hash: "/dashboard" });
-      await waitText(page, "MangaSystem");
+      await waitText(page, "Manga Creation Workflow and Publishing Management System");
       assert.equal(await page.evaluate(() => sessionStorage.getItem("accessToken")), null);
       assert.deepEqual(pageErrors, []);
       passed.push("Expired tab JWT is cleared and redirected to Login");
@@ -399,6 +401,11 @@ async function run() {
       await waitText(page, "Workflow KPI charts");
       await page.getByTitle("Notifications").click();
       await waitText(page, "Task updated");
+      const notificationTime = page.locator('[data-testid="notification-time"]').first();
+      await notificationTime.waitFor({ state: "visible" });
+      assert.equal(await notificationTime.evaluate((element) => element.tagName), "SMALL");
+      assert.match((await notificationTime.textContent()) || "", /^5m ago$/);
+      assert.equal(await notificationTime.getAttribute("title"), fixtures.notificationReceivedAt);
       assert.equal(await page.getByText("polling", { exact: true }).count(), 0, "Technical connection state must not be shown");
       await page.getByTitle("Notifications").click();
       await page.getByRole("button", { name: "Series", exact: true }).last().click();
@@ -663,19 +670,21 @@ async function run() {
     }
 
     {
-      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", hash: "/chapters-pages", workspaceSeriesId: "2" });
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", hash: "/chapters-pages" });
       await page.locator('[data-testid="chapter-series-select"]').waitFor();
+      await page.locator('[data-testid="chapter-series-select"]').selectOption("2");
       assert.equal(await page.locator('[data-testid="chapter-series-select"]').inputValue(), "2");
-      await navigate(page, "/manuscripts");
+      assert.equal(await page.evaluate(() => sessionStorage.getItem("activeSeriesId")), "2", "Series selection must be saved immediately");
+      await page.locator(".sidebar").getByRole("button", { name: "Manuscripts", exact: true }).click();
       await page.locator('[data-testid="manuscript-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="manuscript-series-select"]').inputValue(), "2", "Manuscripts must retain the active series");
-      await navigate(page, "/canvas-workspace");
+      await page.locator(".sidebar").getByRole("button", { name: "Canvas Workspace", exact: true }).click();
       await page.locator('[data-testid="canvas-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="canvas-series-select"]').inputValue(), "2", "Canvas must retain the active series");
-      await navigate(page, "/schedule");
+      await page.locator(".sidebar").getByRole("button", { name: "Schedule", exact: true }).click();
       await page.locator('[data-testid="schedule-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Schedule must retain the active series");
-      await navigate(page, "/chapters-pages");
+      await page.locator(".sidebar").getByRole("button", { name: "Chapters & Pages", exact: true }).click();
       await page.locator('[data-testid="chapter-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="chapter-series-select"]').inputValue(), "2", "Chapters & Pages must restore the active series after navigation");
       assert.deepEqual(pageErrors, []);
@@ -684,16 +693,31 @@ async function run() {
     }
 
     {
-      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Admin", hash: "/schedule", workspaceSeriesId: "2" });
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Admin", hash: "/schedule" });
       await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      await page.locator('[data-testid="schedule-series-select"]').selectOption("2");
       assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2");
-      await navigate(page, "/dashboard");
+      await page.locator(".sidebar").getByRole("button", { name: "Dashboard", exact: true }).click();
       await waitText(page, "Admin Dashboard");
-      await navigate(page, "/schedule");
+      await page.locator(".sidebar").getByRole("button", { name: "Deadlines", exact: true }).click();
       await page.locator('[data-testid="schedule-series-select"]').waitFor();
       assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Admin Deadlines must retain the selected series");
       assert.deepEqual(pageErrors, []);
       passed.push("Admin Deadlines retains the selected series after leaving and returning");
+      await context.close();
+    }
+
+    {
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/schedule" });
+      await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      await page.locator('[data-testid="schedule-series-select"]').selectOption("2");
+      await page.locator(".sidebar").getByRole("button", { name: "Dashboard", exact: true }).click();
+      await waitText(page, "Tantou Editor Dashboard");
+      await page.locator(".sidebar").getByRole("button", { name: "Schedule", exact: true }).click();
+      await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Tantou Schedule must retain the selected series");
+      assert.deepEqual(pageErrors, []);
+      passed.push("Tantou Schedule retains the selected series after navigation");
       await context.close();
     }
 
@@ -712,9 +736,14 @@ async function run() {
     }
 
     {
-      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/canvas-workspace?seriesId=1&chapterId=10&pageId=100" });
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/canvas-workspace?seriesId=1&chapterId=10&pageId=100&feedbackId=1001" });
       await waitText(page, "Tantou Review Canvas");
       await page.locator('[data-testid="canvas-draw-surface"]').waitFor({ state: "visible" });
+      const linkedFeedback = page.locator(".saved-hitbox-row.active");
+      await linkedFeedback.waitFor({ state: "visible" });
+      await waitText(linkedFeedback, "Strengthen the panel border.");
+      assert.equal(await page.locator(".tantou-feedback-box.active").count(), 1, "The notification deep-link must select the exact Tantou feedback area");
+      assert.match(await page.evaluate(() => location.hash), /seriesId=1&chapterId=10&pageId=100&feedbackId=1001/);
       const surface = await page.locator('[data-testid="canvas-draw-surface"]').boundingBox();
       assert.ok(surface, "Tantou feedback canvas must be visible");
       await page.mouse.move(surface.x + surface.width * 0.62, surface.y + surface.height * 0.62);
