@@ -27,6 +27,9 @@ const rememberedCredentials = read("src/utils/rememberedCredentials.js");
 const feedbackController = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/controller/TantouFeedbackController.java");
 const feedbackService = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/service/impl/TantouFeedbackServiceImpl.java");
 const coordinateOverlay = read("src/components/CoordinateImageOverlay.jsx");
+const main = read("src/main.jsx");
+const workspaceSelectionContext = read("src/context/WorkspaceSelectionContext.jsx");
+const workspaceRoute = read("src/utils/workspaceRoute.js");
 
 // 1. One real Mangaka chapter/page and canvas workflow.
 assert.match(app, /\/chapters-pages\?seriesId=/);
@@ -127,10 +130,14 @@ assert.doesNotMatch(rememberedCredentials, /localStorage\.setItem\([^,]+,\s*norm
 // 21. All cross-workspace pages retain the selected series in tab-scoped storage.
 assert.match(client, /getWorkspaceSelection/);
 assert.match(client, /setWorkspaceSelection/);
-assert.match(manuscripts, /setWorkspaceSelection\(\{ seriesId: selectedSeriesId \}\)/);
-assert.match(chaptersPages, /setWorkspaceSelection\(\{ seriesId: selectedSeriesId/);
-assert.match(canvas, /setWorkspaceSelection\(\{ seriesId: selectedSeriesId \}\)/);
-assert.match(schedule, /setWorkspaceSelection\(\{ seriesId \}\)/);
+assert.match(main, /WorkspaceSelectionProvider/);
+assert.match(workspaceSelectionContext, /selectSeries/);
+assert.match(workspaceRoute, /"\/manuscripts"[\s\S]*"\/chapters-pages"[\s\S]*"\/canvas-workspace"[\s\S]*"\/schedule"/);
+assert.match(layout, /withWorkspaceSelection\(path, workspaceSelection\)/);
+assert.match(manuscripts, /handleSeriesChange[\s\S]*selectSeries\(nextSeriesId\)/);
+assert.match(chaptersPages, /handleSeriesChange[\s\S]*selectSeries\(nextSeriesId\)/);
+assert.match(canvas, /handleSeriesChange[\s\S]*selectSeries\(nextSeriesId\)/);
+assert.match(schedule, /handleSeriesChange[\s\S]*selectSeries\(nextSeriesId\)/);
 
 
 // 22. Every role displays a consistent {ROLE} Workspace title in the top-left branding.

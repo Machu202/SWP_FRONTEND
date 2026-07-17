@@ -347,8 +347,8 @@ function buildChapterHandoffs(chapters, allTasks, selectedSeriesId) {
     .sort((a, b) => Number(a.seriesId || 0) - Number(b.seriesId || 0) || Number(a.chapterNumber || 0) - Number(b.chapterNumber || 0));
 }
 
-export default function MangakaAssistantReviewPage() {
-  const [activeTab, setActiveTab] = useState("tantou");
+export default function MangakaAssistantReviewPage({ initialTab = "tantou", initialSeriesId = "", initialFeedbackId = "" }) {
+  const [activeTab, setActiveTab] = useState(initialTab === "assistant" ? "assistant" : "tantou");
   const [series, setSeries] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -356,7 +356,7 @@ export default function MangakaAssistantReviewPage() {
   const [tantouUsers, setTantouUsers] = useState([]);
   const [selectedTantouBySeries, setSelectedTantouBySeries] = useState({});
   const [feedbackItems, setFeedbackItems] = useState([]);
-  const [selectedSeriesId, setSelectedSeriesId] = useState("");
+  const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || ""));
   const [feedbackStatus, setFeedbackStatus] = useState("open");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -392,6 +392,11 @@ export default function MangakaAssistantReviewPage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    setActiveTab(initialTab === "assistant" ? "assistant" : "tantou");
+    if (initialSeriesId) setSelectedSeriesId(String(initialSeriesId));
+  }, [initialTab, initialSeriesId]);
+
   const filteredTasks = useMemo(() => {
     if (!selectedSeriesId) return tasks;
     return tasks.filter((task) => String(task.seriesId) === String(selectedSeriesId));
@@ -425,6 +430,14 @@ export default function MangakaAssistantReviewPage() {
       })
       .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
   }, [feedbackItems, feedbackStatus, selectedSeriesId]);
+
+  useEffect(() => {
+    if (loading || !initialFeedbackId || activeTab !== "tantou") return;
+    const expectedTestId = `tantou-feedback-${initialFeedbackId}`;
+    const target = Array.from(document.querySelectorAll("[data-testid]"))
+      .find((element) => element.getAttribute("data-testid") === expectedTestId);
+    target?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  }, [activeTab, filteredFeedback.length, initialFeedbackId, loading]);
 
   async function updateTask(task, status, successText) {
     setError("");

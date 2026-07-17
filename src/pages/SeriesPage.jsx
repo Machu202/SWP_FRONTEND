@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, extractMediaUrl, hasRole, mediaUrlFrom } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
@@ -31,6 +32,7 @@ function seriesOpenPath(role, series) {
 
 export default function SeriesPage() {
   const { profile, session } = useAuth();
+  const { selectSeries } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const [series, setSeries] = useState([]);
   const [status, setStatus] = useState("");
@@ -44,6 +46,12 @@ export default function SeriesPage() {
   const [message, setMessage] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingSeries, setEditingSeries] = useState(null);
+  const [editForm, setEditForm] = useState({ ...DEFAULT_SERIES });
+  const [editCoverFile, setEditCoverFile] = useState(null);
+  const [editCoverPreview, setEditCoverPreview] = useState("");
+  const [editCoverObjectUrl, setEditCoverObjectUrl] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const canCreate = hasRole(role, ["mangaka"]);
   const canDelete = hasRole(role, ["mangaka", "admin"]);
@@ -81,6 +89,10 @@ export default function SeriesPage() {
   useEffect(() => () => {
     if (coverPreview) URL.revokeObjectURL(coverPreview);
   }, [coverPreview]);
+
+  useEffect(() => () => {
+    if (editCoverObjectUrl) URL.revokeObjectURL(editCoverObjectUrl);
+  }, [editCoverObjectUrl]);
 
   function updateForm(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -204,6 +216,100 @@ export default function SeriesPage() {
   function requestDeleteSeries(item) {
     if (!item?.id || !canDelete) return;
     setPendingDelete({ item, name: item.title || `Series #${item.id}` });
+  }
+
+  function openSeries(item) {
+    selectSeries(item?.id);
+    navigate(seriesOpenPath(role, item));
+  }
+
+  function openEditSeries(item) {
+    if (!canCreate || !item?.id) return;
+    if (editCoverObjectUrl) URL.revokeObjectURL(editCoverObjectUrl);
+    setEditingSeries(item);
+    setEditForm({
+      title: item.title || "",
+      genre: item.genre || "",
+      summary: item.summary || "",
+      description: item.description || "",
+      status: item.status || "DRAFT",
+      coverImageUrl: extractMediaUrl(item)
+    });
+    setEditCoverFile(null);
+    setEditCoverObjectUrl("");
+    setEditCoverPreview(mediaUrlFrom(item));
+    setError("");
+    setMessage("");
+  }
+
+  function closeEditSeries() {
+    if (editSaving) return;
+    if (editCoverObjectUrl) URL.revokeObjectURL(editCoverObjectUrl);
+    setEditingSeries(null);
+    setEditCoverFile(null);
+    setEditCoverObjectUrl("");
+    setEditCoverPreview("");
+  }
+
+  function handleEditCoverChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Cover must be an image file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Cover image must be 10MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+    if (editCoverObjectUrl) URL.revokeObjectURL(editCoverObjectUrl);
+    const objectUrl = URL.createObjectURL(file);
+    setEditCoverFile(file);
+    setEditCoverObjectUrl(objectUrl);
+    setEditCoverPreview(objectUrl);
+    setError("");
+  }
+
+  async function saveSeriesProfile(event) {
+    event.preventDefault();
+    if (!editingSeries?.id || editSaving) return;
+    setError("");
+    setMessage("");
+    if (!editForm.title.trim() || !editForm.genre.trim()) {
+      setError("Title and genre are required.");
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      let coverImageUrl = editForm.coverImageUrl;
+      if (editCoverFile) {
+        const uploaded = await api.resources.upload(editCoverFile, "SERIES_COVER");
+        coverImageUrl = extractMediaUrl(uploaded);
+        if (!coverImageUrl) throw new Error("The cover could not be prepared. Please choose the image again.");
+      }
+
+      const updated = await api.series.update(editingSeries.id, {
+        title: editForm.title.trim(),
+        genre: editForm.genre.trim(),
+        summary: editForm.summary.trim(),
+        description: editForm.description.trim(),
+        coverImageUrl
+      });
+      setSeries((old) => old.map((item) => String(item.id) === String(editingSeries.id) ? { ...item, ...updated } : item));
+      setMessage(`Updated ${updated?.title || editForm.title.trim()}.`);
+      if (editCoverObjectUrl) URL.revokeObjectURL(editCoverObjectUrl);
+      setEditingSeries(null);
+      setEditCoverFile(null);
+      setEditCoverObjectUrl("");
+      setEditCoverPreview("");
+    } catch (err) {
+      setError(err.message || "Could not update the manga profile.");
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function confirmDeleteSeries() {
@@ -346,7 +452,7 @@ export default function SeriesPage() {
             <div className="stack" key={group}>
               <h3 className="group-title">{group}</h3>
               <div className="series-grid">
-                {items.map((item) => <SeriesCard key={item.id} series={item} role={role} canDelete={canDelete} onDelete={requestDeleteSeries} />)}
+                {items.map((item) => <SeriesCard key={item.id} series={item} canDelete={canDelete} canEdit={canCreate} onDelete={requestDeleteSeries} onOpen={openSeries} onEdit={openEditSeries} />)}
               </div>
             </div>
           ))}
@@ -360,15 +466,25 @@ export default function SeriesPage() {
         onCancel={() => !deleting && setPendingDelete(null)}
         onConfirm={confirmDeleteSeries}
       />
+      <EditSeriesModal
+        series={editingSeries}
+        form={editForm}
+        coverPreview={editCoverPreview}
+        busy={editSaving}
+        onChange={(field, value) => setEditForm((old) => ({ ...old, [field]: value }))}
+        onCoverChange={handleEditCoverChange}
+        onCancel={closeEditSeries}
+        onSubmit={saveSeriesProfile}
+      />
     </section>
   );
 }
 
-function SeriesCard({ series, role, canDelete, onDelete }) {
+function SeriesCard({ series, canDelete, canEdit, onDelete, onOpen, onEdit }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   return (
     <div className="list-card series-card series-card-with-actions" data-testid={`series-card-${series.id}`}>
-      <button className="series-card-main" onClick={() => navigate(seriesOpenPath(role, series))}>
+      <button className="series-card-main" onClick={() => onOpen(series)}>
         <div className="list-card-img series-cover">
           {cover ? <img src={cover} alt={series.title} /> : <span>{(series.title || "M").slice(0, 1).toUpperCase()}</span>}
         </div>
@@ -378,12 +494,59 @@ function SeriesCard({ series, role, canDelete, onDelete }) {
           <small>{series.genre || "Unknown genre"} {series.mangakaName ? `• ${series.mangakaName}` : ""}</small>
         </div>
       </button>
-      {canDelete && (
+      {(canDelete || canEdit) && (
         <div className="list-card-actions series-card-actions">
-          <button className="btn btn-small" onClick={() => navigate(seriesOpenPath(role, series))}>Open</button>
-          <button className="btn btn-small btn-danger" onClick={() => onDelete(series)}>Delete</button>
+          <button className="btn btn-small" onClick={() => onOpen(series)}>Open</button>
+          {canDelete && <button className="btn btn-small btn-danger" onClick={() => onDelete(series)}>Delete</button>}
+          {canEdit && <button className="btn btn-small edit-manga-profile-button" data-testid={`edit-manga-profile-${series.id}`} onClick={() => onEdit(series)}>Edit Manga Profile</button>}
         </div>
       )}
+    </div>
+  );
+}
+
+function EditSeriesModal({ series, form, coverPreview, busy, onChange, onCoverChange, onCancel, onSubmit }) {
+  if (!series) return null;
+  const customGenre = form.genre && !GENRES.includes(form.genre) ? form.genre : "";
+
+  return (
+    <div className="feature-modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <form className="feature-modal-card edit-series-modal" role="dialog" aria-modal="true" aria-labelledby="edit-series-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={onSubmit}>
+        <div>
+          <p className="eyebrow">Manga series profile</p>
+          <h3 id="edit-series-title">Edit Manga Profile</h3>
+        </div>
+        <div className="edit-series-form-grid">
+          <label className="form-group">Title
+            <input className="form-control" data-testid="edit-series-title-input" value={form.title} onChange={(event) => onChange("title", event.target.value)} required />
+          </label>
+          <label className="form-group">Genre
+            <select className="form-control" data-testid="edit-series-genre-input" value={form.genre} onChange={(event) => onChange("genre", event.target.value)} required>
+              <option value="">Select genre</option>
+              {customGenre && <option value={customGenre}>{customGenre}</option>}
+              {GENRES.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="form-group">Summary
+          <textarea className="form-control" data-testid="edit-series-summary-input" rows="3" value={form.summary} onChange={(event) => onChange("summary", event.target.value)} />
+        </label>
+        <label className="form-group">Description
+          <textarea className="form-control" data-testid="edit-series-description-input" rows="5" value={form.description} onChange={(event) => onChange("description", event.target.value)} />
+        </label>
+        <div className="form-group">
+          <label>Cover image</label>
+          <label className="edit-series-cover-picker">
+            {coverPreview ? <img src={coverPreview} alt={`${form.title || "Series"} cover preview`} /> : <span>Choose a new cover image</span>}
+            <input type="file" accept="image/*" data-testid="edit-series-cover-input" onChange={onCoverChange} />
+          </label>
+          <small>Choose a file only when you want to replace the current cover.</small>
+        </div>
+        <div className="button-row modal-actions">
+          <button className="btn" type="button" disabled={busy} onClick={onCancel}>Cancel</button>
+          <button className="btn btn-primary" data-testid="save-manga-profile" type="submit" disabled={busy}>{busy ? "Saving..." : "Save Manga Profile"}</button>
+        </div>
+      </form>
     </div>
   );
 }

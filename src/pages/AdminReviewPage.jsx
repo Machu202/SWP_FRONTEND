@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { api, seriesDisplayNumber } from "../api/client";
-import { navigate } from "../utils/router";
+import { navigate, useHashRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
+import { SeriesReviewDetails } from "./EditorialBoardReviewPage";
 
 export default function AdminReviewPage() {
+  const route = useHashRoute();
+  const requestedSeriesId = route.params.get("seriesId") || "";
   const [series, setSeries] = useState([]);
   const [summaries, setSummaries] = useState({});
   const [tantous, setTantous] = useState([]);
   const [selectedTantou, setSelectedTantou] = useState({});
+  const [tantouAssignments, setTantouAssignments] = useState({});
+  const [expandedSeriesId, setExpandedSeriesId] = useState(requestedSeriesId);
+  const [details, setDetails] = useState({});
+  const [detailLoading, setDetailLoading] = useState({});
+  const [detailErrors, setDetailErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -19,13 +27,20 @@ export default function AdminReviewPage() {
     setError("");
     setMessage("");
     try {
-      const [reviewing, tantouUsers] = await Promise.all([
+      const [reviewing, tantouUsers, allSeries] = await Promise.all([
         api.series.list({ status: "REVIEWING", size: 100 }).catch(async () => api.series.list({ size: 100 })),
-        api.users.byRole("Tantou Editor").catch(() => [])
+        api.users.byRole("Tantou Editor").catch(() => []),
+        api.series.list({ size: 100 }).catch(() => [])
       ]);
       const queue = (reviewing || []).filter((item) => String(item.status || "").toUpperCase() === "REVIEWING");
       setSeries(queue);
       setTantous(tantouUsers || []);
+      const occupied = {};
+      (allSeries || []).forEach((item) => {
+        const tantouId = item.tantouId ?? item.tantou_id ?? item.tantou?.id;
+        if (tantouId) occupied[String(tantouId)] = item.id;
+      });
+      setTantouAssignments(occupied);
       const nextSummaries = {};
       await Promise.all(queue.slice(0, 40).map(async (item) => {
         nextSummaries[item.id] = await api.votes.summary(item.id).catch(() => null);
@@ -39,6 +54,50 @@ export default function AdminReviewPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!requestedSeriesId) return;
+    setExpandedSeriesId(String(requestedSeriesId));
+    loadSeriesDetails(requestedSeriesId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedSeriesId]);
+
+  async function loadSeriesDetails(seriesId) {
+    const key = String(seriesId);
+    if (details[key] || detailLoading[key]) return;
+    setDetailLoading((old) => ({ ...old, [key]: true }));
+    setDetailErrors((old) => ({ ...old, [key]: "" }));
+    try {
+      const [seriesDetail, chapterList] = await Promise.all([
+        api.series.get(seriesId),
+        api.chapters.bySeries(seriesId).catch(() => [])
+      ]);
+      const chapters = await Promise.all((chapterList || []).map(async (chapter) => {
+        const [pages, script] = await Promise.all([
+          api.pages.byChapter(chapter.id).catch(() => []),
+          api.chapterScripts.get(chapter.id).catch(() => null)
+        ]);
+        return { ...chapter, pages: pages || [], script };
+      }));
+      setDetails((old) => ({ ...old, [key]: { series: seriesDetail, chapters } }));
+    } catch (err) {
+      setDetailErrors((old) => ({ ...old, [key]: err.message || "Could not load series details." }));
+    } finally {
+      setDetailLoading((old) => ({ ...old, [key]: false }));
+    }
+  }
+
+  function toggleSeriesDetails(seriesId) {
+    const key = String(seriesId);
+    const isClosing = String(expandedSeriesId) === key;
+    setExpandedSeriesId(isClosing ? "" : key);
+    if (isClosing) {
+      navigate("/admin-review");
+    } else {
+      loadSeriesDetails(seriesId);
+      navigate(`/admin-review?seriesId=${seriesId}`);
+    }
+  }
 
   async function decide(seriesId, approved) {
     setDeciding(true);
@@ -87,10 +146,16 @@ export default function AdminReviewPage() {
                 item={item}
                 summary={summaries[item.id]}
                 tantous={tantous}
+                tantouAssignments={tantouAssignments}
                 selectedTantou={selectedTantou[item.id] || ""}
                 onTantouChange={(value) => setSelectedTantou((old) => ({ ...old, [item.id]: value }))}
                 onApprove={() => setPendingDecision({ item, approved: true, summary: summaries[item.id] })}
                 onReject={() => setPendingDecision({ item, approved: false, summary: summaries[item.id] })}
+                expanded={String(expandedSeriesId) === String(item.id)}
+                detail={details[String(item.id)]}
+                detailLoading={Boolean(detailLoading[String(item.id)])}
+                detailError={detailErrors[String(item.id)] || ""}
+                onToggleDetails={toggleSeriesDetails}
               />
             ))}
           </div>
@@ -148,10 +213,10 @@ function AdminDecisionModal({ decision, tantouLabel, busy, onCancel, onConfirm }
   );
 }
 
-function AdminDecisionRow({ item, summary, tantous, selectedTantou, onTantouChange, onApprove, onReject }) {
+function AdminDecisionRow({ item, summary, tantous, tantouAssignments, selectedTantou, onTantouChange, onApprove, onReject, expanded, detail, detailLoading, detailError, onToggleDetails }) {
   return (
-    <div className="review-row admin-review-row" data-testid={`admin-series-${item.id}`}>
-      <button className="review-main review-clickable" onClick={() => navigate(`/series/${item.id}`)}>
+    <div className={expanded ? "review-row admin-review-row admin-review-expanded" : "review-row admin-review-row"} data-testid={`admin-series-${item.id}`}>
+      <button className="review-main review-clickable" onClick={() => onToggleDetails(item.id)} aria-expanded={expanded}>
         <div className="row-between">
           <div>
             <p className="eyebrow">Series #{seriesDisplayNumber(item)}</p>
@@ -175,14 +240,21 @@ function AdminDecisionRow({ item, summary, tantous, selectedTantou, onTantouChan
         </div>
         <select data-testid="admin-tantou-select" value={selectedTantou} onChange={(event) => onTantouChange(event.target.value)}>
           <option value="">Keep / assign Tantou optionally</option>
-          {tantous.map((user) => <option key={user.id} value={user.id}>{displayUserName(user)}</option>)}
+          {tantous.map((user) => {
+            const occupiedSeriesId = tantouAssignments[String(user.id)];
+            const occupiedElsewhere = occupiedSeriesId && String(occupiedSeriesId) !== String(item.id);
+            return <option key={user.id} value={user.id} disabled={Boolean(occupiedElsewhere)}>{displayUserName(user)}{occupiedElsewhere ? " — already assigned" : ""}</option>;
+          })}
         </select>
         <div className="button-row vertical-buttons">
           <button className="btn btn-primary" data-testid="admin-approve" onClick={onApprove}>Admin approve</button>
           <button className="btn btn-danger" onClick={onReject}>Admin reject</button>
-          <button className="btn" onClick={() => navigate(`/series/${item.id}`)}>Open details</button>
+          <button className="btn" data-testid={`admin-open-series-${item.id}`} onClick={() => onToggleDetails(item.id)}>{expanded ? "Close Series" : "Open Series"}</button>
         </div>
       </div>
+      {expanded ? (
+        <SeriesReviewDetails item={item} detail={detail} loading={detailLoading} error={detailError} />
+      ) : null}
     </div>
   );
 }

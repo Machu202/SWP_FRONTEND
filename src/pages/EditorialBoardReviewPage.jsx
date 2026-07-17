@@ -177,7 +177,7 @@ function BoardVoteRow({ item, summary, onVote, expanded, detail, detailLoading, 
       </div>
 
       {expanded ? (
-        <BoardSeriesDetails
+        <SeriesReviewDetails
           item={item}
           detail={detail}
           loading={detailLoading}
@@ -188,7 +188,7 @@ function BoardVoteRow({ item, summary, onVote, expanded, detail, detailLoading, 
   );
 }
 
-function BoardSeriesDetails({ item, detail, loading, error }) {
+export function SeriesReviewDetails({ item, detail, loading, error }) {
   if (loading) {
     return <div className="board-series-details"><LoadingBlock label="Loading chapters and pages..." /></div>;
   }
@@ -210,7 +210,8 @@ function BoardSeriesDetails({ item, detail, loading, error }) {
         <div>
           <p className="eyebrow">Complete series review</p>
           <h3>{series.title}</h3>
-          <p>{series.description || series.summary || "No description provided."}</p>
+          <p><strong>Summary:</strong> {series.summary || "No summary provided."}</p>
+          {series.description ? <p><strong>Description:</strong> {series.description}</p> : null}
           <div className="meta-row wrap">
             <StatusBadge value={series.status} />
             <span>{chapters.length} chapter(s)</span>

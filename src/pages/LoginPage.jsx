@@ -238,7 +238,11 @@ export default function LoginPage() {
 
       <div className="right-panel login-panel">
         <div className="form-container">
-          <h1 className="logo">MangaSystem</h1>
+          <h1 className="logo login-system-title" aria-label="Manga Creation Workflow & Publishing Management System">
+            <span>Manga Creation Workflow</span>
+            <span className="login-title-ampersand">&amp;</span>
+            <span>Publishing Management System</span>
+          </h1>
 
           {mode !== "register" && (
             <div className="tabs" id="login-tabs">

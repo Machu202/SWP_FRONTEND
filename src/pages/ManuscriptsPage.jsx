@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, setWorkspaceSelection } from "../api/client";
+import { api, extractMediaUrl, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { navigate } from "../utils/router";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
+import { navigate, replaceRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 import ScriptEditor from "../components/ScriptEditor";
 
@@ -23,10 +24,10 @@ function pageImage(page) {
 
 export default function ManuscriptsPage({ initialSeriesId = "" }) {
   const { profile, session } = useAuth();
+  const { selection: rememberedSelection, selectSeries, updateSelection } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const canEdit = hasRole(role, ["mangaka"]);
 
-  const rememberedSelection = getWorkspaceSelection();
   const [seriesList, setSeriesList] = useState([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || rememberedSelection.seriesId || ""));
   const [chapters, setChapters] = useState([]);
@@ -50,6 +51,13 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
   );
   const selectedPages = selectedChapterId ? (pagesByChapter[selectedChapterId] || []) : [];
   const selectedPage = selectedPages.find((page) => String(page.id) === String(selectedPageId)) || selectedPages[0] || null;
+
+  function handleSeriesChange(value) {
+    const nextSeriesId = String(value || "");
+    selectSeries(nextSeriesId);
+    setSelectedSeriesId(nextSeriesId);
+    replaceRoute(nextSeriesId ? `/manuscripts?seriesId=${nextSeriesId}` : "/manuscripts");
+  }
 
   async function loadSeriesList() {
     setLoading(true);
@@ -117,13 +125,13 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
 
   useEffect(() => {
     loadChapters(selectedSeriesId);
-    if (selectedSeriesId) setWorkspaceSelection({ seriesId: selectedSeriesId });
+    if (selectedSeriesId) updateSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadScript(selectedChapterId);
-    if (selectedChapterId) setWorkspaceSelection({ chapterId: selectedChapterId });
+    if (selectedChapterId) updateSelection({ chapterId: selectedChapterId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 
@@ -132,7 +140,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
   }, [selectedChapterId, pagesByChapter]);
 
   useEffect(() => {
-    if (selectedPageId) setWorkspaceSelection({ pageId: selectedPageId });
+    if (selectedPageId) updateSelection({ pageId: selectedPageId });
   }, [selectedPageId]);
 
   async function saveScript() {
@@ -169,11 +177,11 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
           <h1>Manuscripts</h1>
           <p>Browse chapters, page files, and chapter scripts.</p>
         </div>
-        <button className="btn-outline" onClick={() => navigate("/chapters-pages")}>Manage Chapters</button>
+        <button className="btn-outline" onClick={() => navigate(selectedSeriesId ? `/chapters-pages?seriesId=${selectedSeriesId}` : "/chapters-pages")}>Manage Chapters</button>
       </div>
 
       <div className="toolbar-row manuscript-toolbar">
-        <select className="form-control" data-testid="manuscript-series-select" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
+        <select className="form-control" data-testid="manuscript-series-select" value={selectedSeriesId} onChange={(event) => handleSeriesChange(event.target.value)}>
           <option value="">Choose series</option>
           {seriesList.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>

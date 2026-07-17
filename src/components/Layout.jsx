@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api, hasRole, roleLabel } from "../api/client";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
 import { navigate } from "../utils/router";
 import { connectNotificationStream } from "../utils/notificationStream";
+import { withWorkspaceSelection } from "../utils/workspaceRoute";
 
 function roleGroup(role = "") {
   if (hasRole(role, ["admin"])) return "admin";
@@ -27,6 +29,7 @@ function navForRole(role) {
     return [
       { path: "/dashboard", label: "Dashboard", icon: "▦" },
       { path: "/board-review", label: "Voting Center", icon: "⚖" },
+      { path: "/board-vote-history", label: "My Vote History", icon: "◴" },
       { path: "/schedule", label: "Schedule", icon: "◷" }
     ];
   }
@@ -89,6 +92,7 @@ function topbarLinks(group) {
   ];
   if (group === "board") return [
     { path: "/board-review", label: "Vote Queue" },
+    { path: "/board-vote-history", label: "Vote History" },
     { path: "/schedule", label: "Schedule" },
     { path: "/profile", label: "Profile" }
   ];
@@ -118,6 +122,7 @@ function hasInlinePageHeader(pathname = "") {
 
 export function Layout({ children, route }) {
   const { session, profile, logout } = useAuth();
+  const { selection: workspaceSelection } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const group = roleGroup(role);
   const brand = brandForRole(role);
@@ -127,6 +132,7 @@ export function Layout({ children, route }) {
   const initials = (displayUsername || brand.avatar).slice(0, 2).toUpperCase();
   const isEditor = active.startsWith("/workspace/");
   const showRouteHeader = !isEditor && !hasInlinePageHeader(route.pathname);
+  const openRoute = (path) => navigate(withWorkspaceSelection(path, workspaceSelection));
 
   return (
     <div className={`app-shell ${group}-screen feature-screen`}>
@@ -149,7 +155,7 @@ export function Layout({ children, route }) {
             return (
               <button
                 key={`${item.path}-${item.label}-${index}`}
-                onClick={() => navigate(item.path)}
+                onClick={() => openRoute(item.path)}
                 className={isActive ? "nav-item active" : "nav-item"}
               >
                 <i>{item.icon}</i>
@@ -172,7 +178,7 @@ export function Layout({ children, route }) {
           <div className="topbar-left">
             <strong>{topbarBrand(group)}</strong>
             {topbarLinks(group).map((item) => (
-              <button key={item.path} onClick={() => navigate(item.path)}>{item.label}</button>
+              <button key={item.path} onClick={() => openRoute(item.path)}>{item.label}</button>
             ))}
           </div>
           <div className="topbar-right">
@@ -285,7 +291,7 @@ function NotificationBell({ userId }) {
               {items.map((item) => (
                 <button key={item.id} type="button" className="notification-item" onClick={() => markRead(item)}>
                   <span>{item.message || item.content || `Notification #${item.id}`}</span>
-                  <small title={item.createdAt || item.created_at || ""}>{formatNotificationTime(item.createdAt || item.created_at)}</small>
+                  <small className="notification-time" data-testid="notification-time" title={item.createdAt || item.created_at || ""}>{formatNotificationTime(item.createdAt || item.created_at)}</small>
                 </button>
               ))}
             </div>
@@ -321,6 +327,7 @@ function pageTitle(pathname, role) {
   if (pathname.startsWith("/assistant-review")) return "Review";
   if (pathname.startsWith("/tantou-review")) return "Chapter Review Queue";
   if (pathname.startsWith("/board-review")) return "Editorial Voting";
+  if (pathname.startsWith("/board-vote-history")) return "My Vote History";
   if (pathname.startsWith("/admin-review")) return "Final Approval Console";
   if (pathname.startsWith("/series")) return hasRole(role, ["mangaka"]) ? "My Series" : "Manga Series";
   if (pathname.startsWith("/tasks")) return "Kanban Board";
@@ -343,6 +350,7 @@ function pageSubtitle(pathname, role, username = "") {
   if (pathname.startsWith("/assistant-review")) return "Review Tantou feedback, add comments, and check assistant submissions.";
   if (pathname.startsWith("/tantou-review")) return "Review assigned pages and leave annotation feedback.";
   if (pathname.startsWith("/board-review")) return "Cast approval or rejection votes for submitted manga series.";
+  if (pathname.startsWith("/board-vote-history")) return "Review every vote cast by this Editorial Board account.";
   if (pathname.startsWith("/admin-review")) return "Board results and final publishing decisions.";
   if (pathname.startsWith("/schedule")) return "Publishing schedules and deadline events.";
   return `Logged in as ${username || roleLabel(role)}.`;

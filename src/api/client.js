@@ -206,7 +206,9 @@ export function setWorkspaceSelection(next = {}) {
 export function preferredWorkspaceSeriesId(seriesList = [], { explicitSeriesId = "", currentSeriesId = "" } = {}) {
   const list = Array.isArray(seriesList) ? seriesList : unwrapList(seriesList);
   const remembered = getWorkspaceSelection().seriesId;
-  const candidates = [explicitSeriesId, currentSeriesId, remembered]
+  // A route parameter represents an intentional navigation. Otherwise the
+  // shared tab selection must win over a page's stale/default local state.
+  const candidates = [explicitSeriesId, remembered, currentSeriesId]
     .map((value) => String(value || ""))
     .filter(Boolean);
   for (const candidate of candidates) {
@@ -395,8 +397,11 @@ export async function apiFetch(path, options = {}) {
   const payload = await parseResponse(response);
 
   if (!response.ok) {
-    const message = friendlyRequestMessage(payload, response.status);
-    if (response.status === 401) {
+    const isPasswordLogin = path === "/auth/login";
+    const message = response.status === 401 && isPasswordLogin
+      ? "Username or password is incorrect, please try again!"
+      : friendlyRequestMessage(payload, response.status);
+    if (response.status === 401 && !isPasswordLogin) {
       clearSession();
       window.dispatchEvent(new CustomEvent("swp-auth-invalidated", {
         detail: { message }
@@ -556,7 +561,8 @@ export const api = {
 
   votes: {
     summary: (seriesId) => apiFetch(`/votes/series/${seriesId}/summary`),
-    cast: (seriesId, isApproved) => apiFetch(`/votes/series/${seriesId}${objectToQuery({ isApproved })}`, { method: "POST" })
+    cast: (seriesId, isApproved) => apiFetch(`/votes/series/${seriesId}${objectToQuery({ isApproved })}`, { method: "POST" }),
+    history: async () => unwrapList(await apiFetch("/votes/my-history"))
   },
 
   schedules: {

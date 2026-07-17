@@ -258,7 +258,7 @@ async function auditRoute(key, label, route, snapshot) {
       addIssue({ severity, role: visit.role, route, code, message, detail });
     };
 
-    if (/\/login(?:$|[?#])/.test(new URL(metrics.href).hash.replace(/^#/, "")) || metrics.bodyText.includes("Sign in to MangaSystem")) {
+    if (/\/login(?:$|[?#])/.test(new URL(metrics.href).hash.replace(/^#/, "")) || metrics.bodyText.includes("Publishing Management System")) {
       issue("ERROR", "UNEXPECTED_LOGIN_REDIRECT", "Authenticated role was redirected to the login page.");
     }
     if (/Page not found|This review screen is for another role/i.test(metrics.bodyText)) {

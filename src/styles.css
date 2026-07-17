@@ -6374,6 +6374,16 @@ a, button { color: inherit; }
 .right-panel.login-panel { flex: 0 0 50%; display: flex; align-items: center; justify-content: center; background: #fff; }
 .form-container { width: 100%; max-width: 400px; padding: 20px; }
 .logo { text-align: center; color: #6366f1; font-size: 32px; font-weight: 800; margin-bottom: 25px; }
+.login-system-title {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  font-size: clamp(21px, 2vw, 28px);
+  line-height: 1.18;
+  text-align: center;
+}
+.login-system-title > span { display: block; width: 100%; text-align: center; }
+.login-system-title .login-title-ampersand { font-size: .9em; line-height: 1; }
 .tabs { display: flex; background: #e5e7eb; border-radius: 8px; padding: 4px; margin-bottom: 25px; }
 .tab { flex: 1; border: 0; background: transparent; padding: 10px 0; font-size: 13px; font-weight: 700; color: #4b5563; border-radius: 6px; text-align: center; }
 .tab.active { background: #fff; color: #111827; box-shadow: 0 2px 4px rgba(0,0,0,.08); }
@@ -7829,7 +7839,26 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   flex-shrink: 0;
   align-self: stretch;
   align-items: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
 }
+.series-card-actions .edit-manga-profile-button { grid-column: 1 / -1; white-space: nowrap; }
+.edit-series-modal { width: min(680px, 100%); }
+.edit-series-form-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(180px, .8fr); gap: 14px; }
+.edit-series-cover-picker {
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+}
+.edit-series-cover-picker img { max-width: 100%; max-height: 260px; object-fit: contain; display: block; }
+.edit-series-cover-picker input { display: none; }
 
 .chapter-delete-row {
   padding: 0;
@@ -7893,6 +7922,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
     border-top: 1px solid var(--border-color);
     padding: 12px 0 0;
   }
+  .edit-series-form-grid { grid-template-columns: 1fr; }
 }
 
 /* Canvas hitbox persistence/visibility fix */
@@ -8573,6 +8603,11 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 .notification-empty {
   color: #64748b;
   font-size: 12px;
+}
+
+.notification-item .notification-time {
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .notification-empty {
@@ -10883,6 +10918,10 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   border-color: color-mix(in srgb, var(--role-accent) 48%, var(--border-color));
   box-shadow: 0 12px 28px rgba(120, 53, 15, .12);
 }
+.admin-review-row.admin-review-expanded {
+  border-color: color-mix(in srgb, #ea580c 46%, var(--border-color));
+  box-shadow: 0 12px 28px rgba(154, 52, 18, .12);
+}
 .board-series-details {
   grid-column: 1 / -1;
   display: grid;
@@ -11066,3 +11105,39 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   white-space: nowrap;
 }
 .workspace-unavailable { display: none !important; }
+
+/* Editorial Board personal vote history */
+.vote-history-list { display: grid; gap: 12px; }
+.vote-history-card {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--role-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--role-paper) 94%, white);
+}
+.vote-history-cover {
+  width: 86px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--role-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--role-accent-dark);
+  font-size: 28px;
+  font-weight: 900;
+}
+.vote-history-cover img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.vote-history-content { min-width: 0; display: grid; gap: 8px; }
+.vote-history-content h3, .vote-history-content p { margin: 0; }
+.vote-history-decision { font-weight: 900; }
+.vote-history-decision.approved { color: #047857; }
+.vote-history-decision.rejected { color: #b91c1c; }
+@media (max-width: 760px) {
+  .vote-history-card { grid-template-columns: 70px minmax(0, 1fr); }
+  .vote-history-cover { width: 70px; height: 96px; }
+}

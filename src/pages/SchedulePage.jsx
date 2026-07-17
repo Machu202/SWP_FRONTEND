@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, getWorkspaceSelection, hasRole, preferredWorkspaceSeriesId, setWorkspaceSelection, unwrapList } from "../api/client";
+import { api, hasRole, preferredWorkspaceSeriesId, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
+import { replaceRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock } from "../components/Status";
 
 function itemDate(item) {
@@ -49,14 +51,15 @@ function warningLabel(value) {
   return { overdue: "Overdue", danger: "Due within 48h", warning: "Due this week", success: "On track", muted: "No valid date" }[level];
 }
 
-export default function SchedulePage() {
+export default function SchedulePage({ initialSeriesId = "" }) {
   const { profile, session } = useAuth();
+  const { selection: rememberedSelection, selectSeries, updateSelection } = useWorkspaceSelection();
   const role = profile?.roleName || session.role;
   const canManage = hasRole(role, ["mangaka"]);
   const isTantou = hasRole(role, ["tantou"]);
   const isAssistant = hasRole(role, ["assistant"]);
   const [series, setSeries] = useState([]);
-  const [seriesId, setSeriesId] = useState(() => String(getWorkspaceSelection().seriesId || ""));
+  const [seriesId, setSeriesId] = useState(() => String(initialSeriesId || rememberedSelection.seriesId || ""));
   const [schedules, setSchedules] = useState([]);
   const [deadlines, setDeadlines] = useState([]);
   const [monthCursor, setMonthCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -65,6 +68,13 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  function handleSeriesChange(value) {
+    const nextSeriesId = String(value || "");
+    selectSeries(nextSeriesId);
+    setSeriesId(nextSeriesId);
+    replaceRoute(nextSeriesId ? `/schedule?seriesId=${nextSeriesId}` : "/schedule");
+  }
 
   async function loadSeries() {
     setLoading(true);
@@ -88,7 +98,7 @@ export default function SchedulePage() {
         list = unwrapList(await api.series.list({ size: 100 }));
       }
       setSeries(list);
-      setSeriesId((current) => preferredWorkspaceSeriesId(list, { currentSeriesId: current }));
+      setSeriesId((current) => preferredWorkspaceSeriesId(list, { explicitSeriesId: initialSeriesId, currentSeriesId: current }));
     } catch (err) {
       setError(err.message || "Could not load series list");
     } finally {
@@ -117,7 +127,15 @@ export default function SchedulePage() {
 
   useEffect(() => { loadSeries(); }, [canManage, isTantou, isAssistant, profile?.id, session.id]);
   useEffect(() => {
-    if (seriesId) setWorkspaceSelection({ seriesId });
+    const nextSeriesId = String(initialSeriesId || "");
+    if (nextSeriesId && nextSeriesId !== seriesId) {
+      selectSeries(nextSeriesId);
+      setSeriesId(nextSeriesId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSeriesId]);
+  useEffect(() => {
+    if (seriesId) updateSelection({ seriesId });
     loadSchedule(seriesId);
   }, [seriesId]);
 
@@ -192,7 +210,7 @@ export default function SchedulePage() {
 
       <div className="card toolbar">
         <div><p className="eyebrow">Schedule and deadlines</p><h3>Series calendar</h3></div>
-        <select data-testid="schedule-series-select" value={seriesId} onChange={(event) => setSeriesId(event.target.value)}>
+        <select data-testid="schedule-series-select" value={seriesId} onChange={(event) => handleSeriesChange(event.target.value)}>
           <option value="">Choose series</option>
           {series.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
