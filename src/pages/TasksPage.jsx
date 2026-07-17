@@ -3,6 +3,7 @@ import { api, extractMediaUrl, hasRole, mediaUrlFrom, normalizeTaskStatus, resol
 import { useAuth } from "../context/AuthContext";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 import { navigate, useHashRoute } from "../utils/router";
+import CoordinateImageOverlay from "../components/CoordinateImageOverlay";
 
 const COLUMNS = [
   { key: "TODO", label: "Todo" },
@@ -1004,54 +1005,22 @@ function Preview({ title, url }) {
 
 function HitboxPreview({ title, url, box, originalWidth: explicitWidth, originalHeight: explicitHeight, loading }) {
   const resolved = resolveMediaUrl(url);
-  const imageRef = useRef(null);
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    setImageSize({ width: 0, height: 0 });
-    const frame = window.requestAnimationFrame(() => {
-      const image = imageRef.current;
-      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
-      }
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [resolved]);
-
   if (!resolved) {
     return <div className="preview-box"><strong>{title}</strong><span>No image</span></div>;
   }
-
-  // Use the exact same coordinate basis as Mangaka Canvas Workspace. The
-  // image-sized frame prevents blank flex-space/object-fit bars from scaling
-  // the overlay larger than the hitbox that was actually drawn.
-  const coordinateWidth = positiveFiniteNumber(explicitWidth, imageSize.width);
-  const coordinateHeight = positiveFiniteNumber(explicitHeight, imageSize.height);
-  const overlay = overlayPercentBox(box, coordinateWidth, coordinateHeight);
   const hasBox = Boolean(box) && boxValue(box, "width", "w") > 0 && boxValue(box, "height", "h") > 0;
 
   return (
     <div className="preview-box preview-box-hitbox">
       <strong>{title}</strong>
-      <div className="preview-image-stage">
-        <div className="preview-image-frame">
-          <img
-            ref={imageRef}
-            src={resolved}
-            alt={title}
-            onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })}
-          />
-          {overlay && (
-            <div
-              className="task-hitbox-overlay"
-              data-testid="task-area-overlay"
-              style={{ left: `${overlay.left}%`, top: `${overlay.top}%`, width: `${overlay.width}%`, height: `${overlay.height}%` }}
-            >
-              <span className="task-hitbox-label">Task Area</span>
-            </div>
-          )}
-        </div>
-      </div>
+      <CoordinateImageOverlay
+        url={resolved}
+        alt={title}
+        box={box}
+        originalWidth={explicitWidth}
+        originalHeight={explicitHeight}
+        testId="task-area-overlay"
+      />
       {loading ? (
         <small className="preview-hitbox-note">Loading hitbox area…</small>
       ) : hasBox ? (

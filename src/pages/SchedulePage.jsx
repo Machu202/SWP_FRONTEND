@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, getWorkspaceSelection, hasRole, setWorkspaceSelection, unwrapList } from "../api/client";
+import { api, getWorkspaceSelection, hasRole, preferredWorkspaceSeriesId, setWorkspaceSelection, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { Alert, EmptyState, LoadingBlock } from "../components/Status";
 
@@ -31,6 +31,19 @@ function warningLevel(value) {
   return "success";
 }
 
+
+function taskSeriesId(task) {
+  return task?.seriesId ?? task?.series_id ?? task?.mangaSeriesId ?? task?.manga_series_id
+    ?? task?.series?.id ?? task?.mangaSeries?.id ?? task?.manga_series?.id
+    ?? task?.hitbox?.page?.chapter?.mangaSeries?.id ?? task?.hitbox?.page?.chapter?.manga_series?.id ?? null;
+}
+
+function taskSeriesTitle(task) {
+  return task?.seriesTitle || task?.series_title || task?.series?.title || task?.mangaSeries?.title
+    || task?.manga_series?.title || task?.hitbox?.page?.chapter?.mangaSeries?.title
+    || task?.hitbox?.page?.chapter?.manga_series?.title || "Assigned series";
+}
+
 function warningLabel(value) {
   const level = warningLevel(value);
   return { overdue: "Overdue", danger: "Due within 48h", warning: "Due this week", success: "On track", muted: "No valid date" }[level];
@@ -40,6 +53,8 @@ export default function SchedulePage() {
   const { profile, session } = useAuth();
   const role = profile?.roleName || session.role;
   const canManage = hasRole(role, ["mangaka"]);
+  const isTantou = hasRole(role, ["tantou"]);
+  const isAssistant = hasRole(role, ["assistant"]);
   const [series, setSeries] = useState([]);
   const [seriesId, setSeriesId] = useState(() => String(getWorkspaceSelection().seriesId || ""));
   const [schedules, setSchedules] = useState([]);
@@ -55,14 +70,25 @@ export default function SchedulePage() {
     setLoading(true);
     setError("");
     try {
-      const data = canManage ? await api.series.mine() : await api.series.list({ size: 100 });
-      const list = unwrapList(data);
+      let list = [];
+      if (canManage) {
+        list = unwrapList(await api.series.mine());
+      } else if (isTantou) {
+        list = unwrapList(await api.series.assigned());
+      } else if (isAssistant) {
+        const tasks = unwrapList(await api.tasks.mine().catch(() => []));
+        const unique = new Map();
+        tasks.forEach((task) => {
+          const id = taskSeriesId(task);
+          if (!id || unique.has(String(id))) return;
+          unique.set(String(id), { id, title: taskSeriesTitle(task) });
+        });
+        list = Array.from(unique.values());
+      } else {
+        list = unwrapList(await api.series.list({ size: 100 }));
+      }
       setSeries(list);
-      setSeriesId((current) => {
-        const preferred = String(current || getWorkspaceSelection().seriesId || "");
-        const preferredExists = list.some((item) => String(item.id) === preferred);
-        return String(preferredExists ? preferred : list[0]?.id || "");
-      });
+      setSeriesId((current) => preferredWorkspaceSeriesId(list, { currentSeriesId: current }));
     } catch (err) {
       setError(err.message || "Could not load series list");
     } finally {
@@ -89,9 +115,9 @@ export default function SchedulePage() {
     }
   }
 
-  useEffect(() => { loadSeries(); }, [canManage]);
+  useEffect(() => { loadSeries(); }, [canManage, isTantou, isAssistant, profile?.id, session.id]);
   useEffect(() => {
-    setWorkspaceSelection({ seriesId });
+    if (seriesId) setWorkspaceSelection({ seriesId });
     loadSchedule(seriesId);
   }, [seriesId]);
 
@@ -166,7 +192,7 @@ export default function SchedulePage() {
 
       <div className="card toolbar">
         <div><p className="eyebrow">Schedule and deadlines</p><h3>Series calendar</h3></div>
-        <select value={seriesId} onChange={(event) => setSeriesId(event.target.value)}>
+        <select data-testid="schedule-series-select" value={seriesId} onChange={(event) => setSeriesId(event.target.value)}>
           <option value="">Choose series</option>
           {series.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>

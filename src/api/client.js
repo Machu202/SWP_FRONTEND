@@ -19,6 +19,7 @@ const WORKSPACE_SELECTION_KEYS = {
   chapterId: "activeChapterId",
   pageId: "activePageId"
 };
+const WORKSPACE_SELECTION_PREFIX = "swpWorkspaceSelection";
 
 export function normalizeRole(role = "") {
   return String(role || "")
@@ -134,9 +135,24 @@ export function setSession(data = {}) {
   return getSession();
 }
 
+function workspaceSelectionScopeKey(store = sessionStore()) {
+  const userId = store.getItem("userId") || "anonymous";
+  const role = normalizeRole(store.getItem("role") || "user").replace(/[^a-z0-9]+/g, "-") || "user";
+  return `${WORKSPACE_SELECTION_PREFIX}:${userId}:${role}`;
+}
+
+function emptyWorkspaceSelection() {
+  return { seriesId: "", chapterId: "", pageId: "" };
+}
+
 export function clearSession() {
   try {
-    SESSION_KEYS.forEach((key) => sessionStore().removeItem(key));
+    const store = sessionStore();
+    SESSION_KEYS.forEach((key) => store.removeItem(key));
+    for (let index = store.length - 1; index >= 0; index -= 1) {
+      const key = store.key(index);
+      if (key && key.startsWith(`${WORKSPACE_SELECTION_PREFIX}:`)) store.removeItem(key);
+    }
   } finally {
     clearLegacyPersistentSession();
   }
@@ -145,29 +161,58 @@ export function clearSession() {
 export function getWorkspaceSelection() {
   try {
     const store = sessionStore();
-    return {
+    const scopedRaw = store.getItem(workspaceSelectionScopeKey(store));
+    if (scopedRaw) {
+      const parsed = JSON.parse(scopedRaw);
+      return {
+        seriesId: parsed?.seriesId ? String(parsed.seriesId) : "",
+        chapterId: parsed?.chapterId ? String(parsed.chapterId) : "",
+        pageId: parsed?.pageId ? String(parsed.pageId) : ""
+      };
+    }
+    const legacy = {
       seriesId: store.getItem(WORKSPACE_SELECTION_KEYS.seriesId) || "",
       chapterId: store.getItem(WORKSPACE_SELECTION_KEYS.chapterId) || "",
       pageId: store.getItem(WORKSPACE_SELECTION_KEYS.pageId) || ""
     };
+    if (legacy.seriesId || legacy.chapterId || legacy.pageId) {
+      store.setItem(workspaceSelectionScopeKey(store), JSON.stringify(legacy));
+    }
+    return legacy;
   } catch {
-    return { seriesId: "", chapterId: "", pageId: "" };
+    return emptyWorkspaceSelection();
   }
 }
 
 export function setWorkspaceSelection(next = {}) {
   try {
     const store = sessionStore();
+    const current = getWorkspaceSelection();
+    const merged = { ...current };
     Object.entries(WORKSPACE_SELECTION_KEYS).forEach(([field, key]) => {
       if (!(field in next)) return;
       const value = next[field];
-      if (value === undefined || value === null || value === "") store.removeItem(key);
-      else store.setItem(key, String(value));
+      merged[field] = value === undefined || value === null || value === "" ? "" : String(value);
+      if (merged[field]) store.setItem(key, merged[field]);
+      else store.removeItem(key);
     });
+    store.setItem(workspaceSelectionScopeKey(store), JSON.stringify(merged));
+    return merged;
   } catch {
-    // Storage can be unavailable in hardened/private browser contexts.
+    return emptyWorkspaceSelection();
   }
-  return getWorkspaceSelection();
+}
+
+export function preferredWorkspaceSeriesId(seriesList = [], { explicitSeriesId = "", currentSeriesId = "" } = {}) {
+  const list = Array.isArray(seriesList) ? seriesList : unwrapList(seriesList);
+  const remembered = getWorkspaceSelection().seriesId;
+  const candidates = [explicitSeriesId, currentSeriesId, remembered]
+    .map((value) => String(value || ""))
+    .filter(Boolean);
+  for (const candidate of candidates) {
+    if (list.some((item) => String(item?.id) === candidate)) return candidate;
+  }
+  return String(list[0]?.id || "");
 }
 
 export function objectToQuery(params = {}) {

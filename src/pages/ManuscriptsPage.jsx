@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, setWorkspaceSelection } from "../api/client";
+import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, setWorkspaceSelection } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -58,9 +58,10 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
       const data = canEdit ? await api.series.mine() : await api.series.list();
       const list = data || [];
       setSeriesList(list);
-      const preferredSeriesId = String(initialSeriesId || selectedSeriesId || getWorkspaceSelection().seriesId || "");
-      const preferredExists = list.some((item) => String(item.id) === preferredSeriesId);
-      setSelectedSeriesId(String(preferredExists ? preferredSeriesId : list[0]?.id || ""));
+      setSelectedSeriesId(preferredWorkspaceSeriesId(list, {
+        explicitSeriesId: initialSeriesId,
+        currentSeriesId: selectedSeriesId
+      }));
     } catch (err) {
       setError(err.message || "Could not load series.");
     } finally {
@@ -116,13 +117,13 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
 
   useEffect(() => {
     loadChapters(selectedSeriesId);
-    setWorkspaceSelection({ seriesId: selectedSeriesId });
+    if (selectedSeriesId) setWorkspaceSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadScript(selectedChapterId);
-    setWorkspaceSelection({ chapterId: selectedChapterId });
+    if (selectedChapterId) setWorkspaceSelection({ chapterId: selectedChapterId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 
@@ -131,7 +132,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
   }, [selectedChapterId, pagesByChapter]);
 
   useEffect(() => {
-    setWorkspaceSelection({ pageId: selectedPageId });
+    if (selectedPageId) setWorkspaceSelection({ pageId: selectedPageId });
   }, [selectedPageId]);
 
   async function saveScript() {
@@ -172,7 +173,7 @@ export default function ManuscriptsPage({ initialSeriesId = "" }) {
       </div>
 
       <div className="toolbar-row manuscript-toolbar">
-        <select className="form-control" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
+        <select className="form-control" data-testid="manuscript-series-select" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
           <option value="">Choose series</option>
           {seriesList.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>

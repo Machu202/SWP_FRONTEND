@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, resolveMediaUrl, setWorkspaceSelection, unwrapList } from "../api/client";
+import { api, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, resolveMediaUrl, setWorkspaceSelection, unwrapList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -161,20 +161,34 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setLoading(true);
     setError("");
     try {
+      const seriesRequest = canEdit
+        ? api.series.mine()
+        : isTantou
+          ? api.series.assigned()
+          : api.series.list({ size: 100 });
       const [seriesData, assistantData] = await Promise.all([
-        canEdit ? api.series.mine() : api.series.list({ size: 100 }),
+        seriesRequest,
         api.users.byRole("Assistant").catch(() => [])
       ]);
-      const rawList = unwrapList(seriesData);
-      const currentUserId = profile?.id || session.id;
-      const list = isTantou
-        ? rawList.filter((item) => String(seriesTantouId(item) || "") === String(currentUserId || ""))
-        : rawList;
+      const list = unwrapList(seriesData);
       setSeriesList(list);
       setAssistants(Array.isArray(assistantData) ? assistantData : assistantData?.content || assistantData?.data || []);
-      const preferred = String(initialSeriesId || selectedSeriesId || getWorkspaceSelection().seriesId || "");
-      const preferredExists = list.some((item) => String(item.id) === preferred);
-      setSelectedSeriesId(String(preferredExists ? preferred : list[0]?.id || ""));
+      const nextSeriesId = preferredWorkspaceSeriesId(list, {
+        explicitSeriesId: initialSeriesId,
+        currentSeriesId: selectedSeriesId
+      });
+      setSelectedSeriesId(nextSeriesId);
+      if (!nextSeriesId) {
+        setChapters([]);
+        setPages([]);
+        setSelectedChapterId("");
+        setSelectedPageId("");
+        setCanvas(null);
+        setHitboxes([]);
+        setVersions([]);
+        setViewedVersionId("");
+        setViewedVersionHitboxes([]);
+      }
     } catch (err) {
       setError(err.message || "Could not load workspace data.");
     } finally {
@@ -294,13 +308,13 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   useEffect(() => {
     loadChapters(selectedSeriesId);
-    setWorkspaceSelection({ seriesId: selectedSeriesId });
+    if (selectedSeriesId) setWorkspaceSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadPages(selectedChapterId);
-    setWorkspaceSelection({ chapterId: selectedChapterId });
+    if (selectedChapterId) setWorkspaceSelection({ chapterId: selectedChapterId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 
@@ -336,7 +350,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
 
   useEffect(() => {
     loadCanvas(selectedPageId);
-    setWorkspaceSelection({ pageId: selectedPageId });
+    if (selectedPageId) setWorkspaceSelection({ pageId: selectedPageId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPageId]);
 
@@ -741,7 +755,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         <button className="btn-outline" onClick={() => navigate(isTantou ? "/tantou-review" : "/chapters-pages")}>{isTantou ? "Back to Chapter Review" : "Manage Chapters"}</button>
       </div>
 
-      <div className="toolbar-row canvas-toolbar-row">
+      <div className={`toolbar-row canvas-toolbar-row ${isTantou && seriesList.length === 0 ? "workspace-unavailable" : ""}`}>
         <select className="form-control" data-testid="canvas-series-select" value={selectedSeriesId} onChange={(event) => setSelectedSeriesId(event.target.value)}>
           <option value="">Choose series</option>
           {seriesList.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
@@ -757,7 +771,15 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         <button className="btn-publish" onClick={() => loadCanvas(selectedPageId)} disabled={!selectedPageId}>Load Page</button>
       </div>
 
-      <div className="workspace-split canvas-static-split">
+      {isTantou && seriesList.length === 0 ? (
+        <EmptyState
+          icon="□"
+          title="No assigned series"
+          body="This Review Canvas will stay empty until a Mangaka assigns a series to this Tantou Editor."
+        />
+      ) : null}
+
+      <div className={`workspace-split canvas-static-split ${isTantou && seriesList.length === 0 ? "workspace-unavailable" : ""}`}>
         <ChapterWorkspaceSidebar
           chapters={chapters}
           pages={pages}

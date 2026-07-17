@@ -26,6 +26,7 @@ const tantouReview = read("src/pages/TantouReviewPage.jsx");
 const rememberedCredentials = read("src/utils/rememberedCredentials.js");
 const feedbackController = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/controller/TantouFeedbackController.java");
 const feedbackService = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/service/impl/TantouFeedbackServiceImpl.java");
+const coordinateOverlay = read("src/components/CoordinateImageOverlay.jsx");
 
 // 1. One real Mangaka chapter/page and canvas workflow.
 assert.match(app, /\/chapters-pages\?seriesId=/);
@@ -54,8 +55,10 @@ assert.match(layout, /Logged in as \$\{username/);
 
 // 5 and 15. Compact task-area label and reliable initial overlay measurement.
 assert.match(css, /\.task-hitbox-label[\s\S]*font-size: 9px/);
-assert.match(tasks, /imageRef\.current/);
-assert.match(tasks, /image\?\.complete && image\.naturalWidth > 0/);
+assert.match(tasks, /CoordinateImageOverlay/);
+assert.match(coordinateOverlay, /imageRef\.current/);
+assert.match(coordinateOverlay, /image\.complete \|\| image\.naturalWidth <= 0/);
+assert.match(coordinateOverlay, /getBoundingClientRect/);
 
 // 6. Per-series task numbering.
 assert.match(taskRepository, /countSeriesTasksUpToId/);
@@ -150,8 +153,9 @@ assert.match(reviewReferenceHelper, /task\?\.hitboxDto\?\.pageImageUrl/);
 
 // 25. Task Area badge is compact and no longer rendered as an oversized oval.
 assert.match(css, /SWP reported display fixes:[\s\S]*\.task-hitbox-label[\s\S]*border-radius: 4px[\s\S]*font-size: 8px/);
-assert.match(tasks, />Task Area<\/span>/);
-assert.match(mangakaReview, />Task Area<\/span>/);
+assert.match(tasks, /CoordinateImageOverlay/);
+assert.match(mangakaReview, /CoordinateImageOverlay/);
+assert.match(coordinateOverlay, /label = "Task Area"/);
 
 // 26. Manuscripts no longer duplicates page thumbnails below the script actions.
 assert.doesNotMatch(manuscripts, /manuscript-page-preview-grid/);
@@ -201,10 +205,11 @@ assert.match(seriesController, /assigned-to-me/);
 // Hitbox previews use the page's true coordinate space and the exact rendered image frame.
 assert.match(tasks, /originalWidth=\{taskPageWidth\(selected\)\}/);
 assert.match(tasks, /originalHeight=\{taskPageHeight\(selected\)\}/);
-assert.match(tasks, /className="preview-image-frame"/);
+assert.match(tasks, /CoordinateImageOverlay/);
 assert.match(mangakaReview, /originalWidth=\{taskPageWidth\(task\)\}/);
 assert.match(mangakaReview, /originalHeight=\{taskPageHeight\(task\)\}/);
-assert.match(css, /\.preview-image-frame[\s\S]*position: relative/);
+assert.match(coordinateOverlay, /getBoundingClientRect/);
+assert.match(css, /\.coordinate-image-stage[\s\S]*position: relative/);
 
 // Approving Assistant work promotes it to the live page and creates the next PageVersion.
 assert.match(taskService, /promoteApprovedSubmissionToPage\(task\)/);
@@ -214,7 +219,7 @@ assert.match(taskService, /pageVersionRepository\.save\(PageVersion\.builder\(\)
 
 // Mangaka Tantou Feedback renders the saved feedback rectangle and uses its dedicated comment API.
 assert.match(mangakaReview, /function FeedbackHitboxPreview/);
-assert.match(mangakaReview, /data-testid=\{`feedback-hitbox-/);
+assert.match(mangakaReview, /testId=\{`feedback-hitbox-/);
 assert.match(mangakaReview, /api\.feedback\.comment\(feedback\.id/);
 assert.match(feedbackController, /\{feedbackId\}\/comments/);
 assert.match(feedbackService, /Only the owning Mangaka can comment on Tantou feedback/);
@@ -231,10 +236,10 @@ assert.doesNotMatch(tantouReview, />Open series<\/button>/);
 // Issues 39-40: hitbox overlays recover from missing page dimensions and rejected series can restart cleanly.
 assert.match(tasks, /function positiveFiniteNumber/);
 assert.match(tasks, /function overlayPercentBox/);
-assert.match(tasks, /data-testid="task-area-overlay"/);
-assert.match(mangakaReview, /data-testid="review-task-area-overlay"/);
-assert.match(mangakaReview, /feedback-hitbox-/);
-assert.match(mangakaReview, /<span>Task Area<\/span>/);
+assert.match(tasks, /testId="task-area-overlay"/);
+assert.match(mangakaReview, /testId="review-task-area-overlay"/);
+assert.match(mangakaReview, /testId=\{`feedback-hitbox-/);
+assert.match(coordinateOverlay, /label = "Task Area"/);
 assert.match(dashboard, /Revert to Draft/);
 assert.match(dashboard, /api\.series\.status\(series\.id, "DRAFT"\)/);
 assert.match(seriesService, /case "REJECTED":[\s\S]*newStatus\.equals\("DRAFT"\)/);

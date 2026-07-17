@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, mediaUrlFrom, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
 import { navigate } from "../utils/router";
+import CoordinateImageOverlay from "../components/CoordinateImageOverlay";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
 const COMMENT_PREFIX = "[Mangaka Comment on Feedback #";
@@ -1156,52 +1157,20 @@ function TantouFeedbackRow({ feedback, comments, onAddComment, onResolve }) {
 
 function HitboxPreview({ title, url, box, originalWidth: explicitWidth, originalHeight: explicitHeight }) {
   const resolved = resolveMediaUrl(url);
-  const imageRef = useRef(null);
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    setImageSize({ width: 0, height: 0 });
-    const frame = window.requestAnimationFrame(() => {
-      const image = imageRef.current;
-      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
-      }
-    });
-    const timer = window.setTimeout(() => {
-      const image = imageRef.current;
-      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
-      }
-    }, 50);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-    };
-  }, [resolved]);
   if (!resolved) return <div className="preview-box submission-preview"><strong>{title}</strong><span>No image</span></div>;
-
-  const coordinateWidth = positiveFiniteNumber(explicitWidth, imageSize.width);
-  const coordinateHeight = positiveFiniteNumber(explicitHeight, imageSize.height);
-  const overlay = overlayPercentBox(box, coordinateWidth, coordinateHeight);
   const hasBox = Boolean(box) && boxValue(box, "width", "w") > 0 && boxValue(box, "height", "h") > 0;
 
   return (
     <div className="preview-box submission-preview preview-box-hitbox">
       <strong>{title}</strong>
-      <div className="preview-image-stage">
-        <div className="preview-image-frame">
-          <img ref={imageRef} src={resolved} alt={title} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
-          {overlay && (
-            <div
-              className="task-hitbox-overlay"
-              data-testid="review-task-area-overlay"
-              style={{ left: `${overlay.left}%`, top: `${overlay.top}%`, width: `${overlay.width}%`, height: `${overlay.height}%` }}
-            >
-              <span className="task-hitbox-label">Task Area</span>
-            </div>
-          )}
-        </div>
-      </div>
+      <CoordinateImageOverlay
+        url={resolved}
+        alt={title}
+        box={box}
+        originalWidth={explicitWidth}
+        originalHeight={explicitHeight}
+        testId="review-task-area-overlay"
+      />
       <small className="preview-hitbox-note">{hasBox ? "Task area matches the Mangaka Canvas coordinates." : "No saved hitbox was returned for this task."}</small>
     </div>
   );
@@ -1209,47 +1178,26 @@ function HitboxPreview({ title, url, box, originalWidth: explicitWidth, original
 
 function FeedbackHitboxPreview({ feedback, url }) {
   const resolved = resolveMediaUrl(url);
-  const imageRef = useRef(null);
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  useEffect(() => {
-    setImageSize({ width: 0, height: 0 });
-    const updateCachedImageSize = () => {
-      const image = imageRef.current;
-      if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-        setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
-      }
-    };
-    const frame = window.requestAnimationFrame(updateCachedImageSize);
-    const timer = window.setTimeout(updateCachedImageSize, 50);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-    };
-  }, [resolved]);
   if (!resolved) return <span>No page image</span>;
-
-  const coordinateWidth = positiveFiniteNumber(feedback.pageWidth, feedback.page_width, imageSize.width);
-  const coordinateHeight = positiveFiniteNumber(feedback.pageHeight, feedback.page_height, imageSize.height);
-  const overlay = overlayPercentBox({
+  const box = {
     xCoord: feedbackX(feedback),
     yCoord: feedbackY(feedback),
     width: feedbackWidth(feedback),
     height: feedbackHeight(feedback)
-  }, coordinateWidth, coordinateHeight);
+  };
 
   return (
-    <div className="feedback-preview-frame">
-      <img ref={imageRef} src={resolved} alt={`Page ${feedback.pageNumber || ""}`} onLoad={(event) => setImageSize({ width: event.currentTarget.naturalWidth || 0, height: event.currentTarget.naturalHeight || 0 })} />
-      {overlay && (
-        <div
-          className="tantou-feedback-preview-overlay"
-          data-testid={`feedback-hitbox-${feedback.id}`}
-          style={{ left: `${overlay.left}%`, top: `${overlay.top}%`, width: `${overlay.width}%`, height: `${overlay.height}%` }}
-        >
-          <span>Task Area</span>
-        </div>
-      )}
-    </div>
+    <CoordinateImageOverlay
+      url={resolved}
+      alt={`Page ${feedback.pageNumber || ""}`}
+      box={box}
+      originalWidth={feedback.pageWidth ?? feedback.page_width}
+      originalHeight={feedback.pageHeight ?? feedback.page_height}
+      overlayClassName="tantou-feedback-preview-overlay"
+      labelClassName="tantou-feedback-preview-label"
+      testId={`feedback-hitbox-${feedback.id}`}
+      stageClassName="feedback-preview-frame coordinate-image-stage"
+    />
   );
 }
 

@@ -10874,3 +10874,195 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
     height: 168px;
   }
 }
+
+/* Editorial Board series detail drawer */
+.board-review-row {
+  overflow: hidden;
+}
+.board-review-row.board-review-expanded {
+  border-color: color-mix(in srgb, var(--role-accent) 48%, var(--border-color));
+  box-shadow: 0 12px 28px rgba(120, 53, 15, .12);
+}
+.board-series-details {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--role-accent) 25%, var(--border-color));
+  background: color-mix(in srgb, var(--role-paper) 94%, white);
+}
+.board-detail-hero {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--role-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .72);
+}
+.board-detail-cover {
+  width: 112px;
+  height: 148px;
+  border: 2px solid color-mix(in srgb, var(--role-accent) 55%, white);
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--role-soft);
+  color: var(--role-accent-dark);
+  font-size: 34px;
+  font-weight: 900;
+}
+.board-detail-cover img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #fff;
+}
+.board-chapter-list {
+  display: grid;
+  gap: 12px;
+}
+.board-chapter-detail {
+  border: 1px solid var(--role-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .82);
+}
+.board-chapter-detail > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--role-soft) 70%, white);
+}
+.board-chapter-detail > summary::-webkit-details-marker {
+  display: none;
+}
+.board-chapter-detail > summary strong,
+.board-chapter-detail > summary small {
+  display: block;
+}
+.board-chapter-detail > summary small {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+.board-chapter-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+.board-script-preview {
+  padding: 12px 14px;
+  border-left: 4px solid var(--role-accent);
+  border-radius: 8px;
+  background: #fffaf0;
+}
+.board-script-preview h4 {
+  margin: 0 0 6px;
+}
+.board-script-preview p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  max-height: 180px;
+  overflow: auto;
+}
+.board-page-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.board-page-card {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--role-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.board-page-image {
+  height: 190px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #f8fafc;
+  color: var(--text-muted);
+}
+.board-page-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.board-page-card figcaption {
+  padding: 9px 10px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--role-accent-dark);
+}
+@media (max-width: 760px) {
+  .board-detail-hero {
+    grid-template-columns: 1fr;
+  }
+  .board-detail-cover {
+    width: min(180px, 100%);
+    height: 220px;
+  }
+  .board-page-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Latest preview geometry fix: position overlays against the exact pixels
+   occupied by a scaled image, not the surrounding card or letterbox space. */
+.coordinate-image-stage {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  line-height: 0;
+  background: #ffffff;
+}
+.coordinate-image-stage > .coordinate-overlay-image {
+  display: block;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+  border: 0;
+}
+.coordinate-image-stage > .task-hitbox-overlay,
+.coordinate-image-stage > .tantou-feedback-preview-overlay {
+  position: absolute;
+  margin: 0;
+  transform: none;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+}
+.tantou-feedback-preview-label {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: inline-flex;
+  width: max-content;
+  max-width: calc(100% - 4px);
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #be123c;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.workspace-unavailable { display: none !important; }

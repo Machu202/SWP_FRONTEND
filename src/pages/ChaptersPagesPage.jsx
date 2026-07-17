@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, seriesDisplayNumber, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, resolveMediaUrl, setWorkspaceSelection } from "../api/client";
+import { api, seriesDisplayNumber, extractMediaUrl, getWorkspaceSelection, hasRole, mediaUrlFrom, preferredWorkspaceSeriesId, resolveMediaUrl, setWorkspaceSelection } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
@@ -64,9 +64,10 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
       const rawList = data || [];
       const list = isTantou ? rawList.filter(isReviewableSeries) : rawList;
       setSeriesList(list);
-      const preferredSeriesId = String(initialSeriesId || selectedSeriesId || getWorkspaceSelection().seriesId || "");
-      const preferredExists = list.some((item) => String(item.id) === preferredSeriesId);
-      const nextSeriesId = String(preferredExists ? preferredSeriesId : list[0]?.id || "");
+      const nextSeriesId = preferredWorkspaceSeriesId(list, {
+        explicitSeriesId: initialSeriesId,
+        currentSeriesId: selectedSeriesId
+      });
       setSelectedSeriesId(nextSeriesId);
     } catch (err) {
       setError(err.message || "Could not load series.");
@@ -122,13 +123,13 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
 
   useEffect(() => {
     loadSelectedSeries(selectedSeriesId);
-    setWorkspaceSelection({ seriesId: selectedSeriesId, chapterId: "", pageId: "" });
+    if (selectedSeriesId) setWorkspaceSelection({ seriesId: selectedSeriesId, chapterId: "", pageId: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
 
   useEffect(() => {
     loadPages(selectedChapterId);
-    setWorkspaceSelection({ chapterId: selectedChapterId, pageId: "" });
+    if (selectedChapterId) setWorkspaceSelection({ chapterId: selectedChapterId, pageId: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
 

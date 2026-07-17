@@ -51,14 +51,14 @@ function profileFor(role) {
     || { id: 9, username: normalized.replaceAll(" ", "_"), fullName: role, email: `${normalized.replaceAll(" ", ".")}@example.test`, roleName: role, isActive: true };
 }
 
-async function bootstrapApp(browser, { role = "", legacyRole = "", token = smokeToken, hash = "/login", chapterStatus = "" } = {}) {
+async function bootstrapApp(browser, { role = "", legacyRole = "", token = smokeToken, hash = "/login", chapterStatus = "", assignedSeriesAvailable = true, workspaceSeriesId = "" } = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.setContent('<div id="root"></div>');
-  await page.evaluate(({ roleName, legacyRoleName, initialHash, fixtureData, profile, authToken, initialChapterStatus }) => {
+  await page.evaluate(({ roleName, legacyRoleName, initialHash, fixtureData, profile, authToken, initialChapterStatus, hasAssignedSeries, initialWorkspaceSeriesId }) => {
     function makeStorage() {
       const store = new Map();
       return {
@@ -87,6 +87,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       sessionStorage.setItem("role", roleName);
       sessionStorage.setItem("username", "smoke-user");
       sessionStorage.setItem("userId", "1");
+      if (initialWorkspaceSeriesId) sessionStorage.setItem("activeSeriesId", String(initialWorkspaceSeriesId));
     }
 
     window.__DISABLE_NOTIFICATION_STREAM__ = true;
@@ -134,7 +135,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (path === "/auth/google") return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
 
       if (path === "/manga-series/my-series") return response(f.series);
-      if (path === "/manga-series/assigned-to-me") return response(f.series.map((item) => ({ ...item, displayNumber: 1, tantouId: 4, tantouName: "Taro Editor" })));
+      if (path === "/manga-series/assigned-to-me") return response(hasAssignedSeries ? f.series.map((item) => ({ ...item, displayNumber: 1, tantouId: 4, tantouName: "Taro Editor" })) : []);
       if (path === "/manga-series" && method === "GET") return response(profile.roleName === "Tantou Editor"
         ? [
             ...f.series.map((item) => ({ ...item, displayNumber: 1, tantouId: 4, tantouName: "Taro Editor" })),
@@ -271,7 +272,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
     };
 
     location.hash = initialHash;
-  }, { roleName: role, legacyRoleName: legacyRole, initialHash: hash, fixtureData: fixtures, profile: profileFor(role || legacyRole || "Mangaka"), authToken: token, initialChapterStatus: chapterStatus });
+  }, { roleName: role, legacyRoleName: legacyRole, initialHash: hash, fixtureData: fixtures, profile: profileFor(role || legacyRole || "Mangaka"), authToken: token, initialChapterStatus: chapterStatus, hasAssignedSeries: assignedSeriesAvailable, initialWorkspaceSeriesId: workspaceSeriesId });
 
   await page.addStyleTag({ content: bundleCss });
   await page.addScriptTag({ content: bundleJs, type: "module" });
@@ -516,11 +517,21 @@ async function run() {
       const feedbackBox = page.locator('[data-testid="feedback-hitbox-1001"]');
       await feedbackBox.waitFor({ state: "visible" });
       assert.equal(await feedbackBox.getByText("Task Area", { exact: true }).count(), 1, "Tantou feedback must display the Task Area label");
-      const feedbackStyle = await feedbackBox.evaluate((element) => ({ left: element.style.left, top: element.style.top, width: element.style.width, height: element.style.height }));
-      assert.equal(feedbackStyle.left, "12.5%");
-      assert.ok(Math.abs(parseFloat(feedbackStyle.top) - (140 / 1200 * 100)) < 0.02);
-      assert.ok(Math.abs(parseFloat(feedbackStyle.width) - (220 / 800 * 100)) < 0.02);
-      assert.equal(feedbackStyle.height, "15%");
+      const feedbackGeometry = await feedbackBox.evaluate((element) => {
+        const image = element.parentElement?.querySelector("img");
+        const box = element.getBoundingClientRect();
+        const imageBox = image.getBoundingClientRect();
+        return {
+          left: (box.left - imageBox.left) / imageBox.width * 100,
+          top: (box.top - imageBox.top) / imageBox.height * 100,
+          width: box.width / imageBox.width * 100,
+          height: box.height / imageBox.height * 100
+        };
+      });
+      assert.ok(Math.abs(feedbackGeometry.left - 12.5) < 0.1);
+      assert.ok(Math.abs(feedbackGeometry.top - (140 / 1200 * 100)) < 0.1);
+      assert.ok(Math.abs(feedbackGeometry.width - (220 / 800 * 100)) < 0.1);
+      assert.ok(Math.abs(feedbackGeometry.height - 15) < 0.1);
       await page.getByPlaceholder("Write your response or implementation note for the Tantou feedback.").fill("Mangaka response");
       await page.getByRole("button", { name: "Add comment", exact: true }).click();
       await waitText(page, "Comment added to Tantou feedback #1001");
@@ -536,11 +547,21 @@ async function run() {
       const reviewRow = page.locator('[data-testid="assistant-review-task-502"]');
       const reviewHitbox = reviewRow.locator(".task-hitbox-overlay");
       await reviewHitbox.waitFor({ state: "visible" });
-      const reviewHitboxStyle = await reviewHitbox.evaluate((element) => ({ left: element.style.left, top: element.style.top, width: element.style.width, height: element.style.height }));
-      assert.equal(reviewHitboxStyle.left, "12.5%", "Review hitbox X must match Mangaka Canvas coordinates");
-      assert.ok(Math.abs(parseFloat(reviewHitboxStyle.top) - (140 / 1200 * 100)) < 0.02, "Review hitbox Y must match Mangaka Canvas coordinates");
-      assert.ok(Math.abs(parseFloat(reviewHitboxStyle.width) - (220 / 800 * 100)) < 0.02, "Review hitbox width must match Mangaka Canvas coordinates");
-      assert.equal(reviewHitboxStyle.height, "15%", "Review hitbox height must match Mangaka Canvas coordinates");
+      const reviewHitboxGeometry = await reviewHitbox.evaluate((element) => {
+        const image = element.parentElement?.querySelector("img");
+        const box = element.getBoundingClientRect();
+        const imageBox = image.getBoundingClientRect();
+        return {
+          left: (box.left - imageBox.left) / imageBox.width * 100,
+          top: (box.top - imageBox.top) / imageBox.height * 100,
+          width: box.width / imageBox.width * 100,
+          height: box.height / imageBox.height * 100
+        };
+      });
+      assert.ok(Math.abs(reviewHitboxGeometry.left - 12.5) < 0.75, "Review hitbox X must match Mangaka Canvas coordinates");
+      assert.ok(Math.abs(reviewHitboxGeometry.top - (140 / 1200 * 100)) < 0.75, "Review hitbox Y must match Mangaka Canvas coordinates");
+      assert.ok(Math.abs(reviewHitboxGeometry.width - (220 / 800 * 100)) < 0.75, "Review hitbox width must match Mangaka Canvas coordinates");
+      assert.ok(Math.abs(reviewHitboxGeometry.height - 15) < 0.75, "Review hitbox height must match Mangaka Canvas coordinates");
       assert.equal(await reviewRow.locator('img[alt="Reference"]').getAttribute("src"), fixtures.imageCurrent, "Mangaka Review reference must remain the original page image");
       assert.equal(await reviewRow.locator('img[alt="Submitted work"]').getAttribute("src"), fixtures.imageOld, "Mangaka Review submitted work must remain separate");
       await page.screenshot({ path: path.resolve("test-results/issue16-approved-task-handoff.png"), fullPage: true });
@@ -627,6 +648,56 @@ async function run() {
     }
 
     {
+      const { context, page, pageErrors } = await bootstrapApp(browser, {
+        role: "Tantou Editor",
+        hash: "/canvas-workspace",
+        assignedSeriesAvailable: false
+      });
+      await waitText(page, "No assigned series");
+      assert.equal(await page.getByText("Ink Horizon", { exact: true }).count(), 0, "An unassigned Tantou must not receive another series in Review Canvas");
+      assert.equal(await page.locator('[data-testid="canvas-series-select"]').isVisible(), false, "Review Canvas controls must stay hidden without an assignment");
+      assert.equal(await page.locator(".canvas-static-split").isVisible(), false, "Review Canvas content must stay empty without an assignment");
+      assert.deepEqual(pageErrors, []);
+      passed.push("A newly created unassigned Tantou sees an empty Review Canvas");
+      await context.close();
+    }
+
+    {
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", hash: "/chapters-pages", workspaceSeriesId: "2" });
+      await page.locator('[data-testid="chapter-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="chapter-series-select"]').inputValue(), "2");
+      await navigate(page, "/manuscripts");
+      await page.locator('[data-testid="manuscript-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="manuscript-series-select"]').inputValue(), "2", "Manuscripts must retain the active series");
+      await navigate(page, "/canvas-workspace");
+      await page.locator('[data-testid="canvas-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="canvas-series-select"]').inputValue(), "2", "Canvas must retain the active series");
+      await navigate(page, "/schedule");
+      await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Schedule must retain the active series");
+      await navigate(page, "/chapters-pages");
+      await page.locator('[data-testid="chapter-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="chapter-series-select"]').inputValue(), "2", "Chapters & Pages must restore the active series after navigation");
+      assert.deepEqual(pageErrors, []);
+      passed.push("Mangaka workspace pages retain one shared active series per account");
+      await context.close();
+    }
+
+    {
+      const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Admin", hash: "/schedule", workspaceSeriesId: "2" });
+      await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2");
+      await navigate(page, "/dashboard");
+      await waitText(page, "Admin Dashboard");
+      await navigate(page, "/schedule");
+      await page.locator('[data-testid="schedule-series-select"]').waitFor();
+      assert.equal(await page.locator('[data-testid="schedule-series-select"]').inputValue(), "2", "Admin Deadlines must retain the selected series");
+      assert.deepEqual(pageErrors, []);
+      passed.push("Admin Deadlines retains the selected series after leaving and returning");
+      await context.close();
+    }
+
+    {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Tantou Editor", hash: "/tasks?tab=kanban" });
       await waitText(page, "Kanban Board");
       await waitText(page, "Read-only view of Assistant tasks from manga series assigned to this Tantou Editor.");
@@ -697,11 +768,17 @@ async function run() {
       assert.equal(await page.getByRole("button", { name: "Vote Queue", exact: true }).count(), 1);
       await navigate(page, "/board-review");
       await waitText(page, "Series waiting for board votes");
+      await page.getByRole("button", { name: "Open details", exact: true }).click();
+      await waitText(page, "Complete series review");
+      await waitText(page, "Chapter 1: Opening");
+      await waitText(page, "A formatted script.");
+      await waitText(page, "Page 1");
+      assert.equal(await page.locator('[data-testid="board-series-details-1"]').count(), 1);
       await page.getByRole("button", { name: "Vote approve" }).click();
       await waitText(page, "Approval vote submitted");
       assert.equal((await capture(page)).votes.at(-1), "true");
       assert.deepEqual(pageErrors, []);
-      passed.push("FE-16 dynamic Editorial Board approve/reject voting");
+      passed.push("FE-16 Editorial Board can open series chapters/pages and vote");
       await context.close();
     }
 
