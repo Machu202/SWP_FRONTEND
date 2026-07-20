@@ -3,6 +3,7 @@ import { api, seriesDisplayNumber } from "../api/client";
 import { navigate, useHashRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 import { SeriesReviewDetails } from "./EditorialBoardReviewPage";
+import BoardVotingChat from "../components/BoardVotingChat";
 
 export default function AdminReviewPage() {
   const route = useHashRoute();
@@ -253,7 +254,10 @@ function AdminDecisionRow({ item, summary, tantous, tantouAssignments, selectedT
         </div>
       </div>
       {expanded ? (
-        <SeriesReviewDetails item={item} detail={detail} loading={detailLoading} error={detailError} />
+        <>
+          <SeriesReviewDetails item={item} detail={detail} loading={detailLoading} error={detailError} />
+          <BoardVotingChat seriesId={item.id} readOnly />
+        </>
       ) : null}
     </div>
   );

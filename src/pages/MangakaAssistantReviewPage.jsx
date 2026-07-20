@@ -1160,7 +1160,15 @@ function TantouFeedbackRow({ feedback, comments, onAddComment, onResolve }) {
         <div className="button-row vertical-buttons">
           <button className="btn btn-primary" onClick={submitComment} disabled={!comment.trim()}>Add comment</button>
           {!resolved && <button className="btn" data-testid="resolve-feedback" onClick={() => onResolve(feedback)}>Mark resolved</button>}
-          {feedback.pageId && <button className="btn" onClick={() => navigate(`/workspace/${feedback.pageId}?seriesId=${feedback.seriesId}&chapterId=${feedback.chapterId}`)}>Open page canvas</button>}
+          {feedback.pageId && (
+            <button
+              className="btn"
+              data-testid={`create-assistant-task-feedback-${feedback.id}`}
+              onClick={() => navigate(`/canvas-workspace?seriesId=${feedback.seriesId}&chapterId=${feedback.chapterId}&pageId=${feedback.pageId}&feedbackId=${feedback.id}`)}
+            >
+              Create Assistant task in Canvas
+            </button>
+          )}
           {feedback.seriesId && <button className="btn" onClick={() => navigate(`/series/${feedback.seriesId}`)}>Open series</button>}
         </div>
       </div>

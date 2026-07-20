@@ -9741,6 +9741,36 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #be123c;
 }
 
+.tantou-task-attribution {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #881337;
+}
+
+.tantou-task-attribution strong {
+  font-size: 11px;
+  letter-spacing: .06em;
+}
+
+.tantou-task-attribution span {
+  white-space: pre-wrap;
+}
+
+.tantou-feedback-task-list .saved-hitbox-row {
+  border-color: #fecdd3;
+  background: #fff7f8;
+}
+
+.tantou-feedback-task-list .saved-hitbox-row.active {
+  border-color: #be123c;
+  box-shadow: 0 0 0 2px rgba(190, 18, 60, .12);
+}
+
 .tantou-feedback-form textarea {
   min-height: 116px;
   resize: vertical;
@@ -11137,7 +11167,80 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 .vote-history-decision { font-weight: 900; }
 .vote-history-decision.approved { color: #047857; }
 .vote-history-decision.rejected { color: #b91c1c; }
+
+/* Persistent Editorial Board voting-room chat */
+.board-voting-chat {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  margin: 0 16px 16px;
+  padding: 16px;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 46%);
+}
+.board-voting-chat.admin-read-only {
+  border-color: #fed7aa;
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 46%);
+}
+.board-chat-header,
+.board-chat-compose-footer,
+.board-chat-message > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.board-chat-header h4,
+.board-chat-header p,
+.board-chat-message p { margin: 0; }
+.board-chat-header > span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #4338ca;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.admin-read-only .board-chat-header > span { background: #c2410c; }
+.board-chat-messages {
+  max-height: 310px;
+  min-height: 118px;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+.board-chat-message {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.board-chat-message strong { color: #312e81; }
+.board-chat-message time { color: #64748b; font-size: 11px; }
+.board-chat-message p { color: #1e293b; white-space: pre-wrap; overflow-wrap: anywhere; }
+.board-chat-state { margin: auto; color: #64748b; font-size: 13px; text-align: center; }
+.board-chat-compose { display: grid; gap: 8px; }
+.board-chat-compose label { font-size: 12px; font-weight: 800; color: #312e81; }
+.board-chat-compose textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+.board-chat-compose-footer small { color: #64748b; }
+.board-chat-read-only-note { margin: 0; color: #9a3412; font-size: 12px; font-weight: 700; }
 @media (max-width: 760px) {
   .vote-history-card { grid-template-columns: 70px minmax(0, 1fr); }
   .vote-history-cover { width: 70px; height: 96px; }
+  .board-voting-chat { margin: 0 10px 12px; padding: 12px; }
+  .board-chat-header, .board-chat-compose-footer { align-items: flex-start; flex-direction: column; }
 }

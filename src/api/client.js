@@ -556,6 +556,7 @@ export const api = {
     byPage: (pageId) => apiFetch(`/tantou-feedbacks/pages/${pageId}`),
     create: (pageId, data) => apiFetch(`/tantou-feedbacks/pages/${pageId}${objectToQuery(data)}`, { method: "POST" }),
     comment: (feedbackId, content) => apiFetch(`/tantou-feedbacks/${feedbackId}/comments${objectToQuery({ content })}`, { method: "POST" }),
+    createAssistantTask: (feedbackId, assistantId) => apiFetch(`/tantou-feedbacks/${feedbackId}/assistant-task${objectToQuery({ assistantId })}`, { method: "POST" }),
     resolve: (feedbackId) => apiFetch(`/tantou-feedbacks/${feedbackId}/resolve`, { method: "PATCH" })
   },
 
@@ -563,6 +564,14 @@ export const api = {
     summary: (seriesId) => apiFetch(`/votes/series/${seriesId}/summary`),
     cast: (seriesId, isApproved) => apiFetch(`/votes/series/${seriesId}${objectToQuery({ isApproved })}`, { method: "POST" }),
     history: async () => unwrapList(await apiFetch("/votes/my-history"))
+  },
+
+  boardChat: {
+    list: (seriesId) => apiFetch(`/board-chat/series/${seriesId}/messages`),
+    send: (seriesId, content) => apiFetch(`/board-chat/series/${seriesId}/messages`, {
+      method: "POST",
+      body: { content }
+    })
   },
 
   schedules: {

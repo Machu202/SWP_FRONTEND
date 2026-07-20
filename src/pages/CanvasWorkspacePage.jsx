@@ -62,6 +62,22 @@ function normalizeHitbox(box = {}) {
   };
 }
 
+const MANGAKA_FEEDBACK_COMMENT_PREFIX = "[Mangaka Comment on Feedback #";
+
+function originalTantouFeedbacks(source) {
+  return unwrapList(source)
+    .filter((item) => !String(item?.content || "").startsWith(MANGAKA_FEEDBACK_COMMENT_PREFIX))
+    .map((item) => ({ ...normalizeHitbox(item), source: "tantou-feedback" }));
+}
+
+function isTantouFeedbackBox(box) {
+  return box?.source === "tantou-feedback";
+}
+
+function tantouTaskDescription(feedback) {
+  return `BY TANTOU EDITOR\n${String(feedback?.content || "").trim()}`;
+}
+
 function mergeHitboxLists(...sources) {
   const map = new Map();
   sources.flatMap((source) => unwrapList(source)).forEach((box) => {
@@ -117,6 +133,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [selectedPageId, setSelectedPageId] = useState(String(initialPageId || rememberedSelection.pageId || ""));
   const [canvas, setCanvas] = useState(null);
   const [hitboxes, setHitboxes] = useState([]);
+  const [tantouFeedbacks, setTantouFeedbacks] = useState([]);
   const [versions, setVersions] = useState([]);
   const [versionBusy, setVersionBusy] = useState(false);
   const [viewedVersionId, setViewedVersionId] = useState("");
@@ -132,6 +149,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [taskDescription, setTaskDescription] = useState("");
   const [assistantId, setAssistantId] = useState("");
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskBusy, setTaskBusy] = useState(false);
   const [deletingHitboxId, setDeletingHitboxId] = useState("");
   const [chapterScript, setChapterScript] = useState("");
   const [scriptSaving, setScriptSaving] = useState(false);
@@ -208,6 +226,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         setSelectedPageId("");
         setCanvas(null);
         setHitboxes([]);
+        setTantouFeedbacks([]);
         setVersions([]);
         setViewedVersionId("");
         setViewedVersionHitboxes([]);
@@ -279,6 +298,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     if (!pageId) {
       setCanvas(null);
       setHitboxes([]);
+      setTantouFeedbacks([]);
       setVersions([]);
       setSelectedBox(null);
       return;
@@ -286,9 +306,13 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setError("");
     setMessage("");
     try {
-      const [canvasData, overlayData, versionData] = await Promise.all([
+      const [canvasData, hitboxData, feedbackData, versionData] = await Promise.all([
         api.workspace.canvasInit(pageId).catch(() => null),
-        isTantou ? api.feedback.byPage(pageId).catch(() => []) : api.workspace.hitboxes(pageId).catch(() => []),
+        isTantou ? Promise.resolve([]) : api.workspace.hitboxes(pageId).catch(() => []),
+        isTantou ? api.feedback.byPage(pageId).catch(() => [])
+          : canEdit
+            ? api.feedback.byPage(pageId).catch(() => [])
+            : Promise.resolve([]),
         api.pageVersions.byPage(pageId).catch(() => [])
       ]);
       const pageForCanvas = pages.find((page) => String(page.id) === String(pageId)) || selectedPage;
@@ -301,19 +325,23 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         originalWidth: canvasData?.originalWidth || canvasData?.original_width || fallbackWidth,
         originalHeight: canvasData?.originalHeight || canvasData?.original_height || fallbackHeight
       });
+      const loadedFeedbacks = originalTantouFeedbacks(feedbackData);
       const loadedHitboxes = isTantou
-        ? mergeHitboxLists(overlayData)
-        : mergeHitboxLists(overlayData, canvasData?.hitboxes);
+        ? loadedFeedbacks
+        : mergeHitboxLists(hitboxData, canvasData?.hitboxes);
       setHitboxes(loadedHitboxes);
+      setTantouFeedbacks(canEdit ? loadedFeedbacks : []);
       setVersions(Array.isArray(versionData) ? versionData : versionData?.content || versionData?.data || []);
       setViewedVersionId("");
       setViewedVersionHitboxes([]);
       setCompareVersionId("");
       setCompareVersionHitboxes([]);
       setComparePosition(50);
-      const requestedFeedback = isTantou && initialFeedbackId
-        ? loadedHitboxes.find((item) => String(item.id) === String(initialFeedbackId))
-        : null;
+      const requestedFeedback = !initialFeedbackId
+        ? null
+        : isTantou
+          ? loadedHitboxes.find((item) => String(item.id) === String(initialFeedbackId))
+          : loadedFeedbacks.find((item) => String(item.id) === String(initialFeedbackId));
       setSelectedBox(requestedFeedback || null);
       setDraftBox(null);
       setFeedbackContent("");
@@ -393,10 +421,10 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   }, [initialSeriesId, initialChapterId, initialPageId]);
 
   useEffect(() => {
-    if (!isTantou || !initialFeedbackId) return;
-    const requestedFeedback = hitboxes.find((item) => String(item.id) === String(initialFeedbackId));
+    if ((!isTantou && !canEdit) || !initialFeedbackId) return;
+    const requestedFeedback = (isTantou ? hitboxes : tantouFeedbacks).find((item) => String(item.id) === String(initialFeedbackId));
     if (requestedFeedback) setSelectedBox(requestedFeedback);
-  }, [initialFeedbackId, hitboxes, isTantou]);
+  }, [initialFeedbackId, hitboxes, tantouFeedbacks, isTantou, canEdit]);
 
   useEffect(() => {
     if (!selectedPageId || !selectedPage) return;
@@ -624,7 +652,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   }
 
   async function deleteHitbox(box = selectedBox) {
-    if (!canEdit || !box?.id) return;
+    if (!canEdit || !box?.id || isTantouFeedbackBox(box)) return;
 
     if (String(box.id).startsWith("local-")) {
       setHitboxes((old) => old.filter((item) => String(item.id) !== String(box.id)));
@@ -655,19 +683,43 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     await deleteHitbox(selectedBox);
   }
 
+  function openTaskModal() {
+    if (!selectedBox?.id) return;
+    setAssistantId("");
+    setTaskDescription(isTantouFeedbackBox(selectedBox) ? tantouTaskDescription(selectedBox) : "");
+    setTaskModalOpen(true);
+  }
+
   async function createTask(event) {
     event.preventDefault();
-    if (!selectedBox?.id || !taskDescription.trim()) return;
+    const fromTantouFeedback = isTantouFeedbackBox(selectedBox);
+    if (!selectedBox?.id || !taskDescription.trim() || (fromTantouFeedback && !assistantId)) return;
+    setTaskBusy(true);
     setError("");
     setMessage("");
     try {
-      const createdTask = await api.workspace.createTask(selectedBox.id, taskDescription.trim());
-      if (assistantId && createdTask?.id) await api.tasks.assign(createdTask.id, assistantId);
+      const createdTask = fromTantouFeedback
+        ? await api.feedback.createAssistantTask(selectedBox.id, assistantId)
+        : await api.workspace.createTask(selectedBox.id, taskDescription.trim());
+      if (!fromTantouFeedback && assistantId && createdTask?.id) await api.tasks.assign(createdTask.id, assistantId);
+      const createdHitbox = createdTask?.hitbox ? normalizeHitbox(createdTask.hitbox) : null;
+      if (createdHitbox?.id) {
+        setHitboxes((old) => mergeHitboxLists(old, [createdHitbox]));
+        setSelectedBox(createdHitbox);
+      }
+      if (fromTantouFeedback) {
+        setTantouFeedbacks((old) => old.filter((item) => String(item.id) !== String(selectedBox.id)));
+      }
       setTaskDescription("");
+      setAssistantId("");
       setTaskModalOpen(false);
-      setMessage(assistantId ? "Task created and assigned." : "Task created. Assign an assistant from Assignments if needed.");
+      setMessage(fromTantouFeedback
+        ? "Tantou feedback task created and sent to the selected Assistant."
+        : assistantId ? "Task created and assigned." : "Task created. Assign an assistant from Assignments if needed.");
     } catch (err) {
-      setError(err.message || "Could not create task from hitbox.");
+      setError(err.message || (fromTantouFeedback ? "Could not send this Tantou feedback task to the Assistant." : "Could not create task from hitbox."));
+    } finally {
+      setTaskBusy(false);
     }
   }
 
@@ -846,7 +898,18 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 />
                 {isImageReady && (
                   <div className="hitbox-layer-react">
-                    {displayedHitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={!isViewingHistoricalVersion && selectedBox && String(selectedBox.id) === String(box.id)} label={index + 1} kind={isTantou ? "feedback" : "hitbox"} onClick={isViewingHistoricalVersion ? undefined : (event) => { event.stopPropagation(); setSelectedBox(box); }} onContextMenu={!isViewingHistoricalVersion && canEdit ? (event) => openHitboxContext(event, box) : undefined} />)}
+                    {displayedHitboxes.map((box, index) => <CanvasBox key={hitboxId(box)} box={box} originalSize={originalSize} active={!isViewingHistoricalVersion && selectedBox && (isTantou || !isTantouFeedbackBox(selectedBox)) && String(selectedBox.id) === String(box.id)} label={index + 1} kind={isTantou ? "feedback" : "hitbox"} onClick={isViewingHistoricalVersion ? undefined : (event) => { event.stopPropagation(); setSelectedBox(box); }} onContextMenu={!isViewingHistoricalVersion && canEdit ? (event) => openHitboxContext(event, box) : undefined} />)}
+                    {!isViewingHistoricalVersion && canEdit && tantouFeedbacks.map((feedback, index) => (
+                      <CanvasBox
+                        key={`tantou-feedback-${feedback.id || index}`}
+                        box={feedback}
+                        originalSize={originalSize}
+                        active={selectedBox && isTantouFeedbackBox(selectedBox) && String(selectedBox.id) === String(feedback.id)}
+                        label={`T${index + 1}`}
+                        kind="feedback"
+                        onClick={(event) => { event.stopPropagation(); setSelectedBox(feedback); }}
+                      />
+                    ))}
                     {!isViewingHistoricalVersion && draftBox && <CanvasBox box={draftBox} originalSize={originalSize} draft label="New" kind={isTantou ? "feedback" : "hitbox"} />}
                   </div>
                 )}
@@ -890,16 +953,19 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 <div className="form-group"><label>W</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "width", "width").toFixed(2) : ""} readOnly /></div>
                 <div className="form-group"><label>H</label><input className="form-control" value={selectedBox ? boxValue(selectedBox, "height", "height").toFixed(2) : ""} readOnly /></div>
               </div>
-              <button className="btn-publish full" data-testid="open-task-modal" type="button" disabled={isViewingHistoricalVersion || !selectedBox?.id || !canEdit || String(selectedBox?.id || "").startsWith("local-")} onClick={() => setTaskModalOpen(true)}>Open Task Assignment Modal</button>
-              <button
-                className="btn btn-danger full"
-                data-testid="delete-selected-hitbox"
-                type="button"
-                onClick={deleteSelectedHitbox}
-                disabled={isViewingHistoricalVersion || !selectedBox?.id || Boolean(deletingHitboxId)}
-              >
-                {deletingHitboxId && String(deletingHitboxId) === String(selectedBox?.id) ? "Deleting hitbox..." : "Delete selected hitbox"}
-              </button>
+              {isTantouFeedbackBox(selectedBox) && <p className="tantou-task-attribution"><strong>BY TANTOU EDITOR</strong><span>{selectedBox.content}</span></p>}
+              <button className="btn-publish full" data-testid="open-task-modal" type="button" disabled={isViewingHistoricalVersion || !selectedBox?.id || !canEdit || String(selectedBox?.id || "").startsWith("local-")} onClick={openTaskModal}>{isTantouFeedbackBox(selectedBox) ? "Send Feedback Task to Assistant" : "Open Task Assignment Modal"}</button>
+              {!isTantouFeedbackBox(selectedBox) && (
+                <button
+                  className="btn btn-danger full"
+                  data-testid="delete-selected-hitbox"
+                  type="button"
+                  onClick={deleteSelectedHitbox}
+                  disabled={isViewingHistoricalVersion || !selectedBox?.id || Boolean(deletingHitboxId)}
+                >
+                  {deletingHitboxId && String(deletingHitboxId) === String(selectedBox?.id) ? "Deleting hitbox..." : "Delete selected hitbox"}
+                </button>
+              )}
             </div>
           )}
           <div className="upload-log">
@@ -914,7 +980,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               {displayedHitboxes.map((box, index) => (
                 <div
                   key={hitboxId(box)}
-                  className={`saved-hitbox-row ${selectedBox && String(selectedBox.id) === String(box.id) ? "active" : ""}`}
+                  className={`saved-hitbox-row ${selectedBox && (isTantou || !isTantouFeedbackBox(selectedBox)) && String(selectedBox.id) === String(box.id) ? "active" : ""}`}
                 >
                   <button type="button" className="saved-hitbox-select" onClick={() => setSelectedBox(box)}>
                     <span>#{index + 1}{isTantou && box.isResolved ? " · Resolved" : ""}</span>
@@ -932,6 +998,19 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                       {String(deletingHitboxId) === String(box.id) ? "Deleting..." : "Delete"}
                     </button>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+          {canEdit && !isViewingHistoricalVersion && tantouFeedbacks.length > 0 && (
+            <div className="saved-hitbox-list tantou-feedback-task-list" data-testid="tantou-feedback-task-list">
+              <div className="mini-section-label">Tantou feedback available for Assistant tasks</div>
+              {tantouFeedbacks.map((feedback, index) => (
+                <div key={`tantou-list-${feedback.id || index}`} className={`saved-hitbox-row ${selectedBox && isTantouFeedbackBox(selectedBox) && String(selectedBox.id) === String(feedback.id) ? "active" : ""}`}>
+                  <button type="button" className="saved-hitbox-select" data-testid={`tantou-feedback-task-${feedback.id}`} onClick={() => setSelectedBox(feedback)}>
+                    <span>T{index + 1} · BY TANTOU EDITOR</span>
+                    <small>{feedback.content}</small>
+                  </button>
                 </div>
               ))}
             </div>
@@ -985,16 +1064,17 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       {taskModalOpen && (
         <div className="feature-modal-backdrop" role="presentation" onMouseDown={() => setTaskModalOpen(false)}>
           <form className="feature-modal-card" data-testid="task-assignment-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title" onSubmit={createTask} onMouseDown={(event) => event.stopPropagation()}>
-            <div className="card-header"><div><p className="eyebrow">FE-38 task assignment</p><h3 id="task-modal-title">Create task from selected hitbox</h3></div><button className="btn-icon-only" type="button" onClick={() => setTaskModalOpen(false)}>×</button></div>
+            <div className="card-header"><div><p className="eyebrow">FE-38 task assignment</p><h3 id="task-modal-title">{isTantouFeedbackBox(selectedBox) ? "Send Tantou feedback task to Assistant" : "Create task from selected hitbox"}</h3></div><button className="btn-icon-only" type="button" onClick={() => setTaskModalOpen(false)}>×</button></div>
             <div className="metric-grid compact">
               <span>X <strong>{selectedBox ? boxValue(selectedBox, "xCoord", "x_coord").toFixed(1) : "-"}</strong></span>
               <span>Y <strong>{selectedBox ? boxValue(selectedBox, "yCoord", "y_coord").toFixed(1) : "-"}</strong></span>
               <span>W <strong>{selectedBox ? boxValue(selectedBox, "width", "width").toFixed(1) : "-"}</strong></span>
               <span>H <strong>{selectedBox ? boxValue(selectedBox, "height", "height").toFixed(1) : "-"}</strong></span>
             </div>
-            <label>Assistant<select className="form-control" data-testid="task-assistant-select" value={assistantId} onChange={(event) => setAssistantId(event.target.value)}><option value="">Leave unassigned</option>{assistants.map((assistant) => <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email || `Assistant #${assistant.id}`}</option>)}</select></label>
-            <label>Task details<textarea className="form-control" data-testid="task-description-input" rows="5" required value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Describe what the Assistant must fix or draw..." /></label>
-            <div className="button-row modal-actions"><button className="btn" type="button" onClick={() => setTaskModalOpen(false)}>Cancel</button><button className="btn-publish" data-testid="task-create-submit" disabled={!taskDescription.trim()}>Create and assign</button></div>
+            <label>Assistant<select className="form-control" data-testid="task-assistant-select" required={isTantouFeedbackBox(selectedBox)} value={assistantId} onChange={(event) => setAssistantId(event.target.value)}><option value="">{isTantouFeedbackBox(selectedBox) ? "Choose an Assistant" : "Leave unassigned"}</option>{assistants.map((assistant) => <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email || `Assistant #${assistant.id}`}</option>)}</select></label>
+            <label>Task details<textarea className="form-control" data-testid="task-description-input" rows="5" required readOnly={isTantouFeedbackBox(selectedBox)} value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Describe what the Assistant must fix or draw..." /></label>
+            {isTantouFeedbackBox(selectedBox) && <p className="review-helper">The Tantou description and attribution are preserved exactly for the Assistant.</p>}
+            <div className="button-row modal-actions"><button className="btn" type="button" onClick={() => setTaskModalOpen(false)} disabled={taskBusy}>Cancel</button><button className="btn-publish" data-testid="task-create-submit" disabled={!taskDescription.trim() || (isTantouFeedbackBox(selectedBox) && !assistantId) || taskBusy}>{taskBusy ? "Sending..." : isTantouFeedbackBox(selectedBox) ? "Send to Assistant" : "Create and assign"}</button></div>
           </form>
         </div>
       )}

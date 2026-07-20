@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, mediaUrlFrom, seriesDisplayNumber } from "../api/client";
 import { navigate, useHashRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
+import BoardVotingChat from "../components/BoardVotingChat";
 
 export default function EditorialBoardReviewPage() {
   const route = useHashRoute();
@@ -177,12 +178,15 @@ function BoardVoteRow({ item, summary, onVote, expanded, detail, detailLoading, 
       </div>
 
       {expanded ? (
-        <SeriesReviewDetails
-          item={item}
-          detail={detail}
-          loading={detailLoading}
-          error={detailError}
-        />
+        <>
+          <SeriesReviewDetails
+            item={item}
+            detail={detail}
+            loading={detailLoading}
+            error={detailError}
+          />
+          <BoardVotingChat seriesId={item.id} />
+        </>
       ) : null}
     </article>
   );
