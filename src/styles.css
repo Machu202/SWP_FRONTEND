@@ -11274,6 +11274,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   display: grid;
   gap: 10px;
   min-width: 0;
+  align-content: start;
 }
 .compare-images-button {
   justify-self: start;
@@ -11288,6 +11289,13 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   color: #fff;
   background: linear-gradient(135deg, color-mix(in srgb, var(--role-accent, #475569) 82%, white), var(--role-accent-dark, #1e293b));
   transform: translateY(-1px);
+}
+.assistant-compare-images-button {
+  justify-self: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
 }
 
 .media-modal-backdrop {
@@ -11311,6 +11319,16 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #ffffff;
   color: #0f172a;
   box-shadow: 0 30px 90px rgba(2, 6, 23, .48);
+}
+.image-comparison-modal {
+  height: calc(100vh - 36px);
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.image-comparison-modal .media-modal-header {
+  flex: 0 0 auto;
 }
 .media-modal-close {
   position: absolute;
@@ -11349,12 +11367,17 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-size: clamp(20px, 2.4vw, 29px);
 }
 .image-comparison-grid {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 .comparison-image-panel {
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   margin: 0;
   border: 1px solid #dbe3ee;
   border-radius: 14px;
@@ -11362,6 +11385,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #f8fafc;
 }
 .comparison-image-panel figcaption {
+  flex: 0 0 auto;
   padding: 11px 14px;
   border-bottom: 1px solid #dbe3ee;
   background: #ffffff;
@@ -11369,8 +11393,9 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-weight: 900;
 }
 .comparison-image-stage {
-  height: min(68vh, 700px);
-  min-height: 300px;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -11384,10 +11409,12 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background-position: 0 0, 0 11px, 11px -11px, -11px 0;
 }
 .comparison-image-stage img {
-  width: 100%;
-  height: 100%;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   display: block;
-  object-fit: contain;
+  object-fit: contain !important;
 }
 .comparison-image-stage span {
   color: #64748b;
@@ -11444,11 +11471,12 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #0f172a;
 }
 .chapter-reader-stage img {
-  width: 100%;
-  height: 100%;
-  max-height: 100%;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   display: block;
-  object-fit: contain;
+  object-fit: contain !important;
 }
 .chapter-reader-stage span {
   color: #cbd5e1;
@@ -11495,9 +11523,267 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   .r-tab { flex: 1 1 140px; }
   .media-modal-backdrop { padding: 8px; }
   .media-modal-card { width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding: 16px; }
+  .image-comparison-modal { height: calc(100vh - 16px); max-height: none; }
   .image-comparison-grid { grid-template-columns: 1fr; }
-  .comparison-image-stage { height: 42vh; min-height: 220px; }
+  .comparison-image-stage { height: auto; min-height: 0; }
   .chapter-reader-modal { width: calc(100vw - 16px); height: calc(100vh - 16px); max-height: none; }
   .chapter-reader-header { align-items: flex-start; flex-direction: column; gap: 8px; padding-right: 48px; }
   .chapter-reader-header > strong { align-self: flex-start; }
+}
+
+/* SWP15: persistent role-paired direct Messenger. */
+.direct-messenger {
+  position: fixed;
+  right: 22px;
+  bottom: 20px;
+  z-index: 2150;
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+  font-family: inherit;
+}
+.direct-messenger-launcher {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 3px solid rgba(255, 255, 255, .92);
+  border-radius: 50%;
+  color: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .34);
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.direct-messenger-launcher:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .4);
+}
+.direct-messenger-mangaka .direct-messenger-launcher {
+  background: linear-gradient(145deg, #ef4444, #991b1b);
+}
+.direct-messenger-assistant .direct-messenger-launcher {
+  background: linear-gradient(145deg, #22c55e, #047857);
+}
+.direct-messenger-tantou .direct-messenger-launcher {
+  background: linear-gradient(145deg, #a855f7, #6d28d9);
+}
+.direct-messenger-panel {
+  width: min(430px, calc(100vw - 32px));
+  height: min(570px, calc(100vh - 110px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #dbe3ee;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, .34);
+}
+.direct-messenger-header {
+  flex: 0 0 auto;
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px 12px 16px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #334155, #0f172a);
+}
+.direct-messenger-mangaka .direct-messenger-header { background: linear-gradient(135deg, #dc2626, #7f1d1d); }
+.direct-messenger-assistant .direct-messenger-header { background: linear-gradient(135deg, #16a34a, #065f46); }
+.direct-messenger-tantou .direct-messenger-header { background: linear-gradient(135deg, #9333ea, #5b21b6); }
+.direct-messenger-header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.direct-messenger-header strong,
+.direct-messenger-header small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.direct-messenger-header small {
+  color: rgba(255, 255, 255, .78);
+  font-size: 10px;
+}
+.direct-messenger-header button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .52);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .14);
+  color: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+}
+.direct-messenger-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+}
+.direct-contact-list {
+  min-width: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 8px;
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.direct-contact {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+}
+.direct-contact:hover,
+.direct-contact.active {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .07);
+}
+.direct-contact > span:not(.direct-contact-avatar),
+.direct-contact > small {
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.direct-contact > span:not(.direct-contact-avatar) { font-size: 10px; font-weight: 850; }
+.direct-contact > small { color: #64748b; font-size: 8px; }
+.direct-contact-avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+}
+.contact-mangaka { background: linear-gradient(145deg, #ef4444, #991b1b); }
+.contact-assistant { background: linear-gradient(145deg, #22c55e, #047857); }
+.contact-tantou { background: linear-gradient(145deg, #a855f7, #6d28d9); }
+.direct-conversation {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+.direct-message-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+.direct-message {
+  width: fit-content;
+  max-width: 84%;
+  display: grid;
+  gap: 3px;
+}
+.direct-message p {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: 14px;
+  color: #1e293b;
+  background: #e2e8f0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.direct-message time {
+  padding: 0 4px;
+  color: #94a3b8;
+  font-size: 8px;
+}
+.direct-message.own {
+  align-self: flex-end;
+  justify-items: end;
+}
+.direct-message.own p {
+  color: #ffffff;
+  background: #2563eb;
+  border-bottom-right-radius: 4px;
+}
+.direct-message.received {
+  align-self: flex-start;
+}
+.direct-message.received p { border-bottom-left-radius: 4px; }
+.direct-message-compose {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+.direct-message-compose textarea {
+  width: 100%;
+  min-height: 42px;
+  max-height: 92px;
+  resize: vertical;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 13px;
+  background: #f8fafc;
+}
+.direct-message-compose button {
+  width: 42px;
+  height: 42px;
+  align-self: end;
+  border: 0;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.direct-message-compose button:disabled { opacity: .4; cursor: not-allowed; }
+.direct-chat-state {
+  margin: auto;
+  color: #64748b;
+  font-size: 11px;
+  text-align: center;
+}
+.direct-chat-error {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 7px 10px;
+  color: #991b1b;
+  background: #fef2f2;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+@media (max-width: 560px) {
+  .direct-messenger { right: 10px; bottom: 10px; }
+  .direct-messenger-panel { width: calc(100vw - 20px); height: min(620px, calc(100vh - 86px)); }
+  .direct-messenger-body { grid-template-columns: 82px minmax(0, 1fr); }
+  .direct-contact-list { padding: 6px; }
+  .direct-messenger-launcher { width: 52px; height: 52px; }
 }

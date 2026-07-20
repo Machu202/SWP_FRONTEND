@@ -45,6 +45,7 @@ const fixtures = {
   ],
   feedbacks: [{ id: 1001, content: "Strengthen the panel border.", isResolved: false, pageId: 100, xCoord: 100, yCoord: 140, width: 220, height: 180 }],
   boardChatMessages: [{ id: 1401, seriesId: 1, senderId: 9, senderName: "Board Member", content: "The pacing in chapter one is ready for discussion.", createdAt: notificationReceivedAt }],
+  directChatMessages: [{ id: 1501, senderId: 1, recipientId: 2, senderName: "Mika Mangaka", recipientName: "Aya Assistant", content: "Hello from Mika.", createdAt: notificationReceivedAt }],
   comments: [{ id: 1101, content: "Use a darker tone here.", userName: "Mika" }],
   resources: [{ id: 801, fileName: "studio-brush.png", resourceType: "BRUSH", fileUrl: imageCurrent }]
 };
@@ -100,7 +101,23 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       taskStatuses: [], taskStarts: 0, feedbackCreated: 0, feedbackResolved: 0, votes: [],
       adminDecisions: 0, parameterUpdates: 0, tantouAssignments: [], seriesProfileUpdates: 0,
       tantouChapterStatus: initialChapterStatus || fixtureData.chapters[0].publishStatus,
-      boardSubmissions: 0, seriesStatusChanges: [], boardChatPosts: 0
+      boardSubmissions: 0, seriesStatusChanges: [], boardChatPosts: 0, directChatPosts: 0,
+      otpRequests: [], googleLogins: []
+    };
+
+    window.google = {
+      accounts: {
+        id: {
+          initialize(options) { window.__googleSignInOptions = options; },
+          renderButton(target) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = "Sign in with Google";
+            button.addEventListener("click", () => window.__googleSignInOptions?.callback?.({ credential: "smoke-google-id-token" }));
+            target.replaceChildren(button);
+          }
+        }
+      }
     };
 
     const f = fixtureData;
@@ -135,10 +152,16 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         : response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
       if (path === "/auth/session") return response({ active: true, id: profile.id, username: profile.username });
       if (path === "/auth/logout") return response({ message: "Logged out" });
-      if (path === "/auth/request-otp") return response({ message: "sent" });
+      if (path === "/auth/request-otp") {
+        capture.otpRequests.push(JSON.parse(String(options.body || "{}")));
+        return response({ message: "sent" });
+      }
       if (path === "/auth/verify-otp") return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
       if (path === "/auth/register") return response({ id: 55 });
-      if (path === "/auth/google") return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
+      if (path === "/auth/google") {
+        capture.googleLogins.push(JSON.parse(String(options.body || "{}")));
+        return response({ token: authToken, id: 1, username: "smoke", role: roleName || "Mangaka" });
+      }
 
       if (path === "/manga-series/my-series") return response(f.series);
       if (path === "/manga-series/assigned-to-me") return response(hasAssignedSeries ? f.series.map((item) => ({ ...item, displayNumber: 1, tantouId: 4, tantouName: "Taro Editor" })) : []);
@@ -272,6 +295,16 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         return response(saved, 201);
       }
 
+      if (/^\/direct-chat\/users\/\d+\/messages$/.test(path) && method === "GET") return response(f.directChatMessages);
+      if (/^\/direct-chat\/users\/\d+\/messages$/.test(path) && method === "POST") {
+        capture.directChatPosts += 1;
+        const recipientId = Number(path.split("/")[3]);
+        const payload = JSON.parse(String(options.body || "{}"));
+        const saved = { id: 1501 + capture.directChatPosts, senderId: profile.id, recipientId, senderName: profile.fullName, recipientName: "Studio member", content: payload.content, createdAt: new Date().toISOString() };
+        f.directChatMessages.push(saved);
+        return response(saved, 201);
+      }
+
       if (path === "/schedules/series/1") return response([{ id: 41, publishDate: f.nextWeek, frequency: "Weekly" }]);
       if (path === "/schedules" && method === "POST") return response({ id: 42 });
       if (/^\/schedules\/\d+$/.test(path) && method === "DELETE") return response(null, 204);
@@ -322,7 +355,13 @@ async function run() {
       await page.getByRole("button", { name: "Show password" }).click();
       assert.equal(await page.locator("#login-password").getAttribute("type"), "text");
       await page.getByRole("button", { name: "via OTP" }).click();
-      await page.locator('input[type="email"]').waitFor();
+      const otpForm = page.locator("#form-otp-section");
+      await otpForm.locator('input[type="email"]').waitFor();
+      assert.equal(await otpForm.locator('input[type="password"]').count(), 0, "OTP mode must not ask for a password");
+      await otpForm.locator('input[type="email"]').fill("mika@example.test");
+      await otpForm.getByRole("button", { name: "Send OTP", exact: true }).click();
+      await waitText(page, "OTP sent. Check your email and enter the code.");
+      assert.deepEqual((await capture(page)).otpRequests, [{ email: "mika@example.test" }]);
       await page.getByRole("button", { name: "PASSWORD", exact: true }).click();
       await page.getByRole("button", { name: /create new account/i }).click();
       const registerPassword = page.locator('#form-register-section input[autocomplete="new-password"]');
@@ -331,6 +370,17 @@ async function run() {
       assert.equal(await registerPassword.getAttribute("type"), "text");
       assert.deepEqual(pageErrors, []);
       passed.push("FE-02 password/OTP login and login/register password visibility");
+      await context.close();
+    }
+
+    {
+      const { context, page, pageErrors } = await bootstrapApp(browser, { hash: "/login" });
+      await waitText(page, "Sign in with Google");
+      await page.getByRole("button", { name: "Sign in with Google", exact: true }).click();
+      await waitText(page, "Mangaka Dashboard");
+      assert.deepEqual((await capture(page)).googleLogins, [{ token: "smoke-google-id-token" }]);
+      assert.deepEqual(pageErrors, []);
+      passed.push("Google Sign-In sends the GIS ID credential to the backend and creates a session");
       await context.close();
     }
 
@@ -420,6 +470,12 @@ async function run() {
       await waitText(page, "Page 1");
       await page.getByRole("button", { name: "Read Chapter" }).click();
       assert.equal(await page.getByRole("dialog", { name: "Read Chapter 1" }).count(), 1, "Admin Final Approval must share the chapter reader");
+      assert.equal(await page.locator(".chapter-reader-stage").evaluate((stage) => {
+        const image = stage.querySelector("img");
+        const stageBox = stage.getBoundingClientRect();
+        const imageBox = image.getBoundingClientRect();
+        return imageBox.width <= stageBox.width + 1 && imageBox.height <= stageBox.height + 1;
+      }), true, "Admin chapter page must fit fully inside the reader");
       await page.getByRole("button", { name: "Close chapter reader" }).click();
       await waitText(page, "Admin · read only");
       await waitText(page, "The pacing in chapter one is ready for discussion.");
@@ -656,6 +712,13 @@ async function run() {
       assert.equal(await page.getByText("NOW", { exact: true }).count(), 0);
       assert.equal(await page.getByText("REV", { exact: true }).count(), 0);
       assert.equal(await page.getByRole("button", { name: "Assets", exact: true }).count(), 0);
+      await page.getByRole("button", { name: "Open direct messenger" }).click();
+      await waitText(page, "Hello from Mika.");
+      await page.getByPlaceholder("Message Mika Mangaka…").fill("Assistant reply from Messenger");
+      await page.getByRole("button", { name: "Send direct message" }).click();
+      await waitText(page, "Assistant reply from Messenger");
+      assert.equal((await capture(page)).directChatPosts, 1, "Assistant direct Messenger reply must be saved through the backend API");
+      await page.getByRole("button", { name: "Minimize direct messenger" }).first().click();
       await page.locator(".ast-task-item").first().click();
       assert.match(await page.evaluate(() => location.hash), /^#\/tasks\?tab=assignments/, "Active Assignment cards must open Assignments");
       await waitText(page, "Task Detail");
@@ -678,8 +741,20 @@ async function run() {
       assert.ok(detailImages.includes(fixtures.imageCurrent), "Reference image must remain the original page");
       assert.ok(detailImages.includes(fixtures.imageOld), "Submitted image must remain separate from the reference");
       assert.equal(await page.getByRole("button", { name: "Compare 2 Images" }).count(), 1, "Assistant compare control must appear after a submission exists");
+      const downloadButtonBox = await page.getByRole("button", { name: "Download reference image" }).boundingBox();
+      const compareButtonBox = await page.getByRole("button", { name: "Compare 2 Images" }).boundingBox();
+      assert.ok(downloadButtonBox && compareButtonBox && Math.abs(downloadButtonBox.width - compareButtonBox.width) < 1 && Math.abs(downloadButtonBox.height - compareButtonBox.height) < 1,
+        "Assistant Compare 2 Images button must match Download Reference Image dimensions");
       await page.getByRole("button", { name: "Compare 2 Images" }).click();
       assert.equal(await page.getByRole("dialog", { name: "Compare 2 Images" }).count(), 1);
+      const comparisonFits = await page.locator(".comparison-image-stage").evaluateAll((stages) => stages.every((stage) => {
+        const image = stage.querySelector("img");
+        if (!image) return false;
+        const stageBox = stage.getBoundingClientRect();
+        const imageBox = image.getBoundingClientRect();
+        return imageBox.width <= stageBox.width + 1 && imageBox.height <= stageBox.height + 1;
+      }));
+      assert.equal(comparisonFits, true, "Both comparison images must fit fully inside their stages");
       await page.getByRole("button", { name: "Close image comparison" }).click();
       await page.getByRole("button", { name: "Download reference image" }).click();
       await waitText(page, "started and moved to Doing");
@@ -868,6 +943,12 @@ async function run() {
       await waitText(page, "Page 1");
       await page.getByRole("button", { name: "Read Chapter" }).click();
       assert.equal(await page.getByRole("dialog", { name: "Read Chapter 1" }).count(), 1, "Editorial Board must be able to read a chapter page-by-page");
+      assert.equal(await page.locator(".chapter-reader-stage").evaluate((stage) => {
+        const image = stage.querySelector("img");
+        const stageBox = stage.getBoundingClientRect();
+        const imageBox = image.getBoundingClientRect();
+        return imageBox.width <= stageBox.width + 1 && imageBox.height <= stageBox.height + 1;
+      }), true, "Editorial Board chapter page must fit fully inside the reader");
       assert.equal(await page.getByRole("button", { name: "Previous page" }).isDisabled(), true);
       assert.equal(await page.getByRole("button", { name: "Next page" }).isDisabled(), true);
       await page.getByRole("button", { name: "Close chapter reader" }).click();

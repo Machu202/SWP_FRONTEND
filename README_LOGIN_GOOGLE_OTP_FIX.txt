@@ -5,7 +5,7 @@ Frontend changes:
 - Google ID token is sent to POST /api/v1/auth/google.
 - Returned JWT session is saved and role redirect works.
 - OTP tab now has a real flow:
-  1. Email + password -> POST /api/v1/auth/request-otp
+  1. Account email only -> POST /api/v1/auth/request-otp
   2. OTP code -> POST /api/v1/auth/verify-otp
   3. Returned JWT session is saved and role redirect works.
 - Added VITE_GOOGLE_CLIENT_ID to .env.example.
@@ -13,4 +13,6 @@ Frontend changes:
 Important:
 - Google login requires VITE_GOOGLE_CLIENT_ID in frontend .env.
 - Backend application.yml must use the same Google client id in manga.app.googleClientId.
+- The Google OAuth Web Client must allow the frontend URL under Authorized JavaScript origins.
 - OTP login requires the backend /api/v1/auth/request-otp endpoint included in the backend changed-files patch.
+- The OTP request body is { "email": "account@example.com" }; no password is accepted or required.

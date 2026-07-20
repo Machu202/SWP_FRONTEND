@@ -5,6 +5,7 @@ import { useWorkspaceSelection } from "../context/WorkspaceSelectionContext";
 import { navigate } from "../utils/router";
 import { connectNotificationStream } from "../utils/notificationStream";
 import { withWorkspaceSelection } from "../utils/workspaceRoute";
+import DirectMessenger from "./DirectMessenger";
 
 function roleGroup(role = "") {
   if (hasRole(role, ["admin"])) return "admin";
@@ -199,6 +200,9 @@ export function Layout({ children, route }) {
           {children}
         </section>
       </main>
+      {(["mangaka", "assistant", "tantou"].includes(group) && (profile?.id || session.id)) ? (
+        <DirectMessenger currentUserId={profile?.id || session.id} roleGroup={group} />
+      ) : null}
     </div>
   );
 }

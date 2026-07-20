@@ -7,25 +7,53 @@ import { clearRememberedCredentials, isRememberPasswordEnabled, loadRememberedCr
 
 const PUBLIC_REGISTRATION_ROLES = ["Mangaka", "Assistant", "Tantou Editor", "Editorial Board"];
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+let googleScriptPromise;
 
 function loadGoogleScript() {
   if (window.google?.accounts?.id) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-    if (existing) {
-      existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", reject, { once: true });
-      return;
-    }
+  if (googleScriptPromise) return googleScriptPromise;
 
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = resolve;
-    script.onerror = () => reject(new Error("Could not load Google Sign-In script."));
-    document.head.appendChild(script);
+  googleScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    const script = existing || document.createElement("script");
+    let settled = false;
+
+    const cleanup = () => {
+      window.clearInterval(readinessTimer);
+      window.clearTimeout(timeoutTimer);
+      script.removeEventListener("error", handleError);
+    };
+    const handleReady = () => {
+      if (settled || !window.google?.accounts?.id) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("Could not load Google Sign-In script."));
+    };
+    const readinessTimer = window.setInterval(handleReady, 100);
+    const timeoutTimer = window.setTimeout(handleError, 10000);
+
+    script.addEventListener("load", handleReady, { once: true });
+    script.addEventListener("error", handleError, { once: true });
+
+    if (!existing) {
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    handleReady();
+  }).catch((error) => {
+    googleScriptPromise = undefined;
+    throw error;
   });
+
+  return googleScriptPromise;
 }
 
 function normalizeOtpCode(value) {
@@ -40,7 +68,6 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showOtpPassword, setShowOtpPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [rememberPassword, setRememberPassword] = useState(false);
   const [message, setMessage] = useState("");
@@ -48,7 +75,6 @@ export default function LoginPage() {
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [registration, setRegistration] = useState({ username: "", email: "", phoneNumber: "", password: "", role: "Mangaka" });
   const [otpEmail, setOtpEmail] = useState("");
-  const [otpPassword, setOtpPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
 
@@ -149,7 +175,7 @@ export default function LoginPage() {
       if (!otpEmail.includes("@")) {
         throw new Error("Enter the email address linked to your account.");
       }
-      await requestOtp({ username: otpEmail.trim(), password: otpPassword });
+      await requestOtp(otpEmail.trim());
       setOtpSent(true);
       setMessage("OTP sent. Check your email and enter the code.");
     } catch (err) {
@@ -212,7 +238,9 @@ export default function LoginPage() {
         if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleCredential
+          callback: handleGoogleCredential,
+          auto_select: false,
+          cancel_on_tap_outside: true
         });
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: "outline",
@@ -344,32 +372,8 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="input-group">
-                <label>Password</label>
-                <div className="password-wrapper">
-                  <input
-                    type={showOtpPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    placeholder="••••••"
-                    value={otpPassword}
-                    onChange={(event) => {
-                      setOtpPassword(event.target.value);
-                      setOtpSent(false);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="eye-icon password-toggle"
-                    aria-label={showOtpPassword ? "Hide password" : "Show password"}
-                    onClick={() => setShowOtpPassword((value) => !value)}
-                  >
-                    {showOtpPassword ? "🙈" : "👁️"}
-                  </button>
-                </div>
-              </div>
-
               <div className="center-btn">
-                <button className="btn-secondary" type="button" disabled={busy || !otpEmail || !otpPassword} onClick={sendOtp}>
+                <button className="btn-secondary" type="button" disabled={busy || !otpEmail} onClick={sendOtp}>
                   {busy && !otpSent ? "Sending..." : otpSent ? "OTP Sent" : "Send OTP"}
                 </button>
               </div>
@@ -387,11 +391,11 @@ export default function LoginPage() {
                 />
               </div>
 
-              <p className="otp-timer-text">{otpSent ? "OTP has been sent and will expire in 5 minutes." : "Enter your email and password, then request an OTP."}</p>
+              <p className="otp-timer-text">{otpSent ? "OTP has been sent and will expire in 5 minutes." : "Enter your account email, then request an OTP."}</p>
               <button className="btn-primary" disabled={busy || !otpSent || !otpCode}>{busy && otpSent ? "Verifying..." : "Login with OTP"}</button>
               <div className="otp-resend-action">
                 <span className="not-received-text">Not received OTP?</span>
-                <button type="button" className="btn-orange" disabled={busy || !otpEmail || !otpPassword} onClick={sendOtp}>Send again</button>
+                <button type="button" className="btn-orange" disabled={busy || !otpEmail} onClick={sendOtp}>Send again</button>
               </div>
             </form>
           )}

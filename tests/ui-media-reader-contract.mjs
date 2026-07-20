@@ -38,10 +38,15 @@ assert.match(mangakaReview, />Compare 2 Images<\/button>/);
 assert.match(mangakaReview, /referenceUrl=\{reference\}[\s\S]*submittedUrl=\{submitted\}/);
 assert.match(assignments, /submittedImageUrl \? \([\s\S]*Your submitted image[\s\S]*Compare 2 Images/,
   "Assistant compare control must only render after a submitted image exists");
+assert.match(assignments, /reference-download-btn compare-images-button assistant-compare-images-button/,
+  "Assistant Compare 2 Images must share the Download Reference Image dimensions");
 assert.match(comparisonModal, /image-comparison-grid/);
 assert.match(comparisonModal, /label="Reference"/);
 assert.match(comparisonModal, /label="Submitted work"/);
 assert.match(comparisonModal, /aria-label="Close image comparison"/);
+assert.match(css, /\.image-comparison-modal[\s\S]*height: calc\(100vh - 36px\)/);
+assert.match(css, /\.comparison-image-stage img[\s\S]*max-width: 100% !important[\s\S]*max-height: 100% !important[\s\S]*object-fit: contain !important/,
+  "Comparison images must fit fully inside the visible modal");
 
 assert.match(boardReview, />Read Chapter<\/button>/);
 assert.match(boardReview, /<ChapterReaderModal/,
@@ -53,11 +58,12 @@ assert.match(chapterReader, /aria-label="Previous page"/);
 assert.match(chapterReader, /aria-label="Next page"/);
 assert.match(chapterReader, /aria-label="Close chapter reader"/);
 assert.match(css, /\.chapter-reader-modal[\s\S]*height: calc\(100vh - 24px\)/);
-assert.match(css, /\.chapter-reader-stage img[\s\S]*height: 100%[\s\S]*object-fit: contain/);
+assert.match(css, /\.chapter-reader-stage img[\s\S]*max-width: 100% !important[\s\S]*max-height: 100% !important[\s\S]*object-fit: contain !important/,
+  "Chapter pages must fit fully inside the visible reader");
 
 assert.match(css, /feature-screen\.board-screen \.main-wrapper[\s\S]*background-color: #fffaf0/,
   "Editorial Board workspace background must use a light paper color");
 assert.doesNotMatch(css, /feature-screen\.board-screen \.main-wrapper \{[\s\S]{0,120}background-color: #ffd58a/,
   "The previous dark yellow Editorial Board background must not return");
 
-console.log("SWP14 UI media and chapter reader contract: PASS");
+console.log("SWP15 UI media and chapter reader contract: PASS");

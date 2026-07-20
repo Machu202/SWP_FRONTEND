@@ -69,8 +69,8 @@ export function AuthProvider({ children }) {
     return api.auth.register(payload);
   }
 
-  async function requestOtp(payload) {
-    return api.auth.requestOtp(payload);
+  async function requestOtp(email) {
+    return api.auth.requestOtp(email);
   }
 
   async function verifyOtp(email, otpCode) {

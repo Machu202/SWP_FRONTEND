@@ -427,7 +427,7 @@ export const api = {
       return setSession(data || {});
     },
     register: (payload) => apiFetch("/auth/register", { method: "POST", body: payload }),
-    requestOtp: ({ username, password }) => apiFetch("/auth/request-otp", { method: "POST", body: { username, password } }),
+    requestOtp: (email) => apiFetch("/auth/request-otp", { method: "POST", body: { email } }),
     verifyOtp: async (email, otpCode) => {
       const data = await apiFetch("/auth/verify-otp", { method: "POST", body: { email, otpCode } });
       return setSession(data || {});
@@ -569,6 +569,14 @@ export const api = {
   boardChat: {
     list: (seriesId) => apiFetch(`/board-chat/series/${seriesId}/messages`),
     send: (seriesId, content) => apiFetch(`/board-chat/series/${seriesId}/messages`, {
+      method: "POST",
+      body: { content }
+    })
+  },
+
+  directChat: {
+    list: (otherUserId) => apiFetch(`/direct-chat/users/${otherUserId}/messages`),
+    send: (recipientId, content) => apiFetch(`/direct-chat/users/${recipientId}/messages`, {
       method: "POST",
       body: { content }
     })

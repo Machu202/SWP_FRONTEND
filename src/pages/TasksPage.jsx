@@ -862,7 +862,7 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
                   title={isAssistant ? "Your submitted image" : "Submitted image"}
                   url={submittedImageUrl}
                 />
-                {isAssistant ? <button className="btn compare-images-button" type="button" onClick={() => setCompareOpen(true)}>Compare 2 Images</button> : null}
+                {isAssistant ? <button className="btn btn-primary full reference-download-btn compare-images-button assistant-compare-images-button" type="button" onClick={() => setCompareOpen(true)}>Compare 2 Images</button> : null}
               </div>
             ) : null}
           </div>
