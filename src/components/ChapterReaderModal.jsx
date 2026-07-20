@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { mediaUrlFrom } from "../api/client";
 
 function numericPageNumber(page, fallback) {
@@ -8,6 +8,9 @@ function numericPageNumber(page, fallback) {
 
 export default function ChapterReaderModal({ open, chapter, onClose }) {
   const [pageIndex, setPageIndex] = useState(0);
+  const [fittedSize, setFittedSize] = useState(null);
+  const stageRef = useRef(null);
+  const imageRef = useRef(null);
   const pages = useMemo(() => {
     return (chapter?.pages || [])
       .map((page, originalIndex) => ({ page, originalIndex }))
@@ -19,6 +22,35 @@ export default function ChapterReaderModal({ open, chapter, onClose }) {
   }, [chapter]);
 
   useEffect(() => { setPageIndex(0); }, [chapter?.id, open]);
+
+  useEffect(() => {
+    setFittedSize(null);
+    if (!open) return undefined;
+
+    const fitImageInsideStage = () => {
+      const stage = stageRef.current;
+      const image = imageRef.current;
+      if (!stage || !image || !image.naturalWidth || !image.naturalHeight) return;
+      const computed = window.getComputedStyle(stage);
+      const availableWidth = Math.max(1, stage.clientWidth - parseFloat(computed.paddingLeft || 0) - parseFloat(computed.paddingRight || 0));
+      const availableHeight = Math.max(1, stage.clientHeight - parseFloat(computed.paddingTop || 0) - parseFloat(computed.paddingBottom || 0));
+      const scale = Math.min(availableWidth / image.naturalWidth, availableHeight / image.naturalHeight);
+      setFittedSize({
+        width: Math.max(1, Math.floor(image.naturalWidth * scale)),
+        height: Math.max(1, Math.floor(image.naturalHeight * scale))
+      });
+    };
+
+    const frame = window.requestAnimationFrame(fitImageInsideStage);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fitImageInsideStage);
+    if (stageRef.current) observer?.observe(stageRef.current);
+    window.addEventListener("resize", fitImageInsideStage);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", fitImageInsideStage);
+    };
+  }, [open, pageIndex, chapter?.id]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -56,14 +88,36 @@ export default function ChapterReaderModal({ open, chapter, onClose }) {
           <strong>Page {visiblePageNumber} · {pages.length ? `${pageIndex + 1} of ${pages.length}` : "0 of 0"}</strong>
         </header>
 
-        <div className="chapter-reader-stage">
-          {imageUrl ? <img key={page?.id ?? pageIndex} src={imageUrl} alt={`Chapter ${chapterNumber}, Page ${visiblePageNumber}`} /> : <span>No page image is available.</span>}
+        <div className="chapter-reader-stage" ref={stageRef} data-fit-mode="contain-complete">
+          {imageUrl ? (
+            <img
+              key={page?.id ?? pageIndex}
+              ref={imageRef}
+              src={imageUrl}
+              alt={`Chapter ${chapterNumber}, Page ${visiblePageNumber}`}
+              onLoad={() => {
+                const stage = stageRef.current;
+                const image = imageRef.current;
+                if (!stage || !image || !image.naturalWidth || !image.naturalHeight) return;
+                const computed = window.getComputedStyle(stage);
+                const availableWidth = Math.max(1, stage.clientWidth - parseFloat(computed.paddingLeft || 0) - parseFloat(computed.paddingRight || 0));
+                const availableHeight = Math.max(1, stage.clientHeight - parseFloat(computed.paddingTop || 0) - parseFloat(computed.paddingBottom || 0));
+                const scale = Math.min(availableWidth / image.naturalWidth, availableHeight / image.naturalHeight);
+                setFittedSize({ width: Math.floor(image.naturalWidth * scale), height: Math.floor(image.naturalHeight * scale) });
+              }}
+              style={fittedSize ? {
+                "--reader-fit-width": `${fittedSize.width}px`,
+                "--reader-fit-height": `${fittedSize.height}px`
+              } : undefined}
+            />
+          ) : <span>No page image is available.</span>}
         </div>
 
         <nav className="chapter-reader-controls" aria-label="Chapter page navigation">
           <button type="button" aria-label="Previous page" onClick={() => setPageIndex((current) => Math.max(0, current - 1))} disabled={pageIndex <= 0}>&lt;</button>
           <span>Page {pages.length ? pageIndex + 1 : 0} / {pages.length}</span>
           <button type="button" aria-label="Next page" onClick={() => setPageIndex((current) => Math.max(0, Math.min(pages.length - 1, current + 1)))} disabled={!pages.length || pageIndex >= pages.length - 1}>&gt;</button>
+          {imageUrl ? <a className="chapter-reader-open-original" href={imageUrl} target="_blank" rel="noreferrer">Open full image</a> : null}
         </nav>
       </section>
     </div>

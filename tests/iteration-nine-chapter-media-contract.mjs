@@ -46,7 +46,8 @@ assert.match(canvas, /api\.series\.assignTantou/);
 
 // Every orientation and intrinsic size uses the complete stage in both shared modals.
 assert.match(css, /\.comparison-image-stage img[\s\S]*width: 100% !important[\s\S]*height: 100% !important[\s\S]*object-fit: contain !important/);
-assert.match(css, /\.chapter-reader-stage img[\s\S]*width: 100% !important[\s\S]*height: 100% !important[\s\S]*object-fit: contain !important/);
+assert.match(css, /\.chapter-reader-stage img[\s\S]*--reader-fit-width[\s\S]*--reader-fit-height[\s\S]*object-fit: contain !important/);
+assert.match(reader, /Math\.min\(availableWidth \/ image\.naturalWidth, availableHeight \/ image\.naturalHeight\)/);
 assert.match(reader, /key=\{page\?\.id \?\? pageIndex\}/,
   "Changing pages must mount the new image against the same fitted stage instead of retaining stale dimensions");
 

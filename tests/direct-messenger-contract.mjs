@@ -13,14 +13,14 @@ const service = read("../SWP_BACKEND/src/main/java/com/mangastudio/backend/servi
 const backendTests = read("../SWP_BACKEND/src/test/java/com/mangastudio/backend/DirectChatServiceTests.java");
 
 assert.match(entity, /@Entity/);
-assert.match(entity, /Direct_Chat_Message/,
-  "Direct messages must be stored in their own database table");
+assert.match(entity, /mat_chat_message/,
+  "MAT direct messages must be stored in the renamed database table");
 assert.match(entity, /sender_id/);
-assert.match(entity, /recipient_id/);
+assert.match(entity, /receiver_id/);
 assert.match(entity, /created_at/);
 assert.match(entity, /read_at/);
 assert.match(repository, /findConversation/);
-assert.match(repository, /countByRecipient_IdAndSender_IdAndReadAtIsNull/);
+assert.match(repository, /countByReceiver_IdAndSender_IdAndReadAtIsNull/);
 assert.match(repository, /markConversationRead/);
 assert.match(repository, /ORDER BY message\.createdAt ASC, message\.id ASC/,
   "Messages must be returned in stable chronological order");

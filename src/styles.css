@@ -8878,6 +8878,24 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   align-items: end;
 }
 
+.system-parameter-form {
+  grid-template-columns: minmax(220px, 1.5fr) minmax(145px, .65fr) minmax(120px, .55fr) minmax(160px, .75fr) auto;
+}
+
+.system-parameter-type {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.system-parameter-audit { display: grid; gap: 3px; min-width: 150px; }
+.system-parameter-audit strong { color: #334155; font-size: 11px; }
+.system-parameter-audit small { color: #64748b; font-size: 9px; }
+
 .system-parameter-form > div:first-child {
   align-self: center;
 }
@@ -11466,17 +11484,19 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   display: grid;
   place-items: center;
   overflow: hidden;
+  padding: 8px;
   border: 1px solid #dbe3ee;
   border-radius: 12px;
   background: #0f172a;
 }
 .chapter-reader-stage img {
-  width: 100% !important;
-  height: 100% !important;
+  width: var(--reader-fit-width, auto) !important;
+  height: var(--reader-fit-height, auto) !important;
   max-width: 100% !important;
   max-height: 100% !important;
   display: block;
   object-fit: contain !important;
+  object-position: center center !important;
 }
 .chapter-reader-stage span {
   color: #cbd5e1;
@@ -11517,6 +11537,19 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-size: 12px;
   font-weight: 900;
 }
+.chapter-reader-open-original {
+  position: absolute;
+  right: 2px;
+  padding: 8px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 850;
+  text-decoration: none;
+}
+.chapter-reader-controls { position: relative; }
 
 @media (max-width: 760px) {
   .resource-filter-tabs { width: 100%; }
@@ -11529,6 +11562,8 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   .chapter-reader-modal { width: calc(100vw - 16px); height: calc(100vh - 16px); max-height: none; }
   .chapter-reader-header { align-items: flex-start; flex-direction: column; gap: 8px; padding-right: 48px; }
   .chapter-reader-header > strong { align-self: flex-start; }
+  .chapter-reader-open-original { position: static; }
+  .chapter-reader-controls { flex-wrap: wrap; }
 }
 
 /* SWP15: persistent role-paired direct Messenger. */

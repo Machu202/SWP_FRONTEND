@@ -611,8 +611,8 @@ export const api = {
 
   system: {
     parameters: () => apiFetch("/system-parameters"),
-    create: (key, value) => apiFetch(`/system-parameters${objectToQuery({ key, value })}`, { method: "POST" }),
-    update: (key, value) => apiFetch(`/system-parameters/${encodeURIComponent(key)}${objectToQuery({ value })}`, { method: "PUT" }),
+    create: (key, value, type = "STRING") => apiFetch(`/system-parameters${objectToQuery({ key, value, type })}`, { method: "POST" }),
+    update: (key, value, type) => apiFetch(`/system-parameters/${encodeURIComponent(key)}${objectToQuery({ value, type })}`, { method: "PUT" }),
     remove: (key) => apiFetch(`/system-parameters/${encodeURIComponent(key)}`, { method: "DELETE" })
   }
 };
