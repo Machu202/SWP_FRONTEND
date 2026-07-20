@@ -11901,6 +11901,95 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-size: 12px;
   line-height: 1.55;
 }
+.dashboard-series-workflow-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 14px;
+  margin-top: -4px;
+}
+.dashboard-publish-series-btn,
+.dashboard-delete-series-btn { min-width: 92px; }
+.dashboard-publish-series-btn:disabled {
+  border-color: #d7dce4;
+  background: #eef1f5;
+  color: #9299a5;
+  cursor: not-allowed;
+  opacity: 1;
+}
+.series-launch-countdown {
+  width: 100%;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: right;
+}
+.publish-series-modal {
+  width: min(620px, 100%);
+  text-align: left;
+}
+.publish-modal-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 22px;
+  font-weight: 900;
+}
+.publish-modal-copy {
+  margin: 10px 0 18px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.publish-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.publish-mode-option {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 15px;
+  border: 1px solid #dbe1ea;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+.publish-mode-option.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .1);
+}
+.publish-mode-option strong { color: #0f172a; font-size: 13px; }
+.publish-mode-option small { color: #64748b; font-size: 10px; line-height: 1.45; }
+.publish-date-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+}
+.publish-date-field input {
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #0f172a;
+}
+.publish-date-field small { color: #2563eb; }
 
 @media (max-width: 560px) {
   .direct-messenger { right: 10px; bottom: 10px; }
@@ -11909,4 +11998,5 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   .direct-contact-list { padding: 6px; }
   .direct-messenger-launcher { width: 52px; height: 52px; }
   .canvas-chapter-handoff-row { align-items: stretch; flex-direction: column; }
+  .publish-mode-grid { grid-template-columns: 1fr; }
 }

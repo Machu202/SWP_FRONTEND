@@ -458,6 +458,7 @@ export const api = {
     update: (id, payload) => apiFetch(`/manga-series/${id}`, { method: "PUT", body: payload }),
     remove: (id) => apiFetch(`/manga-series/${id}`, { method: "DELETE" }),
     status: (id, newStatus) => apiFetch(`/manga-series/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
+    schedulePublication: (id, publishAt) => apiFetch(`/manga-series/${id}/publication-schedule${objectToQuery({ publishAt })}`, { method: "POST" }),
     assignTantou: (id, tantouId) => apiFetch(`/manga-series/${id}/tantou${objectToQuery({ tantouId })}`, { method: "PATCH" }),
     submitToBoard: (id) => apiFetch(`/manga-series/${id}/submit-to-board`, { method: "PATCH" }),
     adminDecision: (id, isApproved, tantouId) => apiFetch(`/manga-series/${id}/admin-decision${objectToQuery({ isApproved, tantouId })}`, { method: "PATCH" })

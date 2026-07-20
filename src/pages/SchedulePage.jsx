@@ -197,7 +197,12 @@ export default function SchedulePage({ initialSeriesId = "" }) {
   }
 
   const calendarItems = useMemo(() => [
-    ...schedules.map((item) => ({ ...item, kind: "Publish", title: item.frequency || item.title || "Publishing schedule", date: itemDate(item) })),
+    ...schedules.map((item) => ({
+      ...item,
+      kind: "Publish",
+      title: String(item.frequency || "").toUpperCase() === "SERIES_LAUNCH" ? "Series launch" : item.frequency || item.title || "Publishing schedule",
+      date: itemDate(item)
+    })),
     ...deadlines.map((item) => ({ ...item, kind: "Deadline", title: item.eventName || item.event_name || "Deadline", date: itemDate(item) }))
   ].filter((item) => item.date), [schedules, deadlines]);
 

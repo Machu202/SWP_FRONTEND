@@ -28,7 +28,8 @@ const fixtures = {
   notificationReceivedAt,
   series: [
     { id: 1, title: "Ink Horizon", status: "REVIEWING", genre: "Action", summary: "A test manga series.", description: "Smoke-test production data.", mangakaName: "Mika", tantouId: null, tantouName: "Unassigned", coverImageUrl: imageCurrent },
-    { id: 2, title: "Rejected Revision", status: "REJECTED", genre: "Drama", summary: "Needs another Board review cycle.", description: "Rejected smoke-test series.", mangakaName: "Mika", tantouId: 4, tantouName: "Taro Editor", coverImageUrl: imageOld }
+    { id: 2, title: "Rejected Revision", status: "REJECTED", genre: "Drama", summary: "Needs another Board review cycle.", description: "Rejected smoke-test series.", mangakaName: "Mika", tantouId: 4, tantouName: "Taro Editor", coverImageUrl: imageOld },
+    { id: 3, title: "Approved Launch", status: "APPROVED", genre: "Fantasy", summary: "Ready for publication.", description: "Approved publication smoke test.", mangakaName: "Mika", tantouId: 4, tantouName: "Taro Editor", coverImageUrl: imageCurrent }
   ],
   chapters: [{ id: 10, chapterNumber: 1, title: "Opening", publishStatus: "DRAFT", seriesId: 1, tantouId: null, tantouName: "Unassigned" }],
   pages: [{ id: 100, pageNumber: 1, imageUrl: imageCurrent, width: null, height: null, chapterId: 10 }],
@@ -102,7 +103,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       taskStatuses: [], taskStarts: 0, feedbackCreated: 0, feedbackResolved: 0, votes: [],
       adminDecisions: 0, parameterUpdates: 0, tantouAssignments: [], seriesProfileUpdates: 0,
       tantouChapterStatus: initialChapterStatus || fixtureData.chapters[0].publishStatus,
-      boardSubmissions: 0, seriesStatusChanges: [], seriesDeletes: [], boardChatPosts: 0, directChatPosts: 0,
+      boardSubmissions: 0, seriesStatusChanges: [], seriesDeletes: [], publicationSchedules: [], boardChatPosts: 0, directChatPosts: 0,
       directUnread: 1,
       otpRequests: [], googleLogins: []
     };
@@ -196,6 +197,12 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         item.status = status;
         capture.seriesStatusChanges.push({ id, status });
         return response({ ...item, status });
+      }
+      if (/^\/manga-series\/\d+\/publication-schedule$/.test(path) && method === "POST") {
+        const seriesId = Number(path.split("/")[2]);
+        const publishAt = url.searchParams.get("publishAt");
+        capture.publicationSchedules.push({ seriesId, publishAt });
+        return response({ id: 43, seriesId, publishDate: publishAt, frequency: "SERIES_LAUNCH" }, 201);
       }
       if (path === "/manga-series/1/tantou") {
         capture.tantouAssignments.push(url.searchParams.get("tantouId"));
@@ -324,7 +331,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         return response(saved, 201);
       }
 
-      if (path === "/schedules/series/1") return response([{ id: 41, publishDate: f.nextWeek, frequency: "Weekly" }]);
+      if (/^\/schedules\/series\/\d+$/.test(path)) return response(path === "/schedules/series/1" ? [{ id: 41, publishDate: f.nextWeek, frequency: "Weekly" }] : []);
       if (path === "/schedules" && method === "POST") return response({ id: 42 });
       if (/^\/schedules\/\d+$/.test(path) && method === "DELETE") return response(null, 204);
       if (path === "/deadlines/series/1" && method === "GET") return response([{ id: 51, eventName: "Chapter delivery", deadlineDateStr: f.tomorrow }]);
@@ -541,6 +548,24 @@ async function run() {
       await page.getByTitle("Notifications").click();
       await page.getByRole("button", { name: "Series", exact: true }).last().click();
       assert.equal(await page.locator('.kpi-chart[aria-label="series bar chart"]').count(), 1);
+      assert.equal(await page.locator('[data-testid="publish-series-1"]').isDisabled(), true, "REVIEWING series must not be publishable");
+      assert.equal(await page.locator('[data-testid="publish-series-2"]').isDisabled(), true, "REJECTED series must not be publishable");
+      const approvedPublishButton = page.locator('[data-testid="publish-series-3"]');
+      assert.equal(await approvedPublishButton.isEnabled(), true, "Only an APPROVED series may activate Publish");
+      await approvedPublishButton.click();
+      await waitText(page, "Publish Approved Launch");
+      await page.getByRole("radio", { name: /Schedule launch/ }).click();
+      await page.locator('[data-testid="publish-series-date"]').fill(fixtures.nextWeek.slice(0, 16));
+      await page.locator('[data-testid="confirm-publish-series-3"]').click();
+      await waitText(page, "is scheduled to launch on");
+      await page.locator('[data-testid="series-launch-countdown-3"]').waitFor({ state: "visible" });
+      assert.equal((await capture(page)).publicationSchedules.length, 1);
+      await page.locator('[data-testid="publish-series-3"]').click();
+      await page.getByRole("radio", { name: /Publish Chapter 1 now/ }).click();
+      await page.locator('[data-testid="confirm-publish-series-3"]').click();
+      await waitText(page, "are now published");
+      assert.deepEqual((await capture(page)).seriesStatusChanges.at(-1), { id: 3, status: "ONGOING" });
+      assert.equal(await page.locator('[data-testid="publish-series-3"]').isDisabled(), true);
       const deleteButton = page.locator('[data-testid="delete-rejected-series-2"]');
       await deleteButton.waitFor({ state: "visible" });
       await deleteButton.click();

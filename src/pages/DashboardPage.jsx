@@ -37,6 +37,24 @@ function validDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function localDateTimeInputValue(date = new Date(Date.now() + 5 * 60 * 1000)) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function launchCountdown(value, now = Date.now()) {
+  const target = validDate(value);
+  if (!target) return "";
+  const remaining = target.getTime() - now;
+  if (remaining <= 0) return "Launching…";
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [days ? `${days}d` : "", `${String(hours).padStart(2, "0")}h`, `${String(minutes).padStart(2, "0")}m`, `${String(seconds).padStart(2, "0")}s`].filter(Boolean).join(" ");
+}
+
 function dashboardQueuePath(role) {
   if (hasRole(role, ["tantou"])) return "/tantou-review";
   if (hasRole(role, ["editorial", "board"])) return "/board-review";
@@ -77,7 +95,19 @@ export default function DashboardPage() {
         safeDashboardCall(reviewChaptersPromise, [])
       ]);
 
-      const seriesList = asList(series);
+      let seriesList = asList(series);
+      if (hasRole(role, ["mangaka"])) {
+        const approvedSeries = seriesList.filter((item) => String(item.status || "").toUpperCase() === "APPROVED");
+        const scheduleResults = await Promise.all(approvedSeries.map(async (item) => ({
+          id: String(item.id),
+          schedules: asList(await safeDashboardCall(api.schedules.bySeries(item.id), []))
+        })));
+        const launchTimes = new Map(scheduleResults.map(({ id, schedules }) => [
+          id,
+          schedules.find((schedule) => String(schedule.frequency || "").toUpperCase() === "SERIES_LAUNCH")?.publishDate || ""
+        ]));
+        seriesList = seriesList.map((item) => ({ ...item, publicationScheduledAt: launchTimes.get(String(item.id)) || "" }));
+      }
       const taskList = asList(tasks);
       const deadlineSeriesIds = [...new Set(taskList.map(taskSeriesId).filter(Boolean).map(String))];
       const deadlineLists = hasRole(role, ["assistant"]) && deadlineSeriesIds.length
@@ -140,7 +170,7 @@ export default function DashboardPage() {
   );
 }
 
-function MangakaDashboard({ data, onSeriesDeleted }) {
+function MangakaDashboard({ data, onSeriesUpdated, onSeriesDeleted }) {
   const { selection: workspaceSelection, updateSelection } = useWorkspaceSelection();
   const openWorkspace = (path) => navigate(withWorkspaceSelection(path, workspaceSelection));
   const activeSeries = data.series.filter((item) => String(item.status || "").toUpperCase() !== "ARCHIVED");
@@ -148,6 +178,9 @@ function MangakaDashboard({ data, onSeriesDeleted }) {
   const [seriesMessage, setSeriesMessage] = useState("");
   const [seriesError, setSeriesError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [publishTarget, setPublishTarget] = useState(null);
+  const [publishMode, setPublishMode] = useState("NOW");
+  const [publishAt, setPublishAt] = useState(() => localDateTimeInputValue());
 
   async function deleteRejectedSeries(series) {
     if (!series?.id || String(series.status || "").toUpperCase() !== "REJECTED") return;
@@ -160,10 +193,49 @@ function MangakaDashboard({ data, onSeriesDeleted }) {
       if (String(workspaceSelection.seriesId) === String(series.id)) {
         updateSelection({ seriesId: "", chapterId: "", pageId: "" });
       }
-      setSeriesMessage(`${series.title || "Series"} and all related project data were deleted.`);
+      setSeriesMessage(`Deleted ${series.title || "Series"} and all related project data.`);
       setDeleteTarget(null);
     } catch (err) {
       setSeriesError(err.message || "Could not delete this series.");
+    } finally {
+      setSeriesActionId("");
+    }
+  }
+
+  function openPublishModal(series) {
+    if (String(series?.status || "").toUpperCase() !== "APPROVED") return;
+    setPublishTarget(series);
+    setPublishMode(series.publicationScheduledAt ? "SCHEDULE" : "NOW");
+    setPublishAt(series.publicationScheduledAt
+      ? localDateTimeInputValue(new Date(series.publicationScheduledAt))
+      : localDateTimeInputValue());
+    setSeriesError("");
+    setSeriesMessage("");
+  }
+
+  async function publishSeries() {
+    if (!publishTarget?.id || String(publishTarget.status || "").toUpperCase() !== "APPROVED") return;
+    if (publishMode === "SCHEDULE" && (!publishAt || new Date(publishAt).getTime() <= Date.now())) {
+      setSeriesError("Choose a future date and time for the series launch.");
+      return;
+    }
+    setSeriesActionId(String(publishTarget.id));
+    setSeriesError("");
+    setSeriesMessage("");
+    try {
+      if (publishMode === "NOW") {
+        const updated = await api.series.status(publishTarget.id, "ONGOING");
+        onSeriesUpdated?.({ ...publishTarget, ...updated, publicationScheduledAt: "" });
+        setSeriesMessage(`${publishTarget.title || "Series"} and its first approved chapter are now published.`);
+      } else {
+        const schedule = await api.series.schedulePublication(publishTarget.id, publishAt);
+        const scheduledAt = schedule?.publishDate || schedule?.publish_date || publishAt;
+        onSeriesUpdated?.({ ...publishTarget, publicationScheduledAt: scheduledAt });
+        setSeriesMessage(`${publishTarget.title || "Series"} is scheduled to launch on ${new Date(scheduledAt).toLocaleString()}.`);
+      }
+      setPublishTarget(null);
+    } catch (err) {
+      setSeriesError(err.message || "Could not publish this series.");
     } finally {
       setSeriesActionId("");
     }
@@ -183,6 +255,7 @@ function MangakaDashboard({ data, onSeriesDeleted }) {
                 series={series}
                 busy={String(seriesActionId) === String(series.id)}
                 onDelete={() => setDeleteTarget(series)}
+                onPublish={() => openPublishModal(series)}
               />
             )) : (
               <EmptyState icon="◇" title="No active series" body="Create a series to begin the Mangaka workflow." />
@@ -229,6 +302,34 @@ function MangakaDashboard({ data, onSeriesDeleted }) {
             <div className="delete-modal-actions">
               <button className="btn" type="button" disabled={Boolean(seriesActionId)} onClick={() => setDeleteTarget(null)}>Cancel</button>
               <button className="btn btn-danger solid-danger" data-testid={`confirm-delete-rejected-series-${deleteTarget.id}`} type="button" disabled={Boolean(seriesActionId)} onClick={() => deleteRejectedSeries(deleteTarget)}>{seriesActionId ? "Deleting..." : "Confirm Delete"}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {publishTarget ? (
+        <div className="delete-modal-backdrop publish-modal-backdrop" role="presentation" onMouseDown={() => !seriesActionId && setPublishTarget(null)}>
+          <div className="delete-modal-card publish-series-modal" role="dialog" aria-modal="true" aria-labelledby="dashboard-publish-series-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="publish-modal-icon">↗</div>
+            <p className="eyebrow">Approved publication</p>
+            <h3 id="dashboard-publish-series-title">Publish {publishTarget.title || "this manga series"}</h3>
+            <p className="publish-modal-copy">Choose whether to publish the series with its first approved chapter now or schedule the public launch.</p>
+            <div className="publish-mode-grid" role="radiogroup" aria-label="Publication method">
+              <button type="button" className={publishMode === "NOW" ? "publish-mode-option active" : "publish-mode-option"} role="radio" aria-checked={publishMode === "NOW"} onClick={() => setPublishMode("NOW")}>
+                <strong>Publish Chapter 1 now</strong><small>Series becomes ONGOING and the first approved chapter becomes PUBLISHED.</small>
+              </button>
+              <button type="button" className={publishMode === "SCHEDULE" ? "publish-mode-option active" : "publish-mode-option"} role="radio" aria-checked={publishMode === "SCHEDULE"} onClick={() => setPublishMode("SCHEDULE")}>
+                <strong>Schedule launch</strong><small>Keep the series APPROVED until the backend countdown reaches the selected time.</small>
+              </button>
+            </div>
+            {publishMode === "SCHEDULE" ? (
+              <label className="publish-date-field">Launch date and time
+                <input data-testid="publish-series-date" type="datetime-local" min={localDateTimeInputValue()} value={publishAt} onChange={(event) => setPublishAt(event.target.value)} />
+                <small>Countdown: {launchCountdown(publishAt)}</small>
+              </label>
+            ) : null}
+            <div className="delete-modal-actions">
+              <button className="btn" type="button" disabled={Boolean(seriesActionId)} onClick={() => setPublishTarget(null)}>Cancel</button>
+              <button className="btn btn-primary" data-testid={`confirm-publish-series-${publishTarget.id}`} type="button" disabled={Boolean(seriesActionId) || (publishMode === "SCHEDULE" && !publishAt)} onClick={publishSeries}>{seriesActionId ? "Publishing..." : publishMode === "NOW" ? "Publish Now" : "Schedule Launch"}</button>
             </div>
           </div>
         </div>
@@ -373,9 +474,21 @@ function GenericDashboard({ data, role }) {
   );
 }
 
-function DashboardSeriesCard({ series, busy = false, onDelete }) {
+function DashboardSeriesCard({ series, busy = false, onDelete, onPublish }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
-  const rejected = String(series.status || "").trim().toUpperCase() === "REJECTED";
+  const status = String(series.status || "").trim().toUpperCase();
+  const rejected = status === "REJECTED";
+  const approved = status === "APPROVED";
+  const alreadyPublished = ["ONGOING", "COMPLETED"].includes(status);
+  const scheduledAt = series.publicationScheduledAt || series.publication_scheduled_at || "";
+  const [countdownNow, setCountdownNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!scheduledAt) return undefined;
+    const timer = window.setInterval(() => setCountdownNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [scheduledAt]);
+
   return (
     <article className="dashboard-series-card series-card dashboard-series-card-with-actions">
       <button className="dashboard-series-card-main" type="button" onClick={() => navigate(`/chapters-pages?seriesId=${series.id}`)}>
@@ -386,8 +499,18 @@ function DashboardSeriesCard({ series, busy = false, onDelete }) {
           <small>{series.genre || "Unknown genre"}</small>
         </div>
       </button>
-      {rejected && (
-        <div className="dashboard-series-rejected-actions">
+      <div className="dashboard-series-workflow-actions">
+        <button
+          type="button"
+          className={approved ? "btn btn-small btn-primary dashboard-publish-series-btn" : "btn btn-small dashboard-publish-series-btn"}
+          data-testid={`publish-series-${series.id}`}
+          disabled={busy || !approved}
+          onClick={() => onPublish?.(series)}
+          title={approved ? "Publish this approved manga series" : "Publish is available only after final Admin approval"}
+        >
+          {busy ? "Working…" : alreadyPublished ? "Published" : scheduledAt ? "Manage Publish" : "Publish"}
+        </button>
+        {rejected ? (
           <button
             type="button"
             className="btn btn-small btn-danger solid-danger dashboard-delete-series-btn"
@@ -397,8 +520,9 @@ function DashboardSeriesCard({ series, busy = false, onDelete }) {
           >
             {busy ? "Deleting…" : "Delete Series"}
           </button>
-        </div>
-      )}
+        ) : null}
+        {scheduledAt ? <small className="series-launch-countdown" data-testid={`series-launch-countdown-${series.id}`}>Launch in {launchCountdown(scheduledAt, countdownNow)}</small> : null}
+      </div>
     </article>
   );
 }
