@@ -11409,8 +11409,8 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background-position: 0 0, 0 11px, 11px -11px, -11px 0;
 }
 .comparison-image-stage img {
-  width: auto !important;
-  height: auto !important;
+  width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
   display: block;
@@ -11471,8 +11471,8 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #0f172a;
 }
 .chapter-reader-stage img {
-  width: auto !important;
-  height: auto !important;
+  width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
   display: block;
@@ -11524,7 +11524,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   .media-modal-backdrop { padding: 8px; }
   .media-modal-card { width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding: 16px; }
   .image-comparison-modal { height: calc(100vh - 16px); max-height: none; }
-  .image-comparison-grid { grid-template-columns: 1fr; }
+  .image-comparison-grid { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); }
   .comparison-image-stage { height: auto; min-height: 0; }
   .chapter-reader-modal { width: calc(100vw - 16px); height: calc(100vh - 16px); max-height: none; }
   .chapter-reader-header { align-items: flex-start; flex-direction: column; gap: 8px; padding-right: 48px; }
@@ -11839,6 +11839,52 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
 }
 .canvas-chapter-handoff-row small { color: #64748b; }
 .canvas-chapter-handoff-row .btn-publish { flex: 0 0 auto; }
+.chapter-handoff-controls {
+  flex: 1 1 560px;
+  max-width: 680px;
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+.chapter-handoff-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.chapter-handoff-options button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.chapter-handoff-options button.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .08);
+}
+.chapter-handoff-action-row {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 8px !important;
+}
+.chapter-handoff-action-row .form-control { flex: 1 1 250px; min-width: 0; }
+.chapter-handoff-action-row .btn-publish { min-width: 190px; }
+.chapter-row-actions { flex-wrap: wrap; }
+.chapter-publish-btn { min-width: 72px; }
+.chapter-launch-countdown {
+  width: 100%;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 850;
+  text-align: right;
+}
 
 .admin-board-member-history-list {
   display: grid;
@@ -11998,5 +12044,8 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   .direct-contact-list { padding: 6px; }
   .direct-messenger-launcher { width: 52px; height: 52px; }
   .canvas-chapter-handoff-row { align-items: stretch; flex-direction: column; }
+  .chapter-handoff-controls { flex-basis: auto; width: 100%; max-width: none; }
+  .chapter-handoff-action-row { align-items: stretch; flex-direction: column; }
+  .chapter-handoff-action-row .btn-publish { width: 100%; }
   .publish-mode-grid { grid-template-columns: 1fr; }
 }

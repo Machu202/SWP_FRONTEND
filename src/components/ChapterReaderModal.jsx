@@ -57,7 +57,7 @@ export default function ChapterReaderModal({ open, chapter, onClose }) {
         </header>
 
         <div className="chapter-reader-stage">
-          {imageUrl ? <img src={imageUrl} alt={`Chapter ${chapterNumber}, Page ${visiblePageNumber}`} /> : <span>No page image is available.</span>}
+          {imageUrl ? <img key={page?.id ?? pageIndex} src={imageUrl} alt={`Chapter ${chapterNumber}, Page ${visiblePageNumber}`} /> : <span>No page image is available.</span>}
         </div>
 
         <nav className="chapter-reader-controls" aria-label="Chapter page navigation">

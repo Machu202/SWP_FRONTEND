@@ -470,6 +470,7 @@ export const api = {
     get: (id) => apiFetch(`/chapters/${id}`),
     create: (payload) => apiFetch("/chapters", { method: "POST", body: payload }),
     status: (id, newStatus) => apiFetch(`/chapters/${id}/status${objectToQuery({ newStatus })}`, { method: "PATCH" }),
+    schedulePublication: (id, publishAt) => apiFetch(`/chapters/${id}/publication-schedule${objectToQuery({ publishAt })}`, { method: "POST" }),
     remove: (id) => apiFetch(`/chapters/${id}`, { method: "DELETE" })
   },
 

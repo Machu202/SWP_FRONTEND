@@ -26,6 +26,10 @@ function seriesTantouId(series) {
   return series?.tantouId ?? series?.tantou_id ?? series?.tantou?.id ?? null;
 }
 
+function taskChapterId(task) {
+  return task?.chapterId ?? task?.chapter_id ?? task?.hitbox?.page?.chapter?.id ?? null;
+}
+
 function formatDateTime(value) {
   if (!value) return "Unknown date";
   const date = new Date(value);
@@ -128,6 +132,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [chapters, setChapters] = useState([]);
   const [pages, setPages] = useState([]);
   const [assistants, setAssistants] = useState([]);
+  const [tantouEditors, setTantouEditors] = useState([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState(String(initialSeriesId || rememberedSelection.seriesId || ""));
   const [selectedChapterId, setSelectedChapterId] = useState(String(initialChapterId || rememberedSelection.chapterId || ""));
   const [selectedPageId, setSelectedPageId] = useState(String(initialPageId || rememberedSelection.pageId || ""));
@@ -160,6 +165,9 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [feedbackContent, setFeedbackContent] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [sendingChapter, setSendingChapter] = useState(false);
+  const [handoffMode, setHandoffMode] = useState("TANTOU");
+  const [handoffAssistantId, setHandoffAssistantId] = useState("");
+  const [handoffTantouId, setHandoffTantouId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -210,13 +218,15 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
         : isTantou
           ? api.series.assigned()
           : api.series.list({ size: 100 });
-      const [seriesData, assistantData] = await Promise.all([
+      const [seriesData, assistantData, tantouData] = await Promise.all([
         seriesRequest,
-        api.users.byRole("Assistant").catch(() => [])
+        api.users.byRole("Assistant").catch(() => []),
+        canEdit ? api.users.byRole("Tantou Editor").catch(() => []) : Promise.resolve([])
       ]);
       const list = unwrapList(seriesData);
       setSeriesList(list);
       setAssistants(Array.isArray(assistantData) ? assistantData : assistantData?.content || assistantData?.data || []);
+      setTantouEditors(Array.isArray(tantouData) ? tantouData : tantouData?.content || tantouData?.data || []);
       const nextSeriesId = preferredWorkspaceSeriesId(list, {
         explicitSeriesId: initialSeriesId,
         currentSeriesId: selectedSeriesId
@@ -369,6 +379,11 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     if (selectedSeriesId) updateSelection({ seriesId: selectedSeriesId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeriesId]);
+
+  useEffect(() => {
+    setHandoffTantouId(seriesTantouId(selectedSeries) ? String(seriesTantouId(selectedSeries)) : "");
+    setHandoffAssistantId("");
+  }, [selectedSeries]);
 
   useEffect(() => {
     loadPages(selectedChapterId);
@@ -828,6 +843,17 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     setError("");
     setMessage("");
     try {
+      const existingTantouId = seriesTantouId(selectedSeries);
+      const chosenTantouId = handoffTantouId || (existingTantouId ? String(existingTantouId) : "");
+      if (!chosenTantouId) {
+        throw new Error("Choose a Tantou Editor before sending this chapter.");
+      }
+      if (String(existingTantouId || "") !== String(chosenTantouId)) {
+        const updatedSeries = await api.series.assignTantou(selectedSeriesId, chosenTantouId);
+        setSeriesList((current) => current.map((item) => String(item.id) === String(selectedSeriesId)
+          ? { ...item, ...updatedSeries, tantouId: Number(chosenTantouId) }
+          : item));
+      }
       const updated = await api.chapters.status(selectedChapter.id, "REVIEWING");
       setChapters((current) => current.map((chapter) => String(chapter.id) === String(selectedChapter.id)
         ? { ...chapter, ...updated, publishStatus: updated?.publishStatus || updated?.publish_status || "REVIEWING" }
@@ -835,6 +861,30 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
       setMessage(`Chapter ${chapterNumber(selectedChapter)} was sent to ${selectedSeries?.tantouName || selectedSeries?.tantou_name || "the Tantou Editor"}.`);
     } catch (err) {
       setError(err.message || "Could not send this chapter to the Tantou Editor.");
+    } finally {
+      setSendingChapter(false);
+    }
+  }
+
+  async function assignChapterToAssistant() {
+    if (!canEdit || !selectedSeriesId || !selectedChapter?.id || !handoffAssistantId || sendingChapter) return;
+    setSendingChapter(true);
+    setError("");
+    setMessage("");
+    try {
+      const seriesTasks = unwrapList(await api.tasks.bySeries(selectedSeriesId));
+      const chapterTasks = seriesTasks.filter((task) => String(taskChapterId(task)) === String(selectedChapter.id));
+      const assignableTasks = chapterTasks.filter((task) => !["REVIEWING", "APPROVED"].includes(String(task.status || "TODO").trim().toUpperCase()));
+      if (!assignableTasks.length) {
+        throw new Error(chapterTasks.length
+          ? "This chapter has no task that can be reassigned."
+          : "Create at least one task in this chapter before assigning an Assistant.");
+      }
+      await Promise.all(assignableTasks.map((task) => api.tasks.assign(task.id, handoffAssistantId)));
+      const assistant = assistants.find((item) => String(item.id) === String(handoffAssistantId));
+      setMessage(`Assigned ${assignableTasks.length} chapter task(s) to ${assistant?.fullName || assistant?.username || assistant?.email || "the Assistant"}.`);
+    } catch (err) {
+      setError(err.message || "Could not assign this chapter's tasks to the Assistant.");
     } finally {
       setSendingChapter(false);
     }
@@ -943,15 +993,37 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
                 <strong>Chapter handoff</strong>
                 <small>{selectedChapter ? `Chapter ${chapterNumber(selectedChapter)} · ${selectedChapterStatus}` : "Choose a chapter before sending it for review."}</small>
               </div>
-              <button
-                className="btn-publish"
-                type="button"
-                data-testid="canvas-send-chapter-to-tantou"
-                disabled={!selectedChapter?.id || sendingChapter || chapterAlreadySent}
-                onClick={sendChapterToTantou}
-              >
-                {sendingChapter ? "Sending…" : chapterAlreadySent ? "Chapter Sent" : "Send Chapter To Tantou Editor"}
-              </button>
+              <div className="chapter-handoff-controls">
+                <div className="chapter-handoff-options" role="radiogroup" aria-label="Chapter handoff recipient">
+                  <button type="button" role="radio" aria-checked={handoffMode === "ASSISTANT"} className={handoffMode === "ASSISTANT" ? "active" : ""} onClick={() => setHandoffMode("ASSISTANT")}>Assign Assistant</button>
+                  <button type="button" role="radio" aria-checked={handoffMode === "TANTOU"} className={handoffMode === "TANTOU" ? "active" : ""} onClick={() => setHandoffMode("TANTOU")}>Assign Tantou Editor</button>
+                </div>
+                {handoffMode === "ASSISTANT" ? (
+                  <div className="chapter-handoff-action-row">
+                    <select className="form-control" data-testid="chapter-handoff-assistant-select" value={handoffAssistantId} onChange={(event) => setHandoffAssistantId(event.target.value)}>
+                      <option value="">Choose an Assistant</option>
+                      {assistants.map((assistant) => <option key={assistant.id} value={assistant.id}>{assistant.fullName || assistant.username || assistant.email || `Assistant #${assistant.id}`}</option>)}
+                    </select>
+                    <button className="btn-publish" type="button" data-testid="canvas-assign-chapter-assistant" disabled={!selectedChapter?.id || !handoffAssistantId || sendingChapter} onClick={assignChapterToAssistant}>{sendingChapter ? "Assigning…" : "Assign Assistant"}</button>
+                  </div>
+                ) : (
+                  <div className="chapter-handoff-action-row">
+                    <select className="form-control" data-testid="chapter-handoff-tantou-select" value={handoffTantouId} onChange={(event) => setHandoffTantouId(event.target.value)}>
+                      <option value="">Choose a Tantou Editor</option>
+                      {tantouEditors.map((tantou) => <option key={tantou.id} value={tantou.id}>{tantou.fullName || tantou.username || tantou.email || `Tantou #${tantou.id}`}</option>)}
+                    </select>
+                    <button
+                      className="btn-publish"
+                      type="button"
+                      data-testid="canvas-send-chapter-to-tantou"
+                      disabled={!selectedChapter?.id || !handoffTantouId || sendingChapter || chapterAlreadySent}
+                      onClick={sendChapterToTantou}
+                    >
+                      {sendingChapter ? "Sending…" : chapterAlreadySent ? "Chapter Sent" : "Send Chapter To Tantou Editor"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : null}
         </div>

@@ -30,6 +30,32 @@ function isReviewableSeries(series) {
   return status && !["DRAFT", "ARCHIVED", "CANCELLED"].includes(status);
 }
 
+function normalizedStatus(value, fallback = "") {
+  return String(value || fallback).trim().toUpperCase().replace(/[ -]+/g, "_");
+}
+
+function localDateTimeInputValue(date = new Date(Date.now() + 5 * 60 * 1000)) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function launchCountdown(value, now = Date.now()) {
+  const target = new Date(value);
+  if (!value || Number.isNaN(target.getTime())) return "";
+  const remaining = target.getTime() - now;
+  if (remaining <= 0) return "Publishing…";
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [days ? `${days}d` : "", `${String(hours).padStart(2, "0")}h`, `${String(minutes).padStart(2, "0")}m`, `${String(seconds).padStart(2, "0")}s`].filter(Boolean).join(" ");
+}
+
+function scheduleChapterId(schedule) {
+  return schedule?.chapterId ?? schedule?.chapter_id ?? schedule?.chapter?.id ?? null;
+}
+
 export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const { profile, session } = useAuth();
   const { selection: rememberedSelection, selectSeries, updateSelection } = useWorkspaceSelection();
@@ -43,6 +69,8 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const [series, setSeries] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [pages, setPages] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [startPageNumber, setStartPageNumber] = useState(1);
   const [chapterForm, setChapterForm] = useState({ chapterNumber: "", title: "" });
   const [uploading, setUploading] = useState(false);
   const [uploadQueue, setUploadQueue] = useState([]);
@@ -51,6 +79,11 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   const [message, setMessage] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [publishTarget, setPublishTarget] = useState(null);
+  const [publishMode, setPublishMode] = useState("NOW");
+  const [publishAt, setPublishAt] = useState(localDateTimeInputValue());
+  const [publishingChapter, setPublishingChapter] = useState(false);
+  const [countdownNow, setCountdownNow] = useState(Date.now());
 
   const selectedChapter = useMemo(
     () => chapters.find((chapter) => String(chapter.id) === String(selectedChapterId)),
@@ -89,16 +122,20 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
       setSeries(null);
       setChapters([]);
       setPages([]);
+      setSchedules([]);
+      setStartPageNumber(1);
       setSelectedChapterId("");
       return;
     }
     setError("");
     try {
-      const [seriesData, chapterData] = await Promise.all([
+      const [seriesData, chapterData, scheduleData] = await Promise.all([
         api.series.get(seriesId).catch(() => seriesList.find((item) => String(item.id) === String(seriesId)) || null),
-        api.chapters.bySeries(seriesId).catch(() => [])
+        api.chapters.bySeries(seriesId).catch(() => []),
+        api.schedules.bySeries(seriesId).catch(() => [])
       ]);
       setSeries(seriesData);
+      setSchedules(Array.isArray(scheduleData) ? scheduleData : scheduleData?.content || scheduleData?.data || []);
       const chapterList = chapterData || [];
       setChapters(chapterList);
       const existing = chapterList.find((chapter) => String(chapter.id) === String(selectedChapterId));
@@ -113,12 +150,15 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
   async function loadPages(chapterId) {
     if (!chapterId) {
       setPages([]);
+      setStartPageNumber(1);
       return;
     }
     setError("");
     try {
       const pageData = await api.pages.byChapter(chapterId).catch(() => []);
-      setPages(pageData || []);
+      const pageList = pageData || [];
+      setPages(pageList);
+      setStartPageNumber(pageList.reduce((max, page) => Math.max(max, Number(pageNumber(page) || 0)), 0) + 1);
     } catch (err) {
       setError(err.message || "Could not load pages.");
     }
@@ -140,6 +180,12 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
     if (selectedChapterId) updateSelection({ chapterId: selectedChapterId, pageId: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapterId]);
+
+  useEffect(() => {
+    if (!schedules.some((schedule) => normalizedStatus(schedule.frequency) === "CHAPTER_LAUNCH")) return undefined;
+    const timer = window.setInterval(() => setCountdownNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [schedules]);
 
   async function createChapter(event) {
     event.preventDefault();
@@ -172,14 +218,27 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
       return;
     }
 
-    setUploading(true);
     setError("");
     setMessage("");
-    const currentMax = pages.reduce((max, page) => Math.max(max, Number(pageNumber(page) || 0)), 0);
+    const firstPageNumber = Number(startPageNumber);
+    if (!Number.isInteger(firstPageNumber) || firstPageNumber < 1) {
+      setError("Start Page Number must be a positive whole number.");
+      event.target.value = "";
+      return;
+    }
+    const existingPageNumbers = new Set(pages.map((page) => Number(pageNumber(page))));
+    const requestedPageNumbers = files.map((_, index) => firstPageNumber + index);
+    if (requestedPageNumbers.some((number) => existingPageNumbers.has(number))) {
+      setError("Page number is unique");
+      event.target.value = "";
+      return;
+    }
+
+    setUploading(true);
     const initialQueue = files.map((file, index) => ({
       id: `${file.name}-${file.lastModified}-${index}`,
       name: file.name,
-      pageNumber: currentMax + index + 1,
+      pageNumber: firstPageNumber + index,
       status: "queued",
       error: ""
     }));
@@ -191,7 +250,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
       const queueId = initialQueue[index].id;
       setUploadQueue((items) => items.map((item) => item.id === queueId ? { ...item, status: "uploading" } : item));
       try {
-        await api.pages.upload(selectedChapterId, currentMax + index + 1, files[index]);
+        await api.pages.upload(selectedChapterId, firstPageNumber + index, files[index]);
         successCount += 1;
         setUploadQueue((items) => items.map((item) => item.id === queueId ? { ...item, status: "complete" } : item));
       } catch (err) {
@@ -205,9 +264,59 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
       setMessage(`Uploaded ${successCount} of ${files.length} page(s).`);
       await loadPages(selectedChapterId);
     }
-    if (failures.length) setError(`${failures.length} upload(s) failed. ${failures.join(" | ")}`);
+    if (failures.length) {
+      setError(failures.some((failure) => failure.includes("Page number is unique"))
+        ? "Page number is unique"
+        : `${failures.length} upload(s) failed. ${failures.join(" | ")}`);
+    }
     event.target.value = "";
     setUploading(false);
+  }
+
+  function openChapterPublishModal(chapter) {
+    if (normalizedStatus(series?.status) !== "ONGOING" || normalizedStatus(chapter?.publishStatus || chapter?.publish_status) !== "APPROVED") return;
+    setPublishTarget(chapter);
+    setPublishMode("NOW");
+    setPublishAt(localDateTimeInputValue());
+    setError("");
+    setMessage("");
+  }
+
+  async function publishChapter() {
+    if (!publishTarget?.id || publishingChapter) return;
+    if (publishMode === "SCHEDULE" && (!publishAt || new Date(publishAt).getTime() <= Date.now())) {
+      setError("Choose a future date and time for the chapter countdown.");
+      return;
+    }
+    setPublishingChapter(true);
+    setError("");
+    setMessage("");
+    try {
+      if (publishMode === "NOW") {
+        const updated = await api.chapters.status(publishTarget.id, "PUBLISHED");
+        setChapters((current) => current.map((chapter) => String(chapter.id) === String(publishTarget.id)
+          ? { ...chapter, ...updated, publishStatus: updated?.publishStatus || updated?.publish_status || "PUBLISHED" }
+          : chapter));
+        setSchedules((current) => current.filter((schedule) => String(scheduleChapterId(schedule)) !== String(publishTarget.id)));
+        setMessage(`Chapter ${chapterNumber(publishTarget)} is now published.`);
+      } else {
+        const schedule = await api.chapters.schedulePublication(publishTarget.id, publishAt);
+        const scheduledAt = schedule?.publishDate || schedule?.publish_date || publishAt;
+        setChapters((current) => current.map((chapter) => String(chapter.id) === String(publishTarget.id)
+          ? { ...chapter, publishStatus: "SCHEDULED" }
+          : chapter));
+        setSchedules((current) => [
+          ...current.filter((item) => String(scheduleChapterId(item)) !== String(publishTarget.id)),
+          { ...schedule, chapterId: publishTarget.id, publishDate: scheduledAt, frequency: "CHAPTER_LAUNCH" }
+        ]);
+        setMessage(`Chapter ${chapterNumber(publishTarget)} is scheduled for ${new Date(scheduledAt).toLocaleString()}.`);
+      }
+      setPublishTarget(null);
+    } catch (err) {
+      setError(err.message || "Could not publish this chapter.");
+    } finally {
+      setPublishingChapter(false);
+    }
   }
 
   function requestDeleteChapter(chapter) {
@@ -332,7 +441,7 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
                 <div className="form-row">
                   <div className="form-group">
                     <label>Start Page Number</label>
-                    <input className="form-control" type="number" min="1" value={(pages.reduce((max, page) => Math.max(max, Number(pageNumber(page) || 0)), 0) || 0) + 1} readOnly />
+                    <input className="form-control" data-testid="start-page-number-input" type="number" min="1" step="1" value={startPageNumber} onChange={(event) => setStartPageNumber(event.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Image Files</label>
@@ -382,17 +491,26 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
           <div className="section-title-row"><h3>Chapters</h3><span className="schedule-count">{chapters.length}</span></div>
           {chapters.length ? (
             <div className="list chapter-list-static">
-              {chapters.map((chapter) => (
+              {chapters.map((chapter) => {
+                const chapterStatus = normalizedStatus(chapter.publishStatus || chapter.publish_status || "DRAFT");
+                const canPublish = canEdit && normalizedStatus(series?.status) === "ONGOING" && chapterStatus === "APPROVED";
+                const launchSchedule = schedules.find((schedule) => normalizedStatus(schedule.frequency) === "CHAPTER_LAUNCH"
+                  && String(scheduleChapterId(schedule)) === String(chapter.id));
+                const launchAt = launchSchedule?.publishDate || launchSchedule?.publish_date || "";
+                return (
                 <div key={chapter.id} className={String(selectedChapterId) === String(chapter.id) ? "list-row interactive active chapter-delete-row" : "list-row interactive chapter-delete-row"}>
                   <button className="chapter-row-main" onClick={() => setSelectedChapterId(String(chapter.id))}>
                     <div><strong>Chapter {chapterNumber(chapter)}: {chapterTitle(chapter)}</strong><small>{series?.title || chapter.seriesTitle || ""}</small></div>
                   </button>
                   <div className="chapter-row-actions">
                     <StatusBadge value={chapter.publishStatus || chapter.publish_status || "DRAFT"} />
+                    {canPublish && <button className="btn btn-small btn-primary chapter-publish-btn" data-testid={`publish-chapter-${chapter.id}`} type="button" onClick={() => openChapterPublishModal(chapter)}>Publish</button>}
+                    {chapterStatus === "SCHEDULED" && launchAt ? <small className="chapter-launch-countdown" data-testid={`chapter-launch-countdown-${chapter.id}`}>Publish in {launchCountdown(launchAt, countdownNow)}</small> : null}
                     {canEdit && <button className="danger-icon-btn" title="Delete chapter" onClick={() => requestDeleteChapter(chapter)}>Delete</button>}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : <EmptyState icon="▧" title="No chapters yet" body="Create a chapter before uploading pages." />}
         </div>
@@ -432,6 +550,34 @@ export default function ChaptersPagesPage({ initialSeriesId = "" }) {
         onCancel={() => !deleting && setPendingDelete(null)}
         onConfirm={confirmDelete}
       />
+      {publishTarget ? (
+        <div className="delete-modal-backdrop publish-modal-backdrop" role="presentation" onMouseDown={() => !publishingChapter && setPublishTarget(null)}>
+          <div className="delete-modal-card publish-series-modal chapter-publish-modal" role="dialog" aria-modal="true" aria-labelledby="chapter-publish-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="publish-modal-icon">↗</div>
+            <p className="eyebrow">Approved chapter</p>
+            <h3 id="chapter-publish-title">Publish Chapter {chapterNumber(publishTarget)}</h3>
+            <p className="publish-modal-copy">Choose whether this approved chapter should be public now or after a durable server countdown.</p>
+            <div className="publish-mode-grid" role="radiogroup" aria-label="Chapter publication method">
+              <button type="button" className={publishMode === "NOW" ? "publish-mode-option active" : "publish-mode-option"} role="radio" aria-checked={publishMode === "NOW"} onClick={() => setPublishMode("NOW")}>
+                <strong>Publish now</strong><small>Change this chapter status to PUBLISHED immediately.</small>
+              </button>
+              <button type="button" className={publishMode === "SCHEDULE" ? "publish-mode-option active" : "publish-mode-option"} role="radio" aria-checked={publishMode === "SCHEDULE"} onClick={() => setPublishMode("SCHEDULE")}>
+                <strong>Set a publish countdown timer</strong><small>Keep the chapter scheduled until the backend countdown reaches this time.</small>
+              </button>
+            </div>
+            {publishMode === "SCHEDULE" ? (
+              <label className="publish-date-field">Publish date and time
+                <input data-testid="publish-chapter-date" type="datetime-local" min={localDateTimeInputValue()} value={publishAt} onChange={(event) => setPublishAt(event.target.value)} />
+                <small>Countdown: {launchCountdown(publishAt)}</small>
+              </label>
+            ) : null}
+            <div className="delete-modal-actions">
+              <button className="btn" type="button" disabled={publishingChapter} onClick={() => setPublishTarget(null)}>Cancel</button>
+              <button className="btn btn-primary" data-testid={`confirm-publish-chapter-${publishTarget.id}`} type="button" disabled={publishingChapter || (publishMode === "SCHEDULE" && !publishAt)} onClick={publishChapter}>{publishingChapter ? "Publishing..." : publishMode === "NOW" ? "Publish now" : "Set countdown"}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
