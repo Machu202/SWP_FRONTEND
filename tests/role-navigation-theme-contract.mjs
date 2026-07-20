@@ -13,7 +13,7 @@ const required = [
   ".feature-screen.board-screen .sidebar",
   "width: 310px",
   ".feature-screen.board-screen .main-wrapper",
-  "#ffd58a",
+  "#fffaf0",
   ".feature-screen.admin-screen .main-wrapper",
   "#eaf4ff",
   ".feature-screen .btn-sidebar-action",

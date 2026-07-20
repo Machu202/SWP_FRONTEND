@@ -95,7 +95,7 @@ export default function ResourcesPage() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 5 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 5 }}>Resource Library</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 5 }}>Resources</h1>
           <p style={{ color: "#6b7280", fontSize: 14 }}>Tải về cọ vẽ, screentone và các tài liệu tham khảo chung của Studio.</p>
         </div>
         {canManage && (
@@ -111,7 +111,7 @@ export default function ResourcesPage() {
         )}
       </div>
 
-      <div className="resource-filter-tabs" style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "2px solid #e5e7eb", paddingBottom: 10 }}>
+      <div className="resource-filter-tabs" aria-label="Resource categories">
         {TABS.map((tab) => <button key={tab.key} className={activeTab === tab.key ? "r-tab active" : "r-tab"} onClick={() => setActiveTab(tab.key)}>{tab.label}</button>)}
       </div>
 
@@ -124,10 +124,68 @@ export default function ResourcesPage() {
   );
 }
 
+function resourceFileName(resource, url) {
+  const explicitName = resource.fileName || resource.filename || resource.name;
+  if (explicitName) return explicitName;
+  try {
+    const pathname = new URL(url, window.location.href).pathname;
+    const lastSegment = pathname.split("/").filter(Boolean).pop();
+    if (lastSegment && lastSegment.includes(".")) return decodeURIComponent(lastSegment);
+  } catch {
+    // Fall back to a stable resource name below.
+  }
+  return `resource-${resource.id || "download"}`;
+}
+
 function ResourceCard({ resource, canManage, onRemove }) {
   const url = resolveMediaUrl(extractMediaUrl(resource));
   const type = resource.resourceType || resource.type || "FILE";
   const isImage = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url) || String(type).includes("IMAGE") || String(type).includes("COVER");
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+
+  async function download() {
+    if (!url || downloading) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      const fileName = resourceFileName(resource, url);
+      let saveHandle = null;
+      if (typeof window.showSaveFilePicker === "function") {
+        try {
+          saveHandle = await window.showSaveFilePicker({ suggestedName: fileName });
+        } catch (error) {
+          if (error?.name === "AbortError") return;
+          throw error;
+        }
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Download failed (${response.status})`);
+      const blob = await response.blob();
+
+      if (saveHandle) {
+        const writable = await saveHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch {
+      setDownloadError("Could not download this resource. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div className="resource-card">
       <div className="rs-thumb">
@@ -140,8 +198,9 @@ function ResourceCard({ resource, canManage, onRemove }) {
         <div className="rs-desc">{url || "No download link is available."}</div>
         <div className="rs-meta">
           <span className="rs-author"><span className="topbar-avatar" style={{ width: 16, height: 16, fontSize: 9 }}>SF</span> Studio</span>
-          {url && <div className="button-row"><a className="btn btn-small" href={url} target="_blank" rel="noreferrer">Open</a><a className="btn btn-small btn-primary" href={url} download={resource.fileName || resource.filename || `resource-${resource.id}`}>Download</a></div>}
+          {url && <div className="button-row"><a className="btn btn-small" href={url} target="_blank" rel="noreferrer">Open</a><button className="btn btn-small btn-primary resource-download-button" type="button" onClick={download} disabled={downloading}>{downloading ? "Downloading..." : "Download"}</button></div>}
         </div>
+        {downloadError ? <small className="resource-download-error" role="alert">{downloadError}</small> : null}
       </div>
     </div>
   );

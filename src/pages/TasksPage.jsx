@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 import { navigate, useHashRoute } from "../utils/router";
 import CoordinateImageOverlay from "../components/CoordinateImageOverlay";
+import ImageComparisonModal from "../components/ImageComparisonModal";
 
 const COLUMNS = [
   { key: "TODO", label: "Todo" },
@@ -790,9 +791,14 @@ function TaskCard({ task, selected, onClick, onMove, onDragStart, onDragEnd, rol
 
 function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAssign, onAssign, onMove, role, onDownloadReference }) {
   const referenceUrl = taskReferenceUrl(selected);
+  const submittedImageUrl = taskSubmittedUrl(selected);
   const isAssistant = hasRole(role, ["assistant"]);
   const statusTargets = selected ? allowedKanbanTargets(selected, role) : [];
   const assignmentLocked = selected ? ["REVIEWING", "APPROVED"].includes(taskWorkflowStatus(selected)) : false;
+  const [compareOpen, setCompareOpen] = useState(false);
+
+  useEffect(() => { setCompareOpen(false); }, [selected?.id]);
+
   return (
     <div className="task-box assignment-detail-box">
       <div className="task-box-title">
@@ -850,13 +856,17 @@ function TaskDetail({ selected, selectedHitbox, hitboxLoading, assistants, canAs
                 </button>
               )}
             </div>
-            {taskSubmittedUrl(selected) ? (
-              <Preview
-                title={isAssistant ? "Your submitted image" : "Submitted image"}
-                url={taskSubmittedUrl(selected)}
-              />
+            {submittedImageUrl ? (
+              <div className="assignment-submitted-column">
+                <Preview
+                  title={isAssistant ? "Your submitted image" : "Submitted image"}
+                  url={submittedImageUrl}
+                />
+                {isAssistant ? <button className="btn compare-images-button" type="button" onClick={() => setCompareOpen(true)}>Compare 2 Images</button> : null}
+              </div>
             ) : null}
           </div>
+          {isAssistant && submittedImageUrl ? <ImageComparisonModal open={compareOpen} referenceUrl={referenceUrl} submittedUrl={submittedImageUrl} onClose={() => setCompareOpen(false)} /> : null}
         </div>
       ) : (
         <EmptyState icon="☑" title="Select a task" body="Open the Assignments tab and select a card to assign an assistant, move status, or submit work." />

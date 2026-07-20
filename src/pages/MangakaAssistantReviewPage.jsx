@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, mediaUrlFrom, normalizeTaskStatus, resolveMediaUrl } from "../api/client";
 import { navigate } from "../utils/router";
 import CoordinateImageOverlay from "../components/CoordinateImageOverlay";
+import ImageComparisonModal from "../components/ImageComparisonModal";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
 const COMMENT_PREFIX = "[Mangaka Comment on Feedback #";
@@ -970,6 +971,7 @@ function AssistantSubmissionRow({
   onApprove,
   onRevision
 }) {
+  const [compareOpen, setCompareOpen] = useState(false);
   const submitted = resolveMediaUrl(submittedUrl(task));
   const reference = resolveMediaUrl(referenceUrl(task));
   const status = normalizeTaskStatus(task.status);
@@ -995,6 +997,8 @@ function AssistantSubmissionRow({
           <HitboxPreview title="Reference" url={reference} box={task.hitbox || directTaskHitbox(task)} originalWidth={taskPageWidth(task)} originalHeight={taskPageHeight(task)} />
           <Preview title="Submitted work" url={submitted} />
         </div>
+        <button className="btn compare-images-button" type="button" onClick={() => setCompareOpen(true)}>Compare 2 Images</button>
+        <ImageComparisonModal open={compareOpen} referenceUrl={reference} submittedUrl={submitted} onClose={() => setCompareOpen(false)} />
       </div>
       <div className="vote-panel">
         {approved ? (
@@ -1160,7 +1164,15 @@ function TantouFeedbackRow({ feedback, comments, onAddComment, onResolve }) {
         <div className="button-row vertical-buttons">
           <button className="btn btn-primary" onClick={submitComment} disabled={!comment.trim()}>Add comment</button>
           {!resolved && <button className="btn" data-testid="resolve-feedback" onClick={() => onResolve(feedback)}>Mark resolved</button>}
-          {feedback.pageId && <button className="btn" onClick={() => navigate(`/workspace/${feedback.pageId}?seriesId=${feedback.seriesId}&chapterId=${feedback.chapterId}`)}>Open page canvas</button>}
+          {feedback.pageId && (
+            <button
+              className="btn"
+              data-testid={`create-assistant-task-feedback-${feedback.id}`}
+              onClick={() => navigate(`/canvas-workspace?seriesId=${feedback.seriesId}&chapterId=${feedback.chapterId}&pageId=${feedback.pageId}&feedbackId=${feedback.id}`)}
+            >
+              Create Assistant task in Canvas
+            </button>
+          )}
           {feedback.seriesId && <button className="btn" onClick={() => navigate(`/series/${feedback.seriesId}`)}>Open series</button>}
         </div>
       </div>

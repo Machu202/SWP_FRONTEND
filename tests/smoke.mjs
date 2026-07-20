@@ -44,6 +44,7 @@ const fixtures = {
     { id: 5, username: "nori", fullName: "Nori Editor", email: "nori@example.test", roleName: "Tantou Editor", isActive: true }
   ],
   feedbacks: [{ id: 1001, content: "Strengthen the panel border.", isResolved: false, pageId: 100, xCoord: 100, yCoord: 140, width: 220, height: 180 }],
+  boardChatMessages: [{ id: 1401, seriesId: 1, senderId: 9, senderName: "Board Member", content: "The pacing in chapter one is ready for discussion.", createdAt: notificationReceivedAt }],
   comments: [{ id: 1101, content: "Use a darker tone here.", userName: "Mika" }],
   resources: [{ id: 801, fileName: "studio-brush.png", resourceType: "BRUSH", fileUrl: imageCurrent }]
 };
@@ -99,7 +100,7 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       taskStatuses: [], taskStarts: 0, feedbackCreated: 0, feedbackResolved: 0, votes: [],
       adminDecisions: 0, parameterUpdates: 0, tantouAssignments: [], seriesProfileUpdates: 0,
       tantouChapterStatus: initialChapterStatus || fixtureData.chapters[0].publishStatus,
-      boardSubmissions: 0, seriesStatusChanges: []
+      boardSubmissions: 0, seriesStatusChanges: [], boardChatPosts: 0
     };
 
     const f = fixtureData;
@@ -262,6 +263,15 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (path === "/votes/series/1") { capture.votes.push(url.searchParams.get("isApproved")); return response({ id: 91, isApproved: url.searchParams.get("isApproved") === "true" }); }
       if (path === "/votes/my-history") return response([{ voteId: 91, seriesId: 1, seriesTitle: "Ink Horizon", coverImageUrl: f.imageCurrent, genre: "Action", summary: "A test manga series.", seriesStatus: "REVIEWING", isApproved: true, votedAt: f.notificationReceivedAt }]);
 
+      if (path === "/board-chat/series/1/messages" && method === "GET") return response(f.boardChatMessages);
+      if (path === "/board-chat/series/1/messages" && method === "POST") {
+        capture.boardChatPosts += 1;
+        const payload = JSON.parse(String(options.body || "{}"));
+        const saved = { id: 1401 + capture.boardChatPosts, seriesId: 1, senderId: profile.id, senderName: profile.fullName, content: payload.content, createdAt: new Date().toISOString() };
+        f.boardChatMessages.push(saved);
+        return response(saved, 201);
+      }
+
       if (path === "/schedules/series/1") return response([{ id: 41, publishDate: f.nextWeek, frequency: "Weekly" }]);
       if (path === "/schedules" && method === "POST") return response({ id: 42 });
       if (/^\/schedules\/\d+$/.test(path) && method === "DELETE") return response(null, 204);
@@ -408,6 +418,12 @@ async function run() {
       await waitText(page, "Summary: A test manga series.");
       await waitText(page, "Chapter 1: Opening");
       await waitText(page, "Page 1");
+      await page.getByRole("button", { name: "Read Chapter" }).click();
+      assert.equal(await page.getByRole("dialog", { name: "Read Chapter 1" }).count(), 1, "Admin Final Approval must share the chapter reader");
+      await page.getByRole("button", { name: "Close chapter reader" }).click();
+      await waitText(page, "Admin · read only");
+      await waitText(page, "The pacing in chapter one is ready for discussion.");
+      assert.equal(await page.locator('[data-testid="board-chat-input-1"]').count(), 0, "Admin must not have a voting chat composer");
       assert.equal(await page.locator('[data-testid="board-series-details-1"]').count(), 1);
       const adminTantouSelect = page.locator('[data-testid="admin-tantou-select"]');
       assert.equal(await adminTantouSelect.locator('option[value="4"]').isDisabled(), true, "A Tantou assigned to another series must be unavailable");
@@ -610,6 +626,11 @@ async function run() {
       assert.ok(Math.abs(reviewHitboxGeometry.height - 15) < 0.75, "Review hitbox height must match Mangaka Canvas coordinates");
       assert.equal(await reviewRow.locator('img[alt="Reference"]').getAttribute("src"), fixtures.imageCurrent, "Mangaka Review reference must remain the original page image");
       assert.equal(await reviewRow.locator('img[alt="Submitted work"]').getAttribute("src"), fixtures.imageOld, "Mangaka Review submitted work must remain separate");
+      await reviewRow.getByRole("button", { name: "Compare 2 Images" }).click();
+      assert.equal(await page.getByRole("dialog", { name: "Compare 2 Images" }).count(), 1, "Mangaka must be able to compare reference and submitted images");
+      assert.equal(await page.locator('.image-comparison-modal img[alt="Reference for comparison"]').getAttribute("src"), fixtures.imageCurrent);
+      assert.equal(await page.locator('.image-comparison-modal img[alt="Submitted work for comparison"]').getAttribute("src"), fixtures.imageOld);
+      await page.getByRole("button", { name: "Close image comparison" }).click();
       await page.screenshot({ path: path.resolve("test-results/issue16-approved-task-handoff.png"), fullPage: true });
       assert.equal(await page.locator('[data-testid="series-tantou-select-1"]').count(), 1, "A series must show exactly one visible Tantou selector");
       await page.locator('[data-testid="inline-chapter-tantou-select-1"]').selectOption("4");
@@ -656,6 +677,10 @@ async function run() {
       const detailImages = await page.locator(".assignment-reference-panel img").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("src")));
       assert.ok(detailImages.includes(fixtures.imageCurrent), "Reference image must remain the original page");
       assert.ok(detailImages.includes(fixtures.imageOld), "Submitted image must remain separate from the reference");
+      assert.equal(await page.getByRole("button", { name: "Compare 2 Images" }).count(), 1, "Assistant compare control must appear after a submission exists");
+      await page.getByRole("button", { name: "Compare 2 Images" }).click();
+      assert.equal(await page.getByRole("dialog", { name: "Compare 2 Images" }).count(), 1);
+      await page.getByRole("button", { name: "Close image comparison" }).click();
       await page.getByRole("button", { name: "Download reference image" }).click();
       await waitText(page, "started and moved to Doing");
       assert.equal((await capture(page)).taskStarts, 1);
@@ -666,8 +691,8 @@ async function run() {
       assert.equal(await page.locator('[data-testid="kanban-task-card"][draggable="true"]').count(), 0, "Assistant Kanban must be view-only");
       assert.ok(await page.getByText("View only", { exact: true }).count() >= 1);
       await navigate(page, "/resources");
-      await waitText(page, "Resource Library");
-      assert.equal(await page.getByRole("link", { name: "Download" }).count(), 1);
+      await waitText(page, "Resources");
+      assert.equal(await page.getByRole("button", { name: "Download" }).count(), 1);
       assert.equal(await page.getByText("Upload files", { exact: true }).count(), 0);
       await navigate(page, "/profile");
       await waitText(page, "Edit profile");
@@ -841,6 +866,17 @@ async function run() {
       await waitText(page, "Chapter 1: Opening");
       await waitText(page, "A formatted script.");
       await waitText(page, "Page 1");
+      await page.getByRole("button", { name: "Read Chapter" }).click();
+      assert.equal(await page.getByRole("dialog", { name: "Read Chapter 1" }).count(), 1, "Editorial Board must be able to read a chapter page-by-page");
+      assert.equal(await page.getByRole("button", { name: "Previous page" }).isDisabled(), true);
+      assert.equal(await page.getByRole("button", { name: "Next page" }).isDisabled(), true);
+      await page.getByRole("button", { name: "Close chapter reader" }).click();
+      await waitText(page, "Shared · saved");
+      await waitText(page, "The pacing in chapter one is ready for discussion.");
+      await page.locator('[data-testid="board-chat-input-1"]').fill("I agree; the opening is ready.");
+      await page.locator('[data-testid="board-chat-send-1"]').click();
+      await waitText(page, "I agree; the opening is ready.");
+      assert.equal((await capture(page)).boardChatPosts, 1, "Editorial Board chat message must be persisted");
       assert.equal(await page.locator('[data-testid="board-series-details-1"]').count(), 1);
       await page.getByRole("button", { name: "Vote approve" }).click();
       await waitText(page, "Approval vote submitted");
@@ -851,7 +887,7 @@ async function run() {
       await waitText(page, "Ink Horizon");
       assert.equal(await page.locator('[data-testid="board-vote-history-list"]').count(), 1);
       assert.deepEqual(pageErrors, []);
-      passed.push("FE-16 Editorial Board can open series chapters/pages, vote, and view personal vote history");
+      passed.push("FE-16 Editorial Board can review, use the saved voting chat, vote, and view personal vote history");
       await context.close();
     }
 

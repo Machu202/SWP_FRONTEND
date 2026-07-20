@@ -49,7 +49,7 @@ function navForRole(role) {
       { path: "/tasks?tab=assignments", label: "Assignments", icon: "☑" },
       { path: "/tasks?tab=kanban", label: "Kanban Board", icon: "▤" },
       { path: "/schedule", label: "Schedule", icon: "◷" },
-      { path: "/resources", label: "Resource Library", icon: "□" }
+      { path: "/resources", label: "Resources", icon: "□" }
     ];
   }
   return [
@@ -62,7 +62,7 @@ function navForRole(role) {
     { path: "/schedule", label: "Schedule", icon: "◷" },
     { path: "/tasks?tab=assignments", label: "Assignments", icon: "☑" },
     { path: "/assistant-review", label: "Review", icon: "☰" },
-    { path: "/resources", label: "Assets", icon: "⬆" }
+    { path: "/resources", label: "Resources", icon: "⬆" }
   ];
 }
 
@@ -110,7 +110,7 @@ function topbarLinks(group) {
   return [
     { path: "/dashboard", label: "Workflow" },
     { path: "/schedule", label: "Schedule" },
-    { path: "/resources", label: "Assets" }
+    { path: "/resources", label: "Resources" }
   ];
 }
 
@@ -331,7 +331,7 @@ function pageTitle(pathname, role) {
   if (pathname.startsWith("/admin-review")) return "Final Approval Console";
   if (pathname.startsWith("/series")) return hasRole(role, ["mangaka"]) ? "My Series" : "Manga Series";
   if (pathname.startsWith("/tasks")) return "Kanban Board";
-  if (pathname.startsWith("/resources")) return "Resource Library";
+  if (pathname.startsWith("/resources")) return "Resources";
   if (pathname.startsWith("/schedule")) return "Schedule";
   if (pathname.startsWith("/profile")) return "Profile";
   return dashboardTitle(role);

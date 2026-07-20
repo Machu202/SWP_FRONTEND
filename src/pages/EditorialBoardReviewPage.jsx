@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { api, mediaUrlFrom, seriesDisplayNumber } from "../api/client";
 import { navigate, useHashRoute } from "../utils/router";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
+import BoardVotingChat from "../components/BoardVotingChat";
+import ChapterReaderModal from "../components/ChapterReaderModal";
 
 export default function EditorialBoardReviewPage() {
   const route = useHashRoute();
@@ -177,12 +179,15 @@ function BoardVoteRow({ item, summary, onVote, expanded, detail, detailLoading, 
       </div>
 
       {expanded ? (
-        <SeriesReviewDetails
-          item={item}
-          detail={detail}
-          loading={detailLoading}
-          error={detailError}
-        />
+        <>
+          <SeriesReviewDetails
+            item={item}
+            detail={detail}
+            loading={detailLoading}
+            error={detailError}
+          />
+          <BoardVotingChat seriesId={item.id} />
+        </>
       ) : null}
     </article>
   );
@@ -232,6 +237,7 @@ export function SeriesReviewDetails({ item, detail, loading, error }) {
 }
 
 function BoardChapterDetail({ chapter }) {
+  const [readerOpen, setReaderOpen] = useState(false);
   const pages = chapter.pages || [];
   const scriptText = String(chapter.script?.content || chapter.script?.script || chapter.script?.text || "").trim();
 
@@ -251,6 +257,8 @@ function BoardChapterDetail({ chapter }) {
           <p>{scriptText || "No chapter script was provided."}</p>
         </div>
 
+        <button className="btn btn-primary read-chapter-button" type="button" onClick={() => setReaderOpen(true)} disabled={!pages.length}>Read Chapter</button>
+
         {pages.length ? (
           <div className="board-page-grid">
             {pages.map((page) => {
@@ -268,6 +276,7 @@ function BoardChapterDetail({ chapter }) {
         ) : (
           <p className="review-helper">No pages were uploaded for this chapter.</p>
         )}
+        <ChapterReaderModal open={readerOpen} chapter={chapter} onClose={() => setReaderOpen(false)} />
       </div>
     </details>
   );
