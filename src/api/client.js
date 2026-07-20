@@ -563,7 +563,8 @@ export const api = {
   votes: {
     summary: (seriesId) => apiFetch(`/votes/series/${seriesId}/summary`),
     cast: (seriesId, isApproved) => apiFetch(`/votes/series/${seriesId}${objectToQuery({ isApproved })}`, { method: "POST" }),
-    history: async () => unwrapList(await apiFetch("/votes/my-history"))
+    history: async () => unwrapList(await apiFetch("/votes/my-history")),
+    adminHistory: async () => unwrapList(await apiFetch("/votes/admin/history"))
   },
 
   boardChat: {
@@ -575,6 +576,7 @@ export const api = {
   },
 
   directChat: {
+    contacts: () => apiFetch("/direct-chat/contacts"),
     list: (otherUserId) => apiFetch(`/direct-chat/users/${otherUserId}/messages`),
     send: (recipientId, content) => apiFetch(`/direct-chat/users/${recipientId}/messages`, {
       method: "POST",

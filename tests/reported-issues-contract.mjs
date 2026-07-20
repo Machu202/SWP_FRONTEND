@@ -240,15 +240,17 @@ assert.match(taskService, /Assistant assignment is locked once a task is REVIEWI
 assert.doesNotMatch(tantouReview, />Open series<\/button>/);
 
 
-// Issues 39-40: hitbox overlays recover from missing page dimensions and rejected series can restart cleanly.
+// Issues 39-40: hitbox overlays recover from missing page dimensions and rejected series can be permanently removed.
 assert.match(tasks, /function positiveFiniteNumber/);
 assert.match(tasks, /function overlayPercentBox/);
 assert.match(tasks, /testId="task-area-overlay"/);
 assert.match(mangakaReview, /testId="review-task-area-overlay"/);
 assert.match(mangakaReview, /testId=\{`feedback-hitbox-/);
 assert.match(coordinateOverlay, /label = "Task Area"/);
-assert.match(dashboard, /Revert to Draft/);
-assert.match(dashboard, /api\.series\.status\(series\.id, "DRAFT"\)/);
+assert.match(dashboard, /Delete Series/);
+assert.match(dashboard, /Confirm Delete/);
+assert.match(dashboard, /api\.series\.remove\(series\.id\)/);
+assert.match(dashboard, /confirm-delete-rejected-series-/);
 assert.match(seriesService, /case "REJECTED":[\s\S]*newStatus\.equals\("DRAFT"\)/);
 assert.match(seriesService, /resetBoardVotesForNewReviewCycle\(seriesId\)/);
 assert.match(seriesService, /boardVoteRepository\.deleteByMangaSeriesId\(seriesId\)/);

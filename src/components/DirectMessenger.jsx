@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, unwrapList } from "../api/client";
 
-const CONTACT_ROLES = {
-  mangaka: ["Assistant", "Tantou Editor"],
-  assistant: ["Mangaka"],
-  tantou: ["Mangaka"]
-};
-
 function displayName(user) {
   return user?.fullName || user?.full_name || user?.username || user?.email || `User #${user?.id}`;
 }
@@ -22,6 +16,16 @@ function initials(user) {
   const name = String(displayName(user) || "U").trim();
   const parts = name.split(/\s+/).filter(Boolean);
   return (parts.length > 1 ? `${parts[0][0]}${parts.at(-1)[0]}` : name.slice(0, 2)).toUpperCase();
+}
+
+function contactSeriesTitles(contact) {
+  const values = contact?.seriesTitles || contact?.series_titles || [];
+  return Array.isArray(values) ? values.filter(Boolean) : [];
+}
+
+function contactSeriesLabel(contact) {
+  const titles = contactSeriesTitles(contact);
+  return `(${titles.length ? titles.join(", ") : "Manga Series"})`;
 }
 
 function messageTime(value) {
@@ -46,7 +50,7 @@ function mergeMessages(current, incoming) {
 }
 
 export default function DirectMessenger({ currentUserId, roleGroup }) {
-  const allowedRoles = CONTACT_ROLES[roleGroup] || [];
+  const enabled = ["mangaka", "assistant", "tantou"].includes(roleGroup);
   const [open, setOpen] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [selectedContactId, setSelectedContactId] = useState("");
@@ -57,40 +61,36 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const messageListRef = useRef(null);
+  const totalUnread = contacts.reduce((sum, contact) => sum + Number(contact.unreadCount || contact.unread_count || 0), 0);
 
   const selectedContact = useMemo(
     () => contacts.find((contact) => String(contact.id) === String(selectedContactId)) || null,
     [contacts, selectedContactId]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadContacts() {
-      if (!currentUserId || !allowedRoles.length) return;
-      setLoadingContacts(true);
-      try {
-        const roleLists = await Promise.all(allowedRoles.map((role) => api.users.byRole(role)));
-        const unique = new Map();
-        roleLists.flatMap((result) => unwrapList(result)).forEach((user) => {
-          if (!user?.id || String(user.id) === String(currentUserId) || user.isActive === false) return;
-          unique.set(String(user.id), user);
-        });
-        const nextContacts = Array.from(unique.values()).sort((left, right) => displayName(left).localeCompare(displayName(right)));
-        if (cancelled) return;
-        setContacts(nextContacts);
-        setSelectedContactId((current) => nextContacts.some((contact) => String(contact.id) === String(current))
-          ? current
-          : nextContacts[0]?.id ? String(nextContacts[0].id) : "");
-        setError("");
-      } catch (err) {
-        if (!cancelled) setError(err.message || "Could not load chat contacts.");
-      } finally {
-        if (!cancelled) setLoadingContacts(false);
-      }
+  const loadContacts = useCallback(async (silent = false) => {
+    if (!currentUserId || !enabled) return;
+    if (!silent) setLoadingContacts(true);
+    try {
+      const nextContacts = unwrapList(await api.directChat.contacts());
+      setContacts(nextContacts);
+      setSelectedContactId((current) => nextContacts.some((contact) => String(contact.id) === String(current))
+        ? current
+        : nextContacts[0]?.id ? String(nextContacts[0].id) : "");
+      setError("");
+    } catch (err) {
+      if (!silent) setError(err.message || "Could not load chat contacts.");
+    } finally {
+      if (!silent) setLoadingContacts(false);
     }
+  }, [currentUserId, enabled]);
+
+  useEffect(() => {
+    if (!enabled || !currentUserId) return undefined;
     loadContacts();
-    return () => { cancelled = true; };
-  }, [currentUserId, roleGroup]);
+    const timer = window.setInterval(() => loadContacts(true), 5000);
+    return () => window.clearInterval(timer);
+  }, [currentUserId, enabled, loadContacts]);
 
   const loadMessages = useCallback(async (silent = false) => {
     if (!selectedContactId) return;
@@ -98,13 +98,14 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
     try {
       const result = await api.directChat.list(selectedContactId);
       setMessages((current) => mergeMessages(current, unwrapList(result)));
+      await loadContacts(true);
       setError("");
     } catch (err) {
       if (!silent) setError(err.message || "Could not load this conversation.");
     } finally {
       if (!silent) setLoadingMessages(false);
     }
-  }, [selectedContactId]);
+  }, [selectedContactId, loadContacts]);
 
   useEffect(() => {
     setMessages([]);
@@ -138,7 +139,7 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
     }
   }
 
-  if (!allowedRoles.length) return null;
+  if (!enabled) return null;
 
   return (
     <aside className={`direct-messenger direct-messenger-${roleGroup}`} aria-label="Studio direct messenger">
@@ -147,7 +148,7 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
           <header className="direct-messenger-header">
             <div>
               <strong>{selectedContact ? displayName(selectedContact) : "Studio Messenger"}</strong>
-              <small>{selectedContact ? selectedContact.roleName || "Studio member" : "Choose a contact"} · updates every 5 seconds</small>
+              <small>{selectedContact ? `${contactSeriesLabel(selectedContact)} · ${selectedContact.roleName || "Studio member"}` : "Choose a contact"} · updates every 5 seconds</small>
             </div>
             <button type="button" aria-label="Minimize direct messenger" onClick={() => setOpen(false)}>−</button>
           </header>
@@ -166,7 +167,11 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
                 >
                   <span className={`direct-contact-avatar contact-${roleTone(contact.roleName)}`}>{initials(contact)}</span>
                   <span>{displayName(contact)}</span>
+                  <small className="direct-contact-series" title={contactSeriesLabel(contact)}>{contactSeriesLabel(contact)}</small>
                   <small>{contact.roleName}</small>
+                  {Number(contact.unreadCount || contact.unread_count || 0) > 0 ? (
+                    <span className="direct-contact-unread">{Number(contact.unreadCount || contact.unread_count) > 99 ? "99+" : Number(contact.unreadCount || contact.unread_count)}</span>
+                  ) : null}
                 </button>
               ))}
             </nav>
@@ -213,6 +218,7 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
         title={open ? "Minimize Messenger" : "Open Messenger"}
       >
         <span aria-hidden="true">⚡</span>
+        {totalUnread > 0 ? <span className="direct-messenger-unread-badge" data-testid="direct-messenger-unread-count">{totalUnread > 99 ? "99+" : totalUnread}</span> : null}
       </button>
     </aside>
   );

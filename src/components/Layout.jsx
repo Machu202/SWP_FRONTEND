@@ -23,6 +23,7 @@ function navForRole(role) {
       { path: "/admin/users", label: "Users", icon: "👥" },
       { path: "/schedule", label: "Deadlines", icon: "◷" },
       { path: "/admin-review", label: "Final Approval", icon: "✓" },
+      { path: "/admin/board-vote-history", label: "Editorial Board Vote History", icon: "◴" },
       { path: "/admin/system", label: "Settings", icon: "⚙" }
     ];
   }
@@ -89,6 +90,7 @@ function topbarLinks(group) {
   if (group === "admin") return [
     { path: "/admin/users", label: "Users" },
     { path: "/admin-review", label: "Final Approval" },
+    { path: "/admin/board-vote-history", label: "Board Vote History" },
     { path: "/admin/system", label: "System Settings" }
   ];
   if (group === "board") return [
@@ -328,6 +330,7 @@ function pageTitle(pathname, role) {
   if (pathname.startsWith("/workspace/")) return "Page Canvas";
   if (pathname.startsWith("/admin/users")) return "User Administration";
   if (pathname.startsWith("/admin/system")) return "Admin Settings";
+  if (pathname.startsWith("/admin/board-vote-history")) return "Editorial Board Vote History";
   if (pathname.startsWith("/assistant-review")) return "Review";
   if (pathname.startsWith("/tantou-review")) return "Chapter Review Queue";
   if (pathname.startsWith("/board-review")) return "Editorial Voting";
@@ -356,6 +359,7 @@ function pageSubtitle(pathname, role, username = "") {
   if (pathname.startsWith("/board-review")) return "Cast approval or rejection votes for submitted manga series.";
   if (pathname.startsWith("/board-vote-history")) return "Review every vote cast by this Editorial Board account.";
   if (pathname.startsWith("/admin-review")) return "Board results and final publishing decisions.";
+  if (pathname.startsWith("/admin/board-vote-history")) return "Audit every Editorial Board user's votes by manga series.";
   if (pathname.startsWith("/schedule")) return "Publishing schedules and deadline events.";
   return `Logged in as ${username || roleLabel(role)}.`;
 }

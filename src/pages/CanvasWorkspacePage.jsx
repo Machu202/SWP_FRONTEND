@@ -159,6 +159,7 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const [contextLoading, setContextLoading] = useState(false);
   const [feedbackContent, setFeedbackContent] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [sendingChapter, setSendingChapter] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -175,6 +176,8 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
   const displayedHitboxes = isViewingHistoricalVersion ? viewedVersionHitboxes : hitboxes;
   const compareVersion = versions.find((version) => String(version.id) === String(compareVersionId));
   const compareImageUrl = mediaUrlFrom(compareVersion, compareVersion?.imageUrl, compareVersion?.image_url);
+  const selectedChapterStatus = String(selectedChapter?.publishStatus || selectedChapter?.publish_status || selectedChapter?.status || "DRAFT").trim().toUpperCase();
+  const chapterAlreadySent = ["REVIEWING", "READY_FOR_TANTOU", "TANTOU_REVIEW", "APPROVED", "PUBLISHED"].includes(selectedChapterStatus);
 
   function handleSeriesChange(value) {
     const nextSeriesId = String(value || "");
@@ -819,6 +822,24 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
     }
   }
 
+  async function sendChapterToTantou() {
+    if (!canEdit || !selectedChapter?.id || sendingChapter || chapterAlreadySent) return;
+    setSendingChapter(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await api.chapters.status(selectedChapter.id, "REVIEWING");
+      setChapters((current) => current.map((chapter) => String(chapter.id) === String(selectedChapter.id)
+        ? { ...chapter, ...updated, publishStatus: updated?.publishStatus || updated?.publish_status || "REVIEWING" }
+        : chapter));
+      setMessage(`Chapter ${chapterNumber(selectedChapter)} was sent to ${selectedSeries?.tantouName || selectedSeries?.tantou_name || "the Tantou Editor"}.`);
+    } catch (err) {
+      setError(err.message || "Could not send this chapter to the Tantou Editor.");
+    } finally {
+      setSendingChapter(false);
+    }
+  }
+
   if (loading) return <LoadingBlock label="Loading canvas workspace..." />;
 
   const originalSize = isViewingHistoricalVersion
@@ -916,6 +937,23 @@ export default function CanvasWorkspacePage({ initialSeriesId = "", initialChapt
               </div>
             ) : <EmptyState icon="□" title="Select a page to start" body="Choose a series, chapter, and page from the controls above." />}
           </div>
+          {canEdit ? (
+            <div className="canvas-chapter-handoff-row">
+              <div>
+                <strong>Chapter handoff</strong>
+                <small>{selectedChapter ? `Chapter ${chapterNumber(selectedChapter)} · ${selectedChapterStatus}` : "Choose a chapter before sending it for review."}</small>
+              </div>
+              <button
+                className="btn-publish"
+                type="button"
+                data-testid="canvas-send-chapter-to-tantou"
+                disabled={!selectedChapter?.id || sendingChapter || chapterAlreadySent}
+                onClick={sendChapterToTantou}
+              >
+                {sendingChapter ? "Sending…" : chapterAlreadySent ? "Chapter Sent" : "Send Chapter To Tantou Editor"}
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="card-box hitbox-task-card">

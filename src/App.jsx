@@ -18,6 +18,7 @@ import TantouReviewPage from "./pages/TantouReviewPage";
 import EditorialBoardReviewPage from "./pages/EditorialBoardReviewPage";
 import EditorialBoardVoteHistoryPage from "./pages/EditorialBoardVoteHistoryPage";
 import AdminReviewPage from "./pages/AdminReviewPage";
+import AdminEditorialBoardVoteHistoryPage from "./pages/AdminEditorialBoardVoteHistoryPage";
 import { Layout } from "./components/Layout";
 import { EmptyState } from "./components/Status";
 import { useAuth } from "./context/AuthContext";
@@ -60,7 +61,7 @@ function seriesRouteForRole(role, seriesId) {
 }
 
 function isAllowed(pathname, role) {
-  if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/system") || pathname.startsWith("/admin-review")) {
+  if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/system") || pathname.startsWith("/admin-review") || pathname.startsWith("/admin/board-vote-history")) {
     return hasRole(role, ["admin"]);
   }
   if (pathname.startsWith("/board-review") || pathname.startsWith("/board-vote-history")) return hasRole(role, ["editorial", "board"]);
@@ -105,6 +106,7 @@ function renderPage(route, role) {
   if (route.pathname === "/profile") return <ProfilePage />;
   if (route.pathname === "/admin/users") return <AdminUsersPage />;
   if (route.pathname === "/admin/system") return <SystemPage />;
+  if (route.pathname === "/admin/board-vote-history") return <AdminEditorialBoardVoteHistoryPage />;
   if (route.pathname === "/assistant-review") return (
     <MangakaAssistantReviewPage
       initialTab={route.params.get("tab") || "tantou"}

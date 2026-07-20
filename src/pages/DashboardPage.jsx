@@ -117,13 +117,20 @@ export default function DashboardPage() {
     }));
   }
 
+  function removeSeriesFromDashboard(seriesId) {
+    setData((current) => ({
+      ...current,
+      series: current.series.filter((item) => String(item.id) !== String(seriesId))
+    }));
+  }
+
   if (loading) return <LoadingBlock label="Loading dashboard..." />;
 
   return (
     <>
       <Alert type="danger">{error}</Alert>
       {hasRole(role, ["assistant"]) ? <AssistantDashboard data={data} profile={profile} session={session} /> : null}
-      {hasRole(role, ["mangaka"]) ? <MangakaDashboard data={data} profile={profile} session={session} onSeriesUpdated={updateSeriesInDashboard} /> : null}
+      {hasRole(role, ["mangaka"]) ? <MangakaDashboard data={data} profile={profile} session={session} onSeriesUpdated={updateSeriesInDashboard} onSeriesDeleted={removeSeriesFromDashboard} /> : null}
       {hasRole(role, ["tantou"]) ? <EditorialDashboard data={data} role="Tantou Editor" /> : null}
       {hasRole(role, ["editorial", "board"]) ? <EditorialDashboard data={data} role="Editorial Board" /> : null}
       {hasRole(role, ["admin"]) ? <AdminDashboard data={data} /> : null}
@@ -133,25 +140,30 @@ export default function DashboardPage() {
   );
 }
 
-function MangakaDashboard({ data, onSeriesUpdated }) {
-  const { selection: workspaceSelection } = useWorkspaceSelection();
+function MangakaDashboard({ data, onSeriesDeleted }) {
+  const { selection: workspaceSelection, updateSelection } = useWorkspaceSelection();
   const openWorkspace = (path) => navigate(withWorkspaceSelection(path, workspaceSelection));
   const activeSeries = data.series.filter((item) => String(item.status || "").toUpperCase() !== "ARCHIVED");
   const [seriesActionId, setSeriesActionId] = useState("");
   const [seriesMessage, setSeriesMessage] = useState("");
   const [seriesError, setSeriesError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
-  async function revertToDraft(series) {
+  async function deleteRejectedSeries(series) {
     if (!series?.id || String(series.status || "").toUpperCase() !== "REJECTED") return;
     setSeriesActionId(String(series.id));
     setSeriesMessage("");
     setSeriesError("");
     try {
-      const updated = await api.series.status(series.id, "DRAFT");
-      onSeriesUpdated?.({ ...series, ...updated, status: "DRAFT" });
-      setSeriesMessage(`${series.title || "Series"} reverted to Draft. You can edit it and submit a new Board review cycle.`);
+      await api.series.remove(series.id);
+      onSeriesDeleted?.(series.id);
+      if (String(workspaceSelection.seriesId) === String(series.id)) {
+        updateSelection({ seriesId: "", chapterId: "", pageId: "" });
+      }
+      setSeriesMessage(`${series.title || "Series"} and all related project data were deleted.`);
+      setDeleteTarget(null);
     } catch (err) {
-      setSeriesError(err.message || "Could not revert this series to Draft.");
+      setSeriesError(err.message || "Could not delete this series.");
     } finally {
       setSeriesActionId("");
     }
@@ -170,7 +182,7 @@ function MangakaDashboard({ data, onSeriesUpdated }) {
                 key={series.id}
                 series={series}
                 busy={String(seriesActionId) === String(series.id)}
-                onRevertToDraft={revertToDraft}
+                onDelete={() => setDeleteTarget(series)}
               />
             )) : (
               <EmptyState icon="◇" title="No active series" body="Create a series to begin the Mangaka workflow." />
@@ -208,6 +220,19 @@ function MangakaDashboard({ data, onSeriesUpdated }) {
           </div>
         </div>
       </div>
+      {deleteTarget ? (
+        <div className="delete-modal-backdrop" role="presentation" onMouseDown={() => !seriesActionId && setDeleteTarget(null)}>
+          <div className="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="dashboard-delete-series-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="delete-modal-icon">!</div>
+            <h3 id="dashboard-delete-series-title">Delete {deleteTarget.title || "this manga series"} permanently?</h3>
+            <p className="dashboard-delete-warning">This will delete every chapter, page, version, hitbox, task, feedback, schedule, deadline, vote and saved Editorial Board chat related to this series. This action cannot be undone.</p>
+            <div className="delete-modal-actions">
+              <button className="btn" type="button" disabled={Boolean(seriesActionId)} onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="btn btn-danger solid-danger" data-testid={`confirm-delete-rejected-series-${deleteTarget.id}`} type="button" disabled={Boolean(seriesActionId)} onClick={() => deleteRejectedSeries(deleteTarget)}>{seriesActionId ? "Deleting..." : "Confirm Delete"}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -348,7 +373,7 @@ function GenericDashboard({ data, role }) {
   );
 }
 
-function DashboardSeriesCard({ series, busy = false, onRevertToDraft }) {
+function DashboardSeriesCard({ series, busy = false, onDelete }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   const rejected = String(series.status || "").trim().toUpperCase() === "REJECTED";
   return (
@@ -365,12 +390,12 @@ function DashboardSeriesCard({ series, busy = false, onRevertToDraft }) {
         <div className="dashboard-series-rejected-actions">
           <button
             type="button"
-            className="btn btn-small dashboard-revert-draft-btn"
-            data-testid={`revert-series-${series.id}-to-draft`}
+            className="btn btn-small btn-danger solid-danger dashboard-delete-series-btn"
+            data-testid={`delete-rejected-series-${series.id}`}
             disabled={busy}
-            onClick={() => onRevertToDraft?.(series)}
+            onClick={() => onDelete?.(series)}
           >
-            {busy ? "Reverting…" : "Revert to Draft"}
+            {busy ? "Deleting…" : "Delete Series"}
           </button>
         </div>
       )}

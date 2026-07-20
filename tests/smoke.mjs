@@ -41,7 +41,8 @@ const fixtures = {
     { id: 2, username: "aya", fullName: "Aya Assistant", email: "aya@example.test", phoneNumber: "0902", roleName: "Assistant", isActive: true },
     { id: 3, username: "admin", fullName: "System Admin", email: "admin@example.test", roleName: "Admin", isActive: true },
     { id: 4, username: "taro", fullName: "Taro Editor", email: "taro@example.test", roleName: "Tantou Editor", isActive: true },
-    { id: 5, username: "nori", fullName: "Nori Editor", email: "nori@example.test", roleName: "Tantou Editor", isActive: true }
+    { id: 5, username: "nori", fullName: "Nori Editor", email: "nori@example.test", roleName: "Tantou Editor", isActive: true },
+    { id: 9, username: "board", fullName: "Board Member", email: "board@example.test", roleName: "Editorial Board", isActive: true }
   ],
   feedbacks: [{ id: 1001, content: "Strengthen the panel border.", isResolved: false, pageId: 100, xCoord: 100, yCoord: 140, width: 220, height: 180 }],
   boardChatMessages: [{ id: 1401, seriesId: 1, senderId: 9, senderName: "Board Member", content: "The pacing in chapter one is ready for discussion.", createdAt: notificationReceivedAt }],
@@ -101,7 +102,8 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       taskStatuses: [], taskStarts: 0, feedbackCreated: 0, feedbackResolved: 0, votes: [],
       adminDecisions: 0, parameterUpdates: 0, tantouAssignments: [], seriesProfileUpdates: 0,
       tantouChapterStatus: initialChapterStatus || fixtureData.chapters[0].publishStatus,
-      boardSubmissions: 0, seriesStatusChanges: [], boardChatPosts: 0, directChatPosts: 0,
+      boardSubmissions: 0, seriesStatusChanges: [], seriesDeletes: [], boardChatPosts: 0, directChatPosts: 0,
+      directUnread: 1,
       otpRequests: [], googleLogins: []
     };
 
@@ -199,7 +201,10 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         capture.tantouAssignments.push(url.searchParams.get("tantouId"));
         return response({ ...f.series[0], tantouId: Number(url.searchParams.get("tantouId")), tantouName: "Taro Editor" });
       }
-      if (path === "/manga-series/1" && method === "DELETE") return response(null, 204);
+      if (/^\/manga-series\/\d+$/.test(path) && method === "DELETE") {
+        capture.seriesDeletes.push(Number(path.split("/")[2]));
+        return response(null, 204);
+      }
 
       if (path === "/chapters/tantou-review") return response([
         { ...f.chapters[0], publishStatus: capture.tantouChapterStatus, seriesTitle: f.series[0].title, mangakaName: "Mika Mangaka", tantouId: 4, tantouName: "Taro Editor" }
@@ -285,6 +290,9 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
       if (path === "/votes/series/1/summary") return response({ totalVotes: 3, approvedVotes: 2, rejectedVotes: 1, pendingVotes: 0 });
       if (path === "/votes/series/1") { capture.votes.push(url.searchParams.get("isApproved")); return response({ id: 91, isApproved: url.searchParams.get("isApproved") === "true" }); }
       if (path === "/votes/my-history") return response([{ voteId: 91, seriesId: 1, seriesTitle: "Ink Horizon", coverImageUrl: f.imageCurrent, genre: "Action", summary: "A test manga series.", seriesStatus: "REVIEWING", isApproved: true, votedAt: f.notificationReceivedAt }]);
+      if (path === "/votes/admin/history") return response([
+        { voteId: 91, boardMemberId: 9, boardMemberName: "Board Member", seriesId: 1, seriesTitle: "Ink Horizon", coverImageUrl: f.imageCurrent, isApproved: true, votedAt: f.notificationReceivedAt }
+      ]);
 
       if (path === "/board-chat/series/1/messages" && method === "GET") return response(f.boardChatMessages);
       if (path === "/board-chat/series/1/messages" && method === "POST") {
@@ -295,7 +303,18 @@ async function bootstrapApp(browser, { role = "", legacyRole = "", token = smoke
         return response(saved, 201);
       }
 
-      if (/^\/direct-chat\/users\/\d+\/messages$/.test(path) && method === "GET") return response(f.directChatMessages);
+      if (path === "/direct-chat/contacts" && method === "GET") {
+        if (profile.roleName === "Assistant") return response([{ ...f.users[0], seriesTitles: ["Ink Horizon"], unreadCount: capture.directUnread }]);
+        if (profile.roleName === "Tantou Editor") return response([{ ...f.users[0], seriesTitles: ["Ink Horizon"], unreadCount: capture.directUnread }]);
+        return response([
+          { ...f.users[1], seriesTitles: ["Ink Horizon"], unreadCount: capture.directUnread },
+          { ...f.users[3], seriesTitles: ["Ink Horizon"], unreadCount: 0 }
+        ]);
+      }
+      if (/^\/direct-chat\/users\/\d+\/messages$/.test(path) && method === "GET") {
+        capture.directUnread = 0;
+        return response(f.directChatMessages);
+      }
       if (/^\/direct-chat\/users\/\d+\/messages$/.test(path) && method === "POST") {
         capture.directChatPosts += 1;
         const recipientId = Number(path.split("/")[3]);
@@ -461,6 +480,13 @@ async function run() {
       await waitText(page, "Updated MAX_UPLOAD_MB");
       assert.equal((await capture(page)).parameterUpdates, 1);
 
+      await navigate(page, "/admin/board-vote-history");
+      await waitText(page, "Editorial Board Vote History");
+      await waitText(page, "Board Member");
+      await waitText(page, "APPROVE");
+      await waitText(page, "Ink Horizon");
+      assert.equal(await page.locator('[data-testid="admin-board-member-9"]').count(), 1, "Admin must see each Editorial Board member's recorded votes");
+
       await navigate(page, "/admin-review");
       await waitText(page, "Final series decisions");
       await page.getByRole("button", { name: "Open Series", exact: true }).click();
@@ -501,6 +527,9 @@ async function run() {
       const { context, page, pageErrors } = await bootstrapApp(browser, { role: "Mangaka", hash: "/dashboard" });
       await waitText(page, "Mangaka Dashboard");
       await waitText(page, "Workflow KPI charts");
+      const unreadBadge = page.locator('[data-testid="direct-messenger-unread-count"]');
+      await unreadBadge.waitFor({ state: "visible" });
+      assert.equal(await unreadBadge.textContent(), "1", "Messenger launcher must show the number of unread messages");
       await page.getByTitle("Notifications").click();
       await waitText(page, "Task updated");
       const notificationTime = page.locator('[data-testid="notification-time"]').first();
@@ -512,11 +541,14 @@ async function run() {
       await page.getByTitle("Notifications").click();
       await page.getByRole("button", { name: "Series", exact: true }).last().click();
       assert.equal(await page.locator('.kpi-chart[aria-label="series bar chart"]').count(), 1);
-      const revertButton = page.locator('[data-testid="revert-series-2-to-draft"]');
-      await revertButton.waitFor({ state: "visible" });
-      await revertButton.click();
-      await waitText(page, "reverted to Draft");
-      assert.deepEqual((await capture(page)).seriesStatusChanges.at(-1), { id: 2, status: "DRAFT" });
+      const deleteButton = page.locator('[data-testid="delete-rejected-series-2"]');
+      await deleteButton.waitFor({ state: "visible" });
+      await deleteButton.click();
+      await waitText(page, "Delete Rejected Revision permanently?");
+      await page.locator('[data-testid="confirm-delete-rejected-series-2"]').click();
+      await waitText(page, "Deleted Rejected Revision");
+      assert.deepEqual((await capture(page)).seriesDeletes, [2]);
+      assert.equal(await page.locator('[data-testid="delete-rejected-series-2"]').count(), 0, "Deleted series must disappear from the dashboard");
 
       await navigate(page, "/series");
       await waitText(page, "Create new series");
@@ -565,6 +597,12 @@ async function run() {
 
       await navigate(page, "/canvas-workspace?seriesId=1&chapterId=10&pageId=100");
       await waitText(page, "Page Versions");
+      const sendCanvasChapter = page.locator('[data-testid="canvas-send-chapter-to-tantou"]');
+      await sendCanvasChapter.waitFor({ state: "visible" });
+      await sendCanvasChapter.click();
+      await waitText(page, "was sent to");
+      assert.equal((await capture(page)).tantouChapterStatus, "REVIEWING");
+      assert.equal(await sendCanvasChapter.textContent(), "Chapter Sent");
       assert.equal(await page.locator(".chapter-workspace-sidebar").count(), 1);
       assert.ok(await page.locator(".chapter-sidebar-pages button").count() >= 1);
       const chapterWorkspaceStyle = await page.locator(".chapter-sidebar-button").first().evaluate((element) => {
@@ -714,6 +752,7 @@ async function run() {
       assert.equal(await page.getByRole("button", { name: "Assets", exact: true }).count(), 0);
       await page.getByRole("button", { name: "Open direct messenger" }).click();
       await waitText(page, "Hello from Mika.");
+      await waitText(page, "(Ink Horizon)");
       await page.getByPlaceholder("Message Mika Mangaka…").fill("Assistant reply from Messenger");
       await page.getByRole("button", { name: "Send direct message" }).click();
       await waitText(page, "Assistant reply from Messenger");

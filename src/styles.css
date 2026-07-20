@@ -11543,6 +11543,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-family: inherit;
 }
 .direct-messenger-launcher {
+  position: relative;
   width: 58px;
   height: 58px;
   display: grid;
@@ -11556,6 +11557,24 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   line-height: 1;
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease;
+}
+.direct-messenger-unread-badge {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  min-width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 5px 14px rgba(127, 29, 29, .42);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
 }
 .direct-messenger-launcher:hover {
   transform: translateY(-2px) scale(1.04);
@@ -11642,6 +11661,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #f8fafc;
 }
 .direct-contact {
+  position: relative;
   width: 100%;
   min-width: 0;
   display: grid;
@@ -11660,7 +11680,7 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, .07);
 }
-.direct-contact > span:not(.direct-contact-avatar),
+.direct-contact > span:not(.direct-contact-avatar):not(.direct-contact-unread),
 .direct-contact > small {
   width: 100%;
   overflow: hidden;
@@ -11668,8 +11688,29 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.direct-contact > span:not(.direct-contact-avatar) { font-size: 10px; font-weight: 850; }
+.direct-contact > span:not(.direct-contact-avatar):not(.direct-contact-unread) { font-size: 10px; font-weight: 850; }
 .direct-contact > small { color: #64748b; font-size: 8px; }
+.direct-contact > small.direct-contact-series {
+  color: #334155;
+  font-size: 8px;
+  font-weight: 750;
+}
+.direct-contact-unread {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 1px solid #ffffff;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 7px;
+  font-weight: 900;
+}
 .direct-contact-avatar {
   width: 36px;
   height: 36px;
@@ -11780,10 +11821,92 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-weight: 750;
 }
 
+.canvas-chapter-handoff-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+.canvas-chapter-handoff-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.canvas-chapter-handoff-row small { color: #64748b; }
+.canvas-chapter-handoff-row .btn-publish { flex: 0 0 auto; }
+
+.admin-board-member-history-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+.admin-board-member-history {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+.admin-board-member-history > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.admin-board-member-history > header > div:last-child { display: grid; gap: 2px; }
+.admin-board-member-history > header small { color: #64748b; }
+.admin-board-member-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f59e0b, #b45309);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+}
+.admin-board-vote-table-wrap { overflow-x: auto; }
+.admin-board-vote-table { width: 100%; border-collapse: collapse; }
+.admin-board-vote-table th,
+.admin-board-vote-table td { padding: 11px 14px; border-bottom: 1px solid #eef2f7; text-align: left; }
+.admin-board-vote-table th { color: #64748b; background: #ffffff; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.admin-board-vote-table tr:last-child td { border-bottom: 0; }
+.admin-vote-series-cell { display: flex; align-items: center; gap: 9px; min-width: 190px; }
+.admin-vote-series-cell img,
+.admin-vote-series-cell > span {
+  width: 34px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #334155;
+  font-weight: 900;
+}
+.admin-vote-decision { display: inline-flex; padding: 5px 9px; border-radius: 999px; font-size: 9px; font-weight: 900; }
+.admin-vote-decision.approve { color: #166534; background: #dcfce7; }
+.admin-vote-decision.reject { color: #991b1b; background: #fee2e2; }
+.dashboard-delete-warning {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 @media (max-width: 560px) {
   .direct-messenger { right: 10px; bottom: 10px; }
   .direct-messenger-panel { width: calc(100vw - 20px); height: min(620px, calc(100vh - 86px)); }
   .direct-messenger-body { grid-template-columns: 82px minmax(0, 1fr); }
   .direct-contact-list { padding: 6px; }
   .direct-messenger-launcher { width: 52px; height: 52px; }
+  .canvas-chapter-handoff-row { align-items: stretch; flex-direction: column; }
 }

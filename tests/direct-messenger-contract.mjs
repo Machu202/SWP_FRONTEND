@@ -18,7 +18,10 @@ assert.match(entity, /Direct_Chat_Message/,
 assert.match(entity, /sender_id/);
 assert.match(entity, /recipient_id/);
 assert.match(entity, /created_at/);
+assert.match(entity, /read_at/);
 assert.match(repository, /findConversation/);
+assert.match(repository, /countByRecipient_IdAndSender_IdAndReadAtIsNull/);
+assert.match(repository, /markConversationRead/);
 assert.match(repository, /ORDER BY message\.createdAt ASC, message\.id ASC/,
   "Messages must be returned in stable chronological order");
 
@@ -30,16 +33,19 @@ assert.match(service, /MAX_MESSAGE_LENGTH = 2000/);
 assert.match(backendTests, /assistantAndTantouCannotOpenDirectChat/);
 
 assert.match(controller, /@RequestMapping\("\/api\/v1\/direct-chat"\)/);
+assert.match(controller, /@GetMapping\("\/contacts"\)/);
 assert.match(controller, /@GetMapping\("\/users\/\{otherUserId\}\/messages"\)/);
 assert.match(controller, /@PostMapping\("\/users\/\{recipientId\}\/messages"\)/);
-assert.match(client, /directChat:[\s\S]*list:[\s\S]*send:/);
+assert.match(client, /directChat:[\s\S]*contacts:[\s\S]*list:[\s\S]*send:/);
 
 assert.match(layout, /<DirectMessenger currentUserId=/);
 assert.match(layout, /\["mangaka", "assistant", "tantou"\]\.includes\(group\)/,
   "Messenger must appear globally for the three requested roles only");
-assert.match(messenger, /mangaka: \["Assistant", "Tantou Editor"\]/);
-assert.match(messenger, /assistant: \["Mangaka"\]/);
-assert.match(messenger, /tantou: \["Mangaka"\]/);
+assert.match(messenger, /api\.directChat\.contacts\(\)/,
+  "Contacts must come from authorized task and series relationships, not a role-wide user directory");
+assert.match(messenger, /contactSeriesLabel\(contact\)/);
+assert.match(messenger, /direct-messenger-unread-count/);
+assert.match(messenger, /totalUnread > 99 \? "99\+" : totalUnread/);
 assert.match(messenger, /window\.setInterval\(\(\) => loadMessages\(true\), 5000\)/,
   "Open conversations must refresh every five seconds");
 assert.match(messenger, /api\.directChat\.send\(selectedContactId, content\)/);
