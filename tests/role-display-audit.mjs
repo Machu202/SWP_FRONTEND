@@ -317,7 +317,7 @@ function checkDataSense(key, label, route, metrics, snapshot, issue) {
       if (/Deadlines/i.test(text) && /NOW\s+\d+\s+Open tasks/i.test(text)) issue("WARNING", "MISLEADING_DEADLINE_CARD", "The 'Deadlines' card displays task counts as NOW/REV date boxes rather than actual deadline dates.");
     }
     if (key === "admin" && metrics.statCards.some((x) => x.label === "Control" && x.value === "✓")) issue("WARNING", "NON_DATA_KPI", "Admin dashboard uses a checkmark as a KPI ('Control ✓'), which does not communicate useful current data.");
-    if (count("series") > 0 && /No series found|Không có series nào/i.test(text)) issue("ERROR", "FALSE_EMPTY_STATE", `Dashboard says there are no series, but the API returned ${count("series")}.`);
+    if (count("series") > 0 && /No series found/i.test(text)) issue("ERROR", "FALSE_EMPTY_STATE", `Dashboard says there are no series, but the API returned ${count("series")}.`);
     if (key === "board") {
       const expected = snapshot.series.filter((item) => String(item.status || "").toUpperCase() === "REVIEWING").length;
       const stat = metrics.statCards.find((item) => item.label.toLowerCase() === "reviewing");
@@ -330,7 +330,7 @@ function checkDataSense(key, label, route, metrics, snapshot, issue) {
     }
   }
 
-  if (route === "/series" && count("series") > 0 && /No series found|No series yet|Không có series/i.test(text)) issue("ERROR", "FALSE_EMPTY_STATE", `Series screen is empty, but the API returned ${count("series")} series.`);
+  if (route === "/series" && count("series") > 0 && /No series found|No series yet/i.test(text)) issue("ERROR", "FALSE_EMPTY_STATE", `Series screen is empty, but the API returned ${count("series")} series.`);
   if (route.startsWith("/tasks") && count("tasks") > 0) {
     if (route.includes("tab=kanban") && metrics.kanbanTaskCount !== count("tasks")) issue("ERROR", "TASK_RENDER_MISMATCH", `Kanban rendered ${metrics.kanbanTaskCount} task cards, but the API returned ${count("tasks")} tasks.`);
     if (route.includes("tab=assignments") && /No assignments yet|Nothing assigned/i.test(text)) issue("ERROR", "FALSE_EMPTY_STATE", `Assignments screen is empty, but the API returned ${count("tasks")} tasks.`);

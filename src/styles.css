@@ -308,7 +308,7 @@ body {
 }
 
 /* ========================================= */
-/* --- 3. FORMS (CREATE SERIES) ÄÃƒ KHÃ”I PHá»¤C --- */
+/* --- 3. FORMS (CREATE SERIES) RESTORED --- */
 /* ========================================= */
 .form-section {
   background: white;
@@ -1292,10 +1292,10 @@ body {
   transform: translateX(0);
 }
 /* ========================================= */
-/* --- 7. ASSISTANT WORKSPACE CHI TIáº¾T --- */
+/* --- 7. ASSISTANT WORKSPACE DETAILS --- */
 /* ========================================= */
 
-/* Sidebar Assistant (Profile á»Ÿ trÃªn cÃ¹ng) */
+/* Assistant sidebar (profile at the top) */
 .assistant-profile-box {
   padding: 20px;
   display: flex;
@@ -6067,7 +6067,7 @@ body {
     width: 100%;
 }
 
-/* ================== Cá»˜T TRÃI ================== */
+/* ================== LEFT COLUMN ================== */
 .left-panel {
     flex: 0 0 50%;
     height: 100%;
@@ -6083,7 +6083,7 @@ body {
     display: block;
 }
 
-/* Lá»›p phá»§ tráº¯ng 30% */
+/* 30% white overlay */
 .left-panel::after {
     content: "";
     position: absolute;
@@ -6095,7 +6095,7 @@ body {
     pointer-events: none;
 }
 
-/* ================== Cá»˜T PHáº¢I ================== */
+/* ================== RIGHT COLUMN ================== */
 .right-panel {
     flex: 0 0 50%;
     display: flex;
@@ -6213,7 +6213,7 @@ body {
     font-weight: 600;
 }
 
-/* CÃ¡c loáº¡i Button */
+/* Button variants */
 .btn-primary {
     width: 100%;
     padding: 12px;
@@ -6234,7 +6234,7 @@ body {
 
 .btn-secondary {
     padding: 10px 40px;
-    background-color: #D1D5DB; /* NÃºt Enter xÃ¡m */
+    background-color: #D1D5DB; /* Gray submit button */
     color: #111827;
     border: none;
     border-radius: 6px;
@@ -6244,7 +6244,7 @@ body {
 }
 
 .btn-registrate {
-    background-color: #A5F3FC; /* Xanh ngá»c theo hÃ¬nh */
+    background-color: #A5F3FC; /* Cyan accent */
     color: #0E7490;
     margin-top: 10px;
     margin-bottom: 0;
@@ -6275,7 +6275,7 @@ body {
 }
 
 .btn-orange {
-    background-color: #F97316; /* NÃºt cam */
+    background-color: #F97316; /* Orange button */
     color: #FFFFFF;
     border: none;
     border-radius: 20px;

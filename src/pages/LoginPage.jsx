@@ -285,20 +285,20 @@ export default function LoginPage() {
           {mode === "login" && (
             <form id="form-password-section" data-testid="login-form" className="form-section plain-form" onSubmit={submitLogin}>
               <div className="input-group">
-                <label>Email hoặc Tên đăng nhập</label>
+                <label>Email or Username</label>
                 <input
                   id="login-username"
                   name="username"
                   type="text"
                   autoComplete="username"
-                  placeholder="Ví dụ: mangaka@studio.com hoặc Mangaka"
+                  placeholder="Example: mangaka@studio.com or Mangaka"
                   value={credentials.username}
                   onChange={(event) => setCredentials({ ...credentials, username: event.target.value })}
                 />
               </div>
 
               <div className="input-group">
-                <label>Mật Khẩu</label>
+                <label>Password</label>
                 <div className="password-wrapper">
                   <input
                     id="login-password"
@@ -363,7 +363,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   autoComplete="email"
-                  placeholder="Ví dụ: mangaka@studio.com"
+                  placeholder="Example: mangaka@studio.com"
                   value={otpEmail}
                   onChange={(event) => {
                     setOtpEmail(event.target.value);
@@ -383,7 +383,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  placeholder="Ví dụ: 111111"
+                  placeholder="Example: 111111"
                   className="otp-input-large"
                   value={otpCode}
                   disabled={!otpSent}

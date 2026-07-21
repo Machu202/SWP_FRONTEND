@@ -96,7 +96,7 @@ export default function ResourcesPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 5 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 5 }}>Resources</h1>
-          <p style={{ color: "#6b7280", fontSize: 14 }}>Tải về cọ vẽ, screentone và các tài liệu tham khảo chung của Studio.</p>
+          <p style={{ color: "#6b7280", fontSize: 14 }}>Download brushes, screentones, and shared Studio reference materials.</p>
         </div>
         {canManage && (
           <div className="button-row">

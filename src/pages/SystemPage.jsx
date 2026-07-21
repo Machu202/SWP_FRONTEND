@@ -89,7 +89,11 @@ export default function SystemPage() {
   function edit(item) {
     const key = parameterKey(item);
     setEditingKey(key);
-    setForm({ key, value: String(parameterValue(item)), type: parameterType(item) });
+    setForm({
+      key,
+      value: String(parameterValue(item)),
+      type: key === "MAX_PAGES_PER_CHAPTER" ? "INTEGER" : parameterType(item),
+    });
     setError("");
     setMessage("");
   }
@@ -116,6 +120,7 @@ export default function SystemPage() {
     const needle = query.trim().toLowerCase();
     return parameters.filter((item) => !needle || `${parameterKey(item)} ${parameterValue(item)}`.toLowerCase().includes(needle));
   }, [parameters, query]);
+  const isMaxPagesPerChapter = form.key.trim().toUpperCase() === "MAX_PAGES_PER_CHAPTER";
 
   if (loading) return <LoadingBlock label="Loading system parameters..." />;
 
@@ -127,13 +132,15 @@ export default function SystemPage() {
         <div>
           <p className="eyebrow">Admin configuration</p>
           <h3>{editingKey ? `Edit ${editingKey}` : "Create a parameter or limit"}</h3>
-          <small>Examples: MAX_UPLOAD_MB, MAX_PAGES_PER_CHAPTER, REVIEW_TIMEOUT_HOURS.</small>
         </div>
-        <input required placeholder="Parameter key" value={form.key} disabled={Boolean(editingKey)} onChange={(event) => setForm({ ...form, key: event.target.value.toUpperCase().replace(/\s+/g, "_") })} />
-        <select aria-label="Parameter type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+        <input required placeholder="Parameter key" value={form.key} disabled={Boolean(editingKey)} onChange={(event) => {
+          const key = event.target.value.toUpperCase().replace(/\s+/g, "_");
+          setForm({ ...form, key, type: key === "MAX_PAGES_PER_CHAPTER" ? "INTEGER" : form.type });
+        }} />
+        <select aria-label="Parameter type" value={form.type} disabled={isMaxPagesPerChapter} onChange={(event) => setForm({ ...form, type: event.target.value })}>
           {PARAMETER_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
-        <input required placeholder="Value / limit" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
+        <input required type={isMaxPagesPerChapter ? "number" : "text"} min={isMaxPagesPerChapter ? 1 : undefined} step={isMaxPagesPerChapter ? 1 : undefined} placeholder="Value / limit" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
         <div className="button-row">
           <button className="btn btn-primary" disabled={saving || !form.key.trim() || !form.value.trim()}>{saving ? "Saving..." : editingKey ? "Update" : "Create"}</button>
           {editingKey && <button className="btn" type="button" onClick={() => { setEditingKey(""); setForm({ key: "", value: "", type: "STRING" }); }}>Cancel</button>}
