@@ -432,6 +432,14 @@ export const api = {
       const data = await apiFetch("/auth/verify-otp", { method: "POST", body: { email, otpCode } });
       return setSession(data || {});
     },
+    requestPasswordReset: (email) => apiFetch("/auth/forgot-password/request", {
+      method: "POST",
+      body: { email }
+    }),
+    resetPassword: (email, otpCode, newPassword) => apiFetch("/auth/forgot-password/reset", {
+      method: "POST",
+      body: { email, otpCode, newPassword }
+    }),
     google: async (token) => {
       const data = await apiFetch("/auth/google", { method: "POST", body: { token } });
       return setSession(data || {});

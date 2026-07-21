@@ -6,6 +6,8 @@ import { navigate } from "../utils/router";
 import { withWorkspaceSelection } from "../utils/workspaceRoute";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
 
+const SERIES_STATUS_OPTIONS = ["ONGOING", "HIATUS", "CANCELLED", "COMPLETED"];
+
 function safeDashboardCall(promise, fallback = [], timeoutMs = 7000) {
   return Promise.race([
     promise,
@@ -181,6 +183,8 @@ function MangakaDashboard({ data, onSeriesUpdated, onSeriesDeleted }) {
   const [publishTarget, setPublishTarget] = useState(null);
   const [publishMode, setPublishMode] = useState("NOW");
   const [publishAt, setPublishAt] = useState(() => localDateTimeInputValue());
+  const [statusTarget, setStatusTarget] = useState(null);
+  const [nextSeriesStatus, setNextSeriesStatus] = useState("ONGOING");
 
   async function deleteRejectedSeries(series) {
     if (!series?.id || String(series.status || "").toUpperCase() !== "REJECTED") return;
@@ -241,6 +245,35 @@ function MangakaDashboard({ data, onSeriesUpdated, onSeriesDeleted }) {
     }
   }
 
+  function openStatusModal(series) {
+    if (String(series?.status || "").toUpperCase() !== "ONGOING") return;
+    setStatusTarget(series);
+    setNextSeriesStatus("ONGOING");
+    setSeriesError("");
+    setSeriesMessage("");
+  }
+
+  async function updatePublishedSeriesStatus() {
+    if (!statusTarget?.id || String(statusTarget.status || "").toUpperCase() !== "ONGOING") return;
+    if (!SERIES_STATUS_OPTIONS.includes(nextSeriesStatus) || nextSeriesStatus === "ONGOING") {
+      setSeriesError("Choose HIATUS, CANCELLED, or COMPLETED before saving.");
+      return;
+    }
+    setSeriesActionId(String(statusTarget.id));
+    setSeriesError("");
+    setSeriesMessage("");
+    try {
+      const updated = await api.series.status(statusTarget.id, nextSeriesStatus);
+      onSeriesUpdated?.({ ...statusTarget, ...updated, status: nextSeriesStatus });
+      setSeriesMessage(`${statusTarget.title || "Series"} status changed to ${nextSeriesStatus}.`);
+      setStatusTarget(null);
+    } catch (err) {
+      setSeriesError(err.message || "Could not update this series status.");
+    } finally {
+      setSeriesActionId("");
+    }
+  }
+
   return (
     <section className="stack mangaka-dashboard-exact">
       <Alert type="success">{seriesMessage}</Alert>
@@ -256,6 +289,7 @@ function MangakaDashboard({ data, onSeriesUpdated, onSeriesDeleted }) {
                 busy={String(seriesActionId) === String(series.id)}
                 onDelete={() => setDeleteTarget(series)}
                 onPublish={() => openPublishModal(series)}
+                onEditStatus={() => openStatusModal(series)}
               />
             )) : (
               <EmptyState icon="◇" title="No active series" body="Create a series to begin the Mangaka workflow." />
@@ -330,6 +364,40 @@ function MangakaDashboard({ data, onSeriesUpdated, onSeriesDeleted }) {
             <div className="delete-modal-actions">
               <button className="btn" type="button" disabled={Boolean(seriesActionId)} onClick={() => setPublishTarget(null)}>Cancel</button>
               <button className="btn btn-primary" data-testid={`confirm-publish-series-${publishTarget.id}`} type="button" disabled={Boolean(seriesActionId) || (publishMode === "SCHEDULE" && !publishAt)} onClick={publishSeries}>{seriesActionId ? "Publishing..." : publishMode === "NOW" ? "Publish Now" : "Schedule Launch"}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {statusTarget ? (
+        <div className="delete-modal-backdrop publish-modal-backdrop" role="presentation" onMouseDown={() => !seriesActionId && setStatusTarget(null)}>
+          <div className="delete-modal-card publish-series-modal series-status-modal" role="dialog" aria-modal="true" aria-labelledby="dashboard-edit-series-status-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="publish-modal-icon">↻</div>
+            <p className="eyebrow">Published series lifecycle</p>
+            <h3 id="dashboard-edit-series-status-title">Edit Status · {statusTarget.title || "Manga Series"}</h3>
+            <p className="publish-modal-copy">Choose the next public lifecycle status for this ongoing manga series.</p>
+            <div className="publish-mode-grid series-status-option-grid" role="radiogroup" aria-label="Manga series status">
+              {SERIES_STATUS_OPTIONS.map((status) => (
+                <button
+                  type="button"
+                  key={status}
+                  className={nextSeriesStatus === status ? "publish-mode-option active" : "publish-mode-option"}
+                  role="radio"
+                  aria-checked={nextSeriesStatus === status}
+                  onClick={() => setNextSeriesStatus(status)}
+                >
+                  <strong>{status}</strong>
+                  <small>{status === "ONGOING" ? "Currently publishing" : status === "HIATUS" ? "Temporarily paused" : status === "CANCELLED" ? "Publication cancelled" : "Series completed"}</small>
+                </button>
+              ))}
+            </div>
+            {nextSeriesStatus === "CANCELLED" || nextSeriesStatus === "COMPLETED" ? (
+              <p className="dashboard-delete-warning">This marks the public series as {nextSeriesStatus.toLowerCase()}. Existing chapters and pages are preserved.</p>
+            ) : null}
+            <div className="delete-modal-actions">
+              <button className="btn" type="button" disabled={Boolean(seriesActionId)} onClick={() => setStatusTarget(null)}>Cancel</button>
+              <button className="btn btn-primary" data-testid={`confirm-edit-series-status-${statusTarget.id}`} type="button" disabled={Boolean(seriesActionId) || nextSeriesStatus === "ONGOING"} onClick={updatePublishedSeriesStatus}>
+                {seriesActionId ? "Saving..." : "Save Status"}
+              </button>
             </div>
           </div>
         </div>
@@ -474,7 +542,7 @@ function GenericDashboard({ data, role }) {
   );
 }
 
-function DashboardSeriesCard({ series, busy = false, onDelete, onPublish }) {
+function DashboardSeriesCard({ series, busy = false, onDelete, onPublish, onEditStatus }) {
   const cover = mediaUrlFrom(series, series.coverImageUrl, series.cover_image_url, series.coverUrl, series.cover_url, series.imageUrl, series.image_url, series.thumbnailUrl, series.thumbnail_url);
   const status = String(series.status || "").trim().toUpperCase();
   const rejected = status === "REJECTED";
@@ -519,6 +587,17 @@ function DashboardSeriesCard({ series, busy = false, onDelete, onPublish }) {
             onClick={() => onDelete?.(series)}
           >
             {busy ? "Deleting…" : "Delete Series"}
+          </button>
+        ) : null}
+        {status === "ONGOING" ? (
+          <button
+            type="button"
+            className="btn btn-small btn-primary dashboard-edit-status-btn"
+            data-testid={`edit-series-status-${series.id}`}
+            disabled={busy}
+            onClick={() => onEditStatus?.(series)}
+          >
+            {busy ? "Saving…" : "Edit Status"}
           </button>
         ) : null}
         {scheduledAt ? <small className="series-launch-countdown" data-testid={`series-launch-countdown-${series.id}`}>Launch in {launchCountdown(scheduledAt, countdownNow)}</small> : null}

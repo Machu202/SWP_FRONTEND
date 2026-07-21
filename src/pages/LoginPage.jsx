@@ -69,6 +69,7 @@ export default function LoginPage() {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [rememberPassword, setRememberPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -77,6 +78,8 @@ export default function LoginPage() {
   const [otpEmail, setOtpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [resetForm, setResetForm] = useState({ email: "", otpCode: "", newPassword: "", confirmPassword: "" });
+  const [resetCodeSent, setResetCodeSent] = useState(false);
   const [runtimeSettings, setRuntimeSettings] = useState({
     enablePublicRegistration: true,
     enableGoogleLogin: true,
@@ -239,6 +242,71 @@ export default function LoginPage() {
     }
   }
 
+  function openForgotPassword() {
+    const possibleEmail = credentials.username.includes("@") ? credentials.username.trim() : "";
+    setResetForm({ email: possibleEmail, otpCode: "", newPassword: "", confirmPassword: "" });
+    setResetCodeSent(false);
+    setMode("forgot");
+    setError("");
+    setMessage("");
+  }
+
+  async function requestPasswordReset(event) {
+    event?.preventDefault();
+    const email = resetForm.email.trim();
+    if (!email.includes("@")) {
+      setError("Enter the email address linked to your account.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await api.auth.requestPasswordReset(email);
+      setResetCodeSent(true);
+      setMessage(response?.message || "If an active account is linked to this email, a reset code has been sent.");
+    } catch (err) {
+      setError(err.message || "Could not send the password reset code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitPasswordReset(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    const otpCode = normalizeOtpCode(resetForm.otpCode);
+    if (!resetCodeSent || otpCode.length !== 6) {
+      setError("Enter the 6-digit reset code from your email.");
+      return;
+    }
+    if (resetForm.newPassword.length < 6 || resetForm.newPassword.length > 40) {
+      setError("New password must be between 6 and 40 characters.");
+      return;
+    }
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      setError("New password and confirmation do not match.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const email = resetForm.email.trim();
+      const response = await api.auth.resetPassword(email, otpCode, resetForm.newPassword);
+      clearRememberedCredentials();
+      setRememberPassword(false);
+      setCredentials({ username: email, password: "" });
+      setResetCodeSent(false);
+      setMode("login");
+      setMessage(response?.message || "Password reset successfully. You can now log in.");
+    } catch (err) {
+      setError(err.message || "Could not reset the password.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleGoogleCredential(response) {
     const credential = response?.credential;
     if (!credential) {
@@ -279,6 +347,7 @@ export default function LoginPage() {
           size: "large",
           width: 360,
           text: "signin_with",
+          locale: "en",
           shape: "rectangular"
         });
       })
@@ -304,7 +373,7 @@ export default function LoginPage() {
             <span>Publishing Management System</span>
           </h1>
 
-          {mode !== "register" && (
+          {["login", "otp"].includes(mode) && (
             <div className="tabs" id="login-tabs">
               <button type="button" className={mode === "login" ? "tab active" : "tab"} onClick={() => { setMode("login"); setError(""); setMessage(""); }}>PASSWORD</button>
               {emailOtpEnabled && <button type="button" className={mode === "otp" ? "tab active" : "tab"} onClick={() => { setMode("otp"); setError(""); setMessage(""); }}>via OTP</button>}
@@ -362,7 +431,7 @@ export default function LoginPage() {
                   />
                   <span>Remember password</span>
                 </label>
-                <button type="button" className="forgot-link">Forgot password?</button>
+                <button type="button" className="forgot-link" onClick={openForgotPassword}>Forgot password?</button>
               </div>
 
               <button className="btn-primary" id="btn-login" data-testid="login-submit" disabled={busy || !credentials.username || !credentials.password}>{busy ? "Logging in..." : "Login"}</button>
@@ -371,7 +440,8 @@ export default function LoginPage() {
               <div className="social-login google-login-box">
                 {googleLoginEnabled && GOOGLE_CLIENT_ID ? (
                   <>
-                    <div ref={googleButtonRef} className="google-render-target" />
+                    <span className="google-login-control-label">Google Login</span>
+                    <div ref={googleButtonRef} className="google-render-target" aria-label="Google Login" />
                     {googleBusy && <p className="login-helper-text">Signing in with Google...</p>}
                   </>
                 ) : (
@@ -380,7 +450,7 @@ export default function LoginPage() {
                     className="btn-social"
                     onClick={() => setError("Google sign-in is not available right now.")}
                   >
-                    <strong>Google</strong>
+                    <strong>Google Login</strong>
                   </button>
                 )}
               </div>
@@ -429,6 +499,79 @@ export default function LoginPage() {
                 <span className="not-received-text">Not received OTP?</span>
                 <button type="button" className="btn-orange" disabled={busy || !otpEmail} onClick={sendOtp}>Send again</button>
               </div>
+            </form>
+          )}
+
+          {mode === "forgot" && (
+            <form id="form-forgot-password" className="form-section plain-form" onSubmit={submitPasswordReset}>
+              <div className="register-header-box"><span className="register-title">Reset Password</span></div>
+              <p className="login-helper-text forgot-password-copy">Enter your account email. We will send a separate one-time reset code that expires in 10 minutes.</p>
+              <div className="input-group">
+                <label>Account email</label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  placeholder="Example: mangaka@studio.com"
+                  value={resetForm.email}
+                  onChange={(event) => {
+                    setResetForm({ ...resetForm, email: event.target.value });
+                    setResetCodeSent(false);
+                  }}
+                />
+              </div>
+              <div className="center-btn">
+                <button className="btn-secondary" type="button" disabled={busy || !resetForm.email} onClick={requestPasswordReset}>
+                  {busy ? "Sending..." : resetCodeSent ? "Send Again" : "Send Reset Code"}
+                </button>
+              </div>
+
+              {resetCodeSent ? (
+                <>
+                  <div className="input-group">
+                    <label>6-digit reset code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength="6"
+                      placeholder="Example: 123456"
+                      value={resetForm.otpCode}
+                      onChange={(event) => setResetForm({ ...resetForm, otpCode: normalizeOtpCode(event.target.value).slice(0, 6) })}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>New password</label>
+                    <div className="password-wrapper">
+                      <input
+                        type={showResetPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        minLength="6"
+                        maxLength="40"
+                        value={resetForm.newPassword}
+                        onChange={(event) => setResetForm({ ...resetForm, newPassword: event.target.value })}
+                      />
+                      <button type="button" className="eye-icon password-toggle" aria-label={showResetPassword ? "Hide password" : "Show password"} onClick={() => setShowResetPassword((value) => !value)}>
+                        {showResetPassword ? "🙈" : "👁️"}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Confirm new password</label>
+                    <input
+                      type={showResetPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      minLength="6"
+                      maxLength="40"
+                      value={resetForm.confirmPassword}
+                      onChange={(event) => setResetForm({ ...resetForm, confirmPassword: event.target.value })}
+                    />
+                  </div>
+                  <button className="btn-primary" disabled={busy || !resetForm.otpCode || !resetForm.newPassword || !resetForm.confirmPassword}>
+                    {busy ? "Resetting..." : "Reset Password"}
+                  </button>
+                </>
+              ) : null}
+              <p className="new-account back-login"><button type="button" onClick={() => { setMode("login"); setError(""); setMessage(""); }}>Back to Login</button></p>
             </form>
           )}
 

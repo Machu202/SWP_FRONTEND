@@ -8456,6 +8456,28 @@ th { font-size:11px; text-transform:uppercase; color:#6b7280; background:#f9fafb
   font-weight: 600;
 }
 
+.google-login-control-label {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.forgot-password-copy {
+  line-height: 1.55;
+  margin: -6px 0 18px;
+}
+
+.series-status-option-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 560px) {
+  .series-status-option-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* Canvas initial image load fix: do not hide the page image while waiting for onLoad */
 .hitbox-image-wrap.loading {
