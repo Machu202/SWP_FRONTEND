@@ -60,8 +60,21 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [maxMessageLength, setMaxMessageLength] = useState(2000);
   const messageListRef = useRef(null);
   const totalUnread = contacts.reduce((sum, contact) => sum + Number(contact.unreadCount || contact.unread_count || 0), 0);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let cancelled = false;
+    api.system.runtime()
+      .then((settings) => {
+        const value = Number(settings?.maxChatMessageLength);
+        if (!cancelled && Number.isInteger(value) && value > 0) setMaxMessageLength(value);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [enabled]);
 
   const selectedContact = useMemo(
     () => contacts.find((contact) => String(contact.id) === String(selectedContactId)) || null,
@@ -196,12 +209,13 @@ export default function DirectMessenger({ currentUserId, roleGroup }) {
               <form className="direct-message-compose" onSubmit={sendMessage}>
                 <textarea
                   rows="2"
-                  maxLength="2000"
+                  maxLength={maxMessageLength}
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   placeholder={selectedContact ? `Message ${displayName(selectedContact)}…` : "Choose a contact first"}
                   disabled={!selectedContact || sending}
                 />
+                <small>{draft.length}/{maxMessageLength}</small>
                 <button type="submit" aria-label="Send direct message" disabled={!selectedContact || !draft.trim() || sending}>➤</button>
               </form>
             </div>

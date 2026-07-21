@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, unwrapList } from "../api/client";
 import { Alert, EmptyState, LoadingBlock, StatusBadge } from "../components/Status";
+import { useAuth } from "../context/AuthContext";
 
 const ROLES = ["Mangaka", "Assistant", "Tantou Editor", "Editorial Board", "Admin"];
 
 export default function AdminUsersPage() {
+  const { profile, session } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -83,13 +85,20 @@ export default function AdminUsersPage() {
             <table>
               <thead><tr><th>ID</th><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
-                {filteredUsers.map((user) => (
+                {filteredUsers.map((user) => {
+                  const isCurrentAdmin = String(user.id) === String(profile?.id ?? session?.id ?? "");
+                  return (
                   <tr key={user.id}>
                     <td>{user.id}</td>
                     <td><strong>{user.fullName || user.username}</strong><br /><small>{user.username}</small></td>
                     <td>{user.email || "-"}</td>
                     <td>
-                      <select value={user.roleName || user.role || ""} onChange={(event) => updateUser(user.id, () => api.users.assignRole(user.id, event.target.value))}>
+                      <select
+                        value={user.roleName || user.role || ""}
+                        disabled={isCurrentAdmin}
+                        title={isCurrentAdmin ? "You cannot change your own Admin role." : "Change user role"}
+                        onChange={(event) => updateUser(user.id, () => api.users.assignRole(user.id, event.target.value))}
+                      >
                         <option value="">Choose role</option>
                         {ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
                       </select>
@@ -101,7 +110,8 @@ export default function AdminUsersPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

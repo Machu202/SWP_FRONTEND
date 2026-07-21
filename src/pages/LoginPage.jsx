@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../utils/router";
 import { Alert } from "../components/Status";
-import { roleHome } from "../api/client";
+import { api, roleHome } from "../api/client";
 import { clearRememberedCredentials, isRememberPasswordEnabled, loadRememberedCredentials, saveRememberedCredentials } from "../utils/rememberedCredentials";
 
 const PUBLIC_REGISTRATION_ROLES = ["Mangaka", "Assistant", "Tantou Editor", "Editorial Board"];
@@ -77,6 +77,14 @@ export default function LoginPage() {
   const [otpEmail, setOtpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [runtimeSettings, setRuntimeSettings] = useState({
+    enablePublicRegistration: true,
+    enableGoogleLogin: true,
+    enableEmailOtp: true,
+  });
+  const registrationEnabled = runtimeSettings.enablePublicRegistration !== false;
+  const googleLoginEnabled = runtimeSettings.enableGoogleLogin !== false;
+  const emailOtpEnabled = runtimeSettings.enableEmailOtp !== false;
 
   useEffect(() => {
     const authMessage = window.sessionStorage.getItem("authMessage");
@@ -96,6 +104,22 @@ export default function LoginPage() {
 
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.system.runtime()
+      .then((settings) => {
+        if (!cancelled && settings) setRuntimeSettings((current) => ({ ...current, ...settings }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if ((!emailOtpEnabled && mode === "otp") || (!registrationEnabled && mode === "register")) {
+      setMode("login");
+    }
+  }, [emailOtpEnabled, registrationEnabled, mode]);
 
   async function updateRememberedPassword() {
     const username = credentials.username.trim();
@@ -148,6 +172,10 @@ export default function LoginPage() {
 
   async function submitRegister(event) {
     event.preventDefault();
+    if (!registrationEnabled) {
+      setError("Public registration is currently disabled by Admin.");
+      return;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -168,6 +196,10 @@ export default function LoginPage() {
 
   async function sendOtp(event) {
     event?.preventDefault();
+    if (!emailOtpEnabled) {
+      setError("Email OTP login is currently disabled by Admin.");
+      return;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -228,7 +260,7 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    if (mode !== "login" || !GOOGLE_CLIENT_ID || !googleButtonRef.current) return;
+    if (mode !== "login" || !googleLoginEnabled || !GOOGLE_CLIENT_ID || !googleButtonRef.current) return;
 
     let cancelled = false;
     googleButtonRef.current.innerHTML = "";
@@ -256,7 +288,7 @@ export default function LoginPage() {
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, googleLoginEnabled]);
 
   return (
     <div className="split-layout">
@@ -275,7 +307,7 @@ export default function LoginPage() {
           {mode !== "register" && (
             <div className="tabs" id="login-tabs">
               <button type="button" className={mode === "login" ? "tab active" : "tab"} onClick={() => { setMode("login"); setError(""); setMessage(""); }}>PASSWORD</button>
-              <button type="button" className={mode === "otp" ? "tab active" : "tab"} onClick={() => { setMode("otp"); setError(""); setMessage(""); }}>via OTP</button>
+              {emailOtpEnabled && <button type="button" className={mode === "otp" ? "tab active" : "tab"} onClick={() => { setMode("otp"); setError(""); setMessage(""); }}>via OTP</button>}
             </div>
           )}
 
@@ -337,7 +369,7 @@ export default function LoginPage() {
 
               <div className="divider">Or login with</div>
               <div className="social-login google-login-box">
-                {GOOGLE_CLIENT_ID ? (
+                {googleLoginEnabled && GOOGLE_CLIENT_ID ? (
                   <>
                     <div ref={googleButtonRef} className="google-render-target" />
                     {googleBusy && <p className="login-helper-text">Signing in with Google...</p>}
@@ -352,7 +384,7 @@ export default function LoginPage() {
                   </button>
                 )}
               </div>
-              <p className="new-account">New to this page ? <button type="button" onClick={() => setMode("register")}>create new account</button></p>
+              <p className="new-account">{registrationEnabled ? <>New to this page ? <button type="button" onClick={() => setMode("register")}>create new account</button></> : "Public registration is disabled by Admin."}</p>
             </form>
           )}
 

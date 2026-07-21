@@ -33,7 +33,9 @@ assert.match(chapterController, /@PostMapping\("\/\{id\}\/publication-schedule"\
 assert.match(chapterService, /Chapters can only be published while the manga series is ONGOING/);
 assert.match(chapterService, /case "APPROVED" -> Set\.of\("PUBLISHED", "SCHEDULED"\)/);
 assert.match(chapterService, /frequency\("CHAPTER_LAUNCH"\)/);
-assert.match(chapterScheduler, /@Scheduled\(fixedDelay = 5000\)/);
+assert.match(chapterScheduler, /@Scheduled\(fixedDelay = 1000\)/);
+assert.match(chapterScheduler, /PUBLICATION_SCAN_SECONDS/,
+  "The Admin runtime interval must gate chapter publication scans");
 assert.match(chapterScheduler, /publishScheduledChapter/);
 
 // Chapter handoff has explicit Assistant and Tantou destinations.

@@ -29,7 +29,19 @@ export default function BoardVotingChat({ seriesId, readOnly = false }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [maxMessageLength, setMaxMessageLength] = useState(2000);
   const listRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.system.runtime()
+      .then((settings) => {
+        const value = Number(settings?.maxChatMessageLength);
+        if (!cancelled && Number.isInteger(value) && value > 0) setMaxMessageLength(value);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const loadMessages = useCallback(async (silent = false) => {
     if (!seriesId) return;
@@ -114,14 +126,14 @@ export default function BoardVotingChat({ seriesId, readOnly = false }) {
             id={`board-chat-input-${seriesId}`}
             data-testid={`board-chat-input-${seriesId}`}
             rows="3"
-            maxLength="2000"
+            maxLength={maxMessageLength}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Discuss this series before casting or updating your vote..."
             disabled={sending}
           />
           <div className="board-chat-compose-footer">
-            <small>{draft.length}/2000 · updates every 5 seconds</small>
+            <small>{draft.length}/{maxMessageLength} · updates every 5 seconds</small>
             <button className="btn btn-primary" data-testid={`board-chat-send-${seriesId}`} disabled={!draft.trim() || sending}>
               {sending ? "Sending..." : "Send message"}
             </button>

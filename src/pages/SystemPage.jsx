@@ -32,6 +32,24 @@ function parameterUpdatedAt(item) {
 }
 
 const PARAMETER_TYPES = ["STRING", "INTEGER", "DECIMAL", "BOOLEAN", "JSON"];
+const KNOWN_PARAMETERS = {
+  MAX_UPLOAD_MB: { type: "INTEGER", min: 1, max: 10 },
+  MAX_REQUEST_MB: { type: "INTEGER", min: 1, max: 50 },
+  MAX_PAGES_PER_CHAPTER: { type: "INTEGER", min: 1, max: 10000 },
+  MAX_CHAT_MESSAGE_LENGTH: { type: "INTEGER", min: 1, max: 100000 },
+  REVIEW_TIMEOUT_HOURS: { type: "INTEGER", min: 1, max: 8760 },
+  DEADLINE_SCAN_SECONDS: { type: "INTEGER", min: 1, max: 86400 },
+  PUBLICATION_SCAN_SECONDS: { type: "INTEGER", min: 1, max: 86400 },
+  TELEMETRY_FLUSH_SECONDS: { type: "INTEGER", min: 1, max: 86400 },
+  ENABLE_PUBLIC_REGISTRATION: { type: "BOOLEAN" },
+  ENABLE_GOOGLE_LOGIN: { type: "BOOLEAN" },
+  ENABLE_EMAIL_OTP: { type: "BOOLEAN" },
+  DEFAULT_SERIES_STATUS: { type: "STRING" },
+  DEFAULT_CHAPTER_STATUS: { type: "STRING" },
+  BOARD_APPROVAL_RATIO: { type: "DECIMAL", min: 0.000001, max: 1 },
+  DEADLINE_WARNING_DAYS: { type: "JSON" },
+  ALLOWED_IMAGE_TYPES: { type: "JSON" },
+};
 
 export default function SystemPage() {
   const [parameters, setParameters] = useState([]);
@@ -92,7 +110,7 @@ export default function SystemPage() {
     setForm({
       key,
       value: String(parameterValue(item)),
-      type: key === "MAX_PAGES_PER_CHAPTER" ? "INTEGER" : parameterType(item),
+      type: KNOWN_PARAMETERS[key]?.type || parameterType(item),
     });
     setError("");
     setMessage("");
@@ -120,14 +138,14 @@ export default function SystemPage() {
     const needle = query.trim().toLowerCase();
     return parameters.filter((item) => !needle || `${parameterKey(item)} ${parameterValue(item)}`.toLowerCase().includes(needle));
   }, [parameters, query]);
-  const isMaxPagesPerChapter = form.key.trim().toUpperCase() === "MAX_PAGES_PER_CHAPTER";
+  const knownParameter = KNOWN_PARAMETERS[form.key.trim().toUpperCase()] || null;
+  const numericParameter = ["INTEGER", "DECIMAL"].includes(form.type);
 
   if (loading) return <LoadingBlock label="Loading system parameters..." />;
 
   return (
     <section className="stack">
       <Alert type="success">{message}</Alert>
-      <Alert type="danger">{error}</Alert>
       <form className="card system-parameter-form" onSubmit={save}>
         <div>
           <p className="eyebrow">Admin configuration</p>
@@ -135,12 +153,18 @@ export default function SystemPage() {
         </div>
         <input required placeholder="Parameter key" value={form.key} disabled={Boolean(editingKey)} onChange={(event) => {
           const key = event.target.value.toUpperCase().replace(/\s+/g, "_");
-          setForm({ ...form, key, type: key === "MAX_PAGES_PER_CHAPTER" ? "INTEGER" : form.type });
+          setForm({ ...form, key, type: KNOWN_PARAMETERS[key]?.type || form.type });
         }} />
-        <select aria-label="Parameter type" value={form.type} disabled={isMaxPagesPerChapter} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+        <select aria-label="Parameter type" value={form.type} disabled={Boolean(knownParameter)} onChange={(event) => setForm({ ...form, type: event.target.value })}>
           {PARAMETER_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
-        <input required type={isMaxPagesPerChapter ? "number" : "text"} min={isMaxPagesPerChapter ? 1 : undefined} step={isMaxPagesPerChapter ? 1 : undefined} placeholder="Value / limit" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
+        {form.type === "BOOLEAN" ? (
+          <select aria-label="Boolean value" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })}>
+            <option value="">Choose true or false</option><option value="true">true</option><option value="false">false</option>
+          </select>
+        ) : (
+          <input required type={numericParameter ? "number" : "text"} min={knownParameter?.min} max={knownParameter?.max} step={form.type === "INTEGER" ? 1 : form.type === "DECIMAL" ? "any" : undefined} placeholder="Value / limit" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
+        )}
         <div className="button-row">
           <button className="btn btn-primary" disabled={saving || !form.key.trim() || !form.value.trim()}>{saving ? "Saving..." : editingKey ? "Update" : "Create"}</button>
           {editingKey && <button className="btn" type="button" onClick={() => { setEditingKey(""); setForm({ key: "", value: "", type: "STRING" }); }}>Cancel</button>}

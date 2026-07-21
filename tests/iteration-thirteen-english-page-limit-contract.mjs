@@ -23,8 +23,8 @@ rejectText(
   "Examples:",
   "Admin Settings example helper"
 );
-requireText(systemPage, "key === \"MAX_PAGES_PER_CHAPTER\" ? \"INTEGER\"", "Admin limit type selection");
-requireText(systemPage, "min={isMaxPagesPerChapter ? 1 : undefined}", "Admin positive limit input");
+requireText(systemPage, "MAX_PAGES_PER_CHAPTER: { type: \"INTEGER\", min: 1, max: 10000 }", "Admin limit schema");
+requireText(systemPage, "min={knownParameter?.min}", "Admin positive limit input");
 
 const pageService = read(
   "src/main/java/com/mangastudio/backend/service/impl/PageServiceImpl.java",
@@ -39,8 +39,8 @@ const parameterService = read(
   "src/main/java/com/mangastudio/backend/service/impl/SystemParameterServiceImpl.java",
   backendRoot
 );
-requireText(parameterService, "MAX_PAGES_PER_CHAPTER must use the INTEGER type", "Limit type validation");
-requireText(parameterService, "MAX_PAGES_PER_CHAPTER must be at least 1", "Positive limit validation");
+requireText(parameterService, 'Map.entry("MAX_PAGES_PER_CHAPTER", "INTEGER")', "Limit type validation");
+requireText(parameterService, 'Map.entry("MAX_PAGES_PER_CHAPTER", 10_000L)', "Positive limit validation");
 
 const vietnameseLetters = "ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ" +
   "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ";

@@ -35,7 +35,9 @@ assert.match(seriesService, /series\.setStatus\("ONGOING"\)/);
 assert.match(seriesController, /@PostMapping\("\/\{id\}\/publication-schedule"\)/);
 assert.match(seriesService, /launchChapter\.setPublishStatus\("SCHEDULED"\)/);
 assert.match(seriesService, /frequency\("SERIES_LAUNCH"\)/);
-assert.match(scheduler, /@Scheduled\(fixedDelay = 5000\)/);
+assert.match(scheduler, /@Scheduled\(fixedDelay = 1000\)/);
+assert.match(scheduler, /PUBLICATION_SCAN_SECONDS/,
+  "The Admin runtime interval must gate series publication scans");
 assert.match(scheduler, /publishScheduledSeries/);
 assert.match(seriesService, /telemetryBufferService\.initializeSeries\(series\.getId\(\)\)/);
 assert.match(telemetryService, /readerVotes\(0\)/);

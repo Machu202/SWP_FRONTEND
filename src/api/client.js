@@ -610,6 +610,7 @@ export const api = {
   },
 
   system: {
+    runtime: () => apiFetch("/runtime-settings"),
     parameters: () => apiFetch("/system-parameters"),
     create: (key, value, type = "STRING") => apiFetch(`/system-parameters${objectToQuery({ key, value, type })}`, { method: "POST" }),
     update: (key, value, type) => apiFetch(`/system-parameters/${encodeURIComponent(key)}${objectToQuery({ value, type })}`, { method: "PUT" }),

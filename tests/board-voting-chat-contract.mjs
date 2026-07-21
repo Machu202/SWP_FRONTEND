@@ -22,6 +22,10 @@ assert.match(component, /window\.setInterval\(\(\) => loadMessages\(true\), 5000
   "Shared chat must refresh while members are voting");
 assert.match(component, /api\.boardChat\.send\(seriesId, content\)/,
   "Editorial Board messages must be persisted through the backend");
+assert.match(component, /api\.system\.runtime\(\)[\s\S]*maxChatMessageLength/,
+  "Voting chat input must use the same Admin-controlled length as the backend");
+assert.match(service, /positiveInteger\("MAX_CHAT_MESSAGE_LENGTH", 2000, 100_000\)/,
+  "Voting chat length must be controlled by the Admin runtime parameter");
 assert.match(boardPage, /<BoardVotingChat seriesId=\{item\.id\} \/>/,
   "Editorial Board series review must display the writable shared chat");
 assert.match(adminPage, /<BoardVotingChat seriesId=\{item\.id\} readOnly \/>/,

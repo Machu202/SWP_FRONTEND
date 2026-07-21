@@ -29,7 +29,8 @@ assert.match(service, /MANGAKA[\s\S]*ASSISTANT/);
 assert.match(service, /MANGAKA[\s\S]*TANTOU EDITOR/);
 assert.match(service, /Direct chat is allowed only between Mangaka and Assistant or Mangaka and Tantou Editor/,
   "Backend must reject every other role pairing");
-assert.match(service, /MAX_MESSAGE_LENGTH = 2000/);
+assert.match(service, /positiveInteger\("MAX_CHAT_MESSAGE_LENGTH", 2000, 100_000\)/,
+  "Direct chat length must be controlled by the Admin runtime parameter");
 assert.match(backendTests, /assistantAndTantouCannotOpenDirectChat/);
 
 assert.match(controller, /@RequestMapping\("\/api\/v1\/direct-chat"\)/);
@@ -49,6 +50,8 @@ assert.match(messenger, /totalUnread > 99 \? "99\+" : totalUnread/);
 assert.match(messenger, /window\.setInterval\(\(\) => loadMessages\(true\), 5000\)/,
   "Open conversations must refresh every five seconds");
 assert.match(messenger, /api\.directChat\.send\(selectedContactId, content\)/);
+assert.match(messenger, /api\.system\.runtime\(\)[\s\S]*maxChatMessageLength/,
+  "Messenger input must use the same Admin-controlled length as the backend");
 assert.match(messenger, /aria-label=\{open \? "Minimize direct messenger" : "Open direct messenger"\}/);
 
 assert.match(css, /\.direct-messenger[\s\S]*position: fixed[\s\S]*right: 22px[\s\S]*bottom: 20px/);
