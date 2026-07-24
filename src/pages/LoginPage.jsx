@@ -318,8 +318,25 @@ export default function LoginPage() {
     setError("");
     setMessage("");
     try {
-      const session = await googleLogin(credential);
-      await finishLogin(session);
+      const result = await googleLogin(credential);
+      if (result?.registrationRequired) {
+        const googleEmail = String(result.email || "").trim();
+        if (!registrationEnabled) {
+          setError("No account exists for this Google email. Public registration is disabled by Admin.");
+          return;
+        }
+        setRegistration({
+          username: "",
+          email: googleEmail,
+          phoneNumber: "",
+          password: "",
+          role: "Mangaka"
+        });
+        setMode("register");
+        setMessage(result.message || "No account exists for this Google email. Complete registration to continue.");
+        return;
+      }
+      await finishLogin(result);
     } catch (err) {
       setError(err.message || "Google login failed");
     } finally {

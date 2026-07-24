@@ -81,10 +81,11 @@ export function AuthProvider({ children }) {
   }
 
   async function googleLogin(credential) {
-    const saved = await api.auth.google(credential);
-    setSessionState(saved);
+    const result = await api.auth.google(credential);
+    if (result?.registrationRequired) return result;
+    setSessionState(result);
     await refreshProfile();
-    return saved;
+    return result;
   }
 
   async function logout() {

@@ -442,6 +442,7 @@ export const api = {
     }),
     google: async (token) => {
       const data = await apiFetch("/auth/google", { method: "POST", body: { token } });
+      if (data?.registrationRequired) return data;
       return setSession(data || {});
     },
     session: () => apiFetch("/auth/session"),
